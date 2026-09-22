@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { HeaderAuthButton } from "@/features/khach-hang/components/header-auth-button";
+import { HeaderAuthButton } from "./header-auth-button";
 
 const NAV_ITEMS = [
   { label: "Điểm đến", href: "#destinations" },
@@ -17,7 +17,7 @@ export function MainHeader() {
       <Link
         className="flex items-center gap-2 group"
         data-purpose="site-brand"
-        href="/khach-hang"
+        href="/"
       >
         <Image
           alt="Roamly Logo"
@@ -44,7 +44,10 @@ export function MainHeader() {
         ))}
       </nav>
 
-      <div className="flex items-center space-x-3.5" data-purpose="user-actions">
+      <div
+        className="flex items-center space-x-3.5"
+        data-purpose="user-actions"
+      >
         <button className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50">
           <span className="">VI</span>
           <svg

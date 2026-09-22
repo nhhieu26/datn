@@ -5,12 +5,12 @@ import { usePathname } from "next/navigation";
 
 export function HeaderAuthButton() {
   const pathname = usePathname();
-  const isLoginPage = pathname === "/dang-nhap";
+  const isLoginPage = pathname === "/sign-in";
 
   return (
     <Link
       className="bg-[#111827] hover:bg-black text-white text-xs md:text-sm font-semibold px-5 py-2.5 rounded-full transition shadow-sm"
-      href={isLoginPage ? "/dang-ky" : "/dang-nhap"}
+      href={isLoginPage ? "/sign-up" : "/sign-in"}
     >
       {isLoginPage ? "Đăng ký" : "Đăng nhập"}
     </Link>

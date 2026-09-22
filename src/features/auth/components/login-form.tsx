@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { PasswordEyeIcon } from "@/features/khach-hang/components/password-eye-icon";
+import { PasswordEyeIcon } from "@/features/customer/components";
 
 type AccountType = "customer" | "provider";
 
@@ -54,7 +54,7 @@ export function LoginForm() {
       return;
     }
 
-    router.push(accountType === "customer" ? "/khach-hang/trang-chu" : "/");
+    router.push("/");
   }
 
   return (
@@ -75,7 +75,7 @@ export function LoginForm() {
               Chưa có tài khoản?
               <Link
                 className="font-semibold text-slate-900 hover:underline ml-1"
-                href="/dang-ky"
+                href="/sign-up"
               >
                 Đăng ký
               </Link>

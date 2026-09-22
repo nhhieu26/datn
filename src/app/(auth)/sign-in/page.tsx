@@ -1,5 +1,5 @@
+import { LoginForm } from "@/features/auth";
 import type { Metadata } from "next";
-import { LoginForm } from "@/features/auth/components/login-form";
 
 export const metadata: Metadata = {
   title: "Đăng nhập | Roamly",
@@ -7,6 +7,6 @@ export const metadata: Metadata = {
     "Đăng nhập tài khoản Roamly để quản lý hành trình, đặt phòng và dịch vụ du lịch của bạn.",
 };
 
-export default function DangNhapPage() {
+export default function SignInPage() {
   return <LoginForm />;
 }

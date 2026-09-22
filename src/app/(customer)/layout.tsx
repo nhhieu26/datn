@@ -1,9 +1,6 @@
-import { MainFooter } from "@/features/khach-hang/components/main-footer";
-import { MainHeader } from "@/features/khach-hang/components/main-header";
+import { MainFooter, MainHeader } from "@/features/customer/components";
 
-export default function KhachHangLayout({
-  children,
-}: LayoutProps<"/khach-hang">) {
+export default function CustomerLayout({ children }: LayoutProps<"/">) {
   return (
     <div className="bg-[#FBFBFC] text-gray-900 antialiased selection:bg-[#FF5C39] selection:text-white">
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-4">

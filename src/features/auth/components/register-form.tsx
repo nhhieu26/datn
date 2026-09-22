@@ -4,8 +4,11 @@ import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { PasswordEyeIcon } from "@/features/khach-hang/components/password-eye-icon";
-import { registerAction, type RegisterActionState } from "@/features/auth/actions";
+import {
+  registerAction,
+  type RegisterActionState,
+} from "@/features/auth/actions";
+import { PasswordEyeIcon } from "@/features/customer/components";
 
 const INITIAL_STATE: RegisterActionState = { status: "idle" };
 
@@ -36,12 +39,13 @@ export function RegisterForm() {
   const [isSigningIn, setIsSigningIn] = useState(false);
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
-  const submittedCredentials = useRef<{ email: string; password: string } | null>(
-    null
-  );
+  const submittedCredentials = useRef<{
+    email: string;
+    password: string;
+  } | null>(null);
   const [state, formAction, isPending] = useActionState(
     registerAction,
-    INITIAL_STATE
+    INITIAL_STATE,
   );
 
   function handleSubmit() {
@@ -67,12 +71,10 @@ export function RegisterForm() {
       .then((result) => {
         if (result?.error) {
           setSignInError("Đăng ký thành công, vui lòng đăng nhập lại.");
-          router.push("/dang-nhap");
+          router.push("/sign-in");
           return;
         }
-        router.push(
-          accountType === "customer" ? "/khach-hang/trang-chu" : "/"
-        );
+        router.push("/");
       })
       .finally(() => setIsSigningIn(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -96,7 +98,7 @@ export function RegisterForm() {
               Đã có tài khoản?
               <Link
                 className="font-semibold text-slate-900 hover:underline ml-1"
-                href="/dang-nhap"
+                href="/sign-in"
               >
                 Đăng nhập
               </Link>

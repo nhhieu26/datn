@@ -7,7 +7,7 @@ import { findByEmail } from "@/entities/user/repo";
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
   pages: {
-    signIn: "/dang-nhap",
+    signIn: "/sign-in",
   },
   providers: [
     Credentials({
