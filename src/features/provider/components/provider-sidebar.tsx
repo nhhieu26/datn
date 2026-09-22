@@ -1,9 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 
-const workspaceImage =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuDIm0K5T-KIYRkVrZ-F4putaSupTL1osmbaavBGCzbvKsO45bOmix6FaE_zcuzLsjzk8PNaeyaY4jLw8a-u9ff-TGt6KgxCIKunqfGy1Tfs-pO0MT1wnr_HY-VN2GS61dB9AaqRdd8wxVWxEZLGrPiQE2iPyrPkPJgpEkFXhBI9LIHQsxzRUTVNppl2aLXY6sbpwqZ6GWwoYAeiSQZYiX7x8JR49zg3x2jazwOSHBErOYgJf9GzCEny";
-
 type NavItem = {
   label: string;
   href: string;
@@ -93,7 +90,14 @@ function NavIcon({ item }: { item: NavItem }) {
   );
 }
 
-export function ProviderSidebar() {
+export function ProviderSidebar({
+  user,
+}: {
+  user: { name?: string | null; email?: string | null };
+}) {
+  const displayName = user.name || user.email || "Đối tác";
+  const initial = displayName.charAt(0).toUpperCase();
+
   return (
     <aside
       className="z-20 flex w-72 shrink-0 select-none flex-col justify-between border-r border-slate-200/80 bg-white"
@@ -113,16 +117,12 @@ export function ProviderSidebar() {
 
         <div className="mb-6 flex cursor-pointer items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/70 p-2.5 transition hover:bg-slate-100/70">
           <div className="flex min-w-0 items-center gap-3">
-            {/* The source design uses this remote supplier avatar. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              alt="Bali Explorer Co."
-              className="h-10 w-10 shrink-0 rounded-full object-cover shadow-sm ring-2 ring-white"
-              src={workspaceImage}
-            />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-500 text-sm font-bold text-white shadow-sm ring-2 ring-white">
+              {initial}
+            </div>
             <div className="truncate leading-tight">
               <div className="truncate text-sm font-bold text-slate-900">
-                Bali Explorer Co.
+                {displayName}
               </div>
               <div className="text-[11px] font-medium text-slate-500">
                 Bảng điều khiển Đối tác

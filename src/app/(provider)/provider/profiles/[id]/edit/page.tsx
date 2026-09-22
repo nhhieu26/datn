@@ -31,6 +31,7 @@ export default function EditProfilePage() {
   return (
     <main className="flex-1 overflow-y-auto px-8 py-7">
       <ProfileForm
+        availableBusinessTypes={["tour", "hotel", "restaurant"]}
         initialValues={initialValues}
         mode="edit"
         rejection={rejection}

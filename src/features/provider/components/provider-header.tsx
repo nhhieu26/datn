@@ -1,7 +1,10 @@
-const userImage =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuDsOGEzwskFdapuxQ0ecGxzHtE4o-Rdyf22HdbjMeAFW6VQxGsLrFZHitCt8wnJ7HNfMkjC4JE0P3Xewek6rO-TP1zmwFiiT9cCkjmNE6IcTVWRAGeLNF_U7rorgvAIOW9enAqTaLtQD8T5cJkVshdY8LJKBrHn0oWc9_tVXtmIGPtfqoAYKlfX_v0fs1bwF01YNnB7ON7q1ffBh9Bb_qesifqArW4Mz5fBN5DOReQXsqyluBFWC7sw";
-
-export function ProviderHeader() {
+export function ProviderHeader({
+  user,
+}: {
+  user: { name?: string | null; email?: string | null };
+}) {
+  const displayName = user.name || user.email || "Đối tác";
+  const initial = displayName.charAt(0).toUpperCase();
   return (
     <header className="z-10 flex h-16 shrink-0 items-center justify-between border-b border-slate-200/80 bg-white px-8">
       <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
@@ -32,16 +35,12 @@ export function ProviderHeader() {
         </button>
         <div className="h-6 w-px bg-slate-200" />
         <div className="group flex cursor-pointer items-center gap-3 pl-1">
-          {/* The source design uses this remote supplier avatar. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            alt="Bali Explorer Co."
-            className="h-9 w-9 rounded-full object-cover shadow-sm ring-2 ring-slate-100"
-            src={userImage}
-          />
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-500 text-sm font-bold text-white shadow-sm ring-2 ring-slate-100">
+            {initial}
+          </div>
           <div className="text-left">
             <div className="text-xs font-bold text-slate-900 transition group-hover:text-brand-600">
-              Bali Explorer Co.
+              {displayName}
             </div>
             <div className="text-[11px] text-slate-500">Nhà cung cấp</div>
           </div>

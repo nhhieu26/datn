@@ -1,20 +1,15 @@
 "use client";
 
 import type { BusinessType } from "@/generated/prisma/client";
-import { useState } from "react";
-
-type ProfileFormValues = {
-  businessName: string;
-  businessType: BusinessType;
-  taxCode: string;
-  address: string;
-  description: string;
-  legalDocUrl: string;
-  websiteUrl: string;
-  logo: string;
-};
+import { useActionState, useRef, useState } from "react";
+import {
+  createProviderProfileAction,
+  type CreateProfileActionState,
+} from "../actions";
 
 const MAX_DESCRIPTION_LENGTH = 1000;
+
+const INITIAL_STATE: CreateProfileActionState = { status: "idle" };
 
 const serviceOptions: {
   value: BusinessType;
@@ -48,30 +43,55 @@ const iconInputClass = `${inputClass} !pl-9`;
 const labelClass = "block text-xs font-bold text-slate-700 mb-1.5";
 const inputIconClass =
   "material-symbols-outlined pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[18px] text-slate-400";
+const fieldErrorClass = "mt-1 text-xs font-medium text-rose-500";
+
+type ProfileFormValues = {
+  businessName: string;
+  businessType: BusinessType;
+  taxCode: string;
+  address: string;
+  description: string;
+  legalDocUrl: string;
+  websiteUrl: string;
+  logo: string;
+};
+
+// Edit mode is display-only for now — no backend wiring, so submitting it is a no-op.
+async function noopAction(
+  state: CreateProfileActionState
+): Promise<CreateProfileActionState> {
+  return state;
+}
 
 export function ProfileForm({
   mode,
+  availableBusinessTypes,
   initialValues,
   rejection,
 }: {
   mode: "create" | "edit";
-  initialValues: ProfileFormValues;
+  availableBusinessTypes: BusinessType[];
+  initialValues?: ProfileFormValues;
   rejection?: { reason: string; timestamp: string };
 }) {
-  const [values, setValues] = useState(initialValues);
-  const [logoUrl, setLogoUrl] = useState(initialValues.logo);
+  const [state, formAction, isPending] = useActionState(
+    mode === "create" ? createProviderProfileAction : noopAction,
+    INITIAL_STATE
+  );
+  const [businessType, setBusinessType] = useState<BusinessType>(
+    initialValues?.businessType ?? availableBusinessTypes[0]
+  );
+  const [description, setDescription] = useState(
+    initialValues?.description ?? ""
+  );
+  const [logoPreview, setLogoPreview] = useState(initialValues?.logo ?? "");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const set = (field: keyof ProfileFormValues) => (
-    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => {
-    let nextValue = event.target.value;
-    if (field === "description") {
-      nextValue = nextValue.slice(0, MAX_DESCRIPTION_LENGTH);
-    }
-    setValues((prev) => ({ ...prev, [field]: nextValue }));
-  };
+  const visibleServiceOptions = serviceOptions.filter((option) =>
+    availableBusinessTypes.includes(option.value)
+  );
 
-  const descriptionLength = values.description.length;
+  const descriptionLength = description.length;
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col space-y-6">
@@ -119,9 +139,15 @@ export function ProfileForm({
 
       {/* Main form card */}
       <form
+        action={formAction}
         className="space-y-6 rounded-2xl border border-slate-200/80 bg-white p-8 shadow-sm"
-        onSubmit={(event) => event.preventDefault()}
       >
+        {state.status === "error" && state.formError ? (
+          <p className="rounded-xl bg-rose-50 px-4 py-2.5 text-[13px] font-medium text-rose-600">
+            {state.formError}
+          </p>
+        ) : null}
+
         {/* Tên doanh nghiệp */}
         <div>
           <label className={labelClass} htmlFor="businessName">
@@ -129,13 +155,18 @@ export function ProfileForm({
           </label>
           <input
             className={inputClass}
+            defaultValue={initialValues?.businessName}
             id="businessName"
-            onChange={set("businessName")}
+            name="businessName"
             placeholder="Nhập tên pháp nhân hoặc thương hiệu kinh doanh..."
             required
             type="text"
-            value={values.businessName}
           />
+          {state.fieldErrors?.businessName ? (
+            <p className={fieldErrorClass}>
+              {state.fieldErrors.businessName[0]}
+            </p>
+          ) : null}
         </div>
 
         {/* Loại hình doanh nghiệp */}
@@ -144,8 +175,8 @@ export function ProfileForm({
             Loại hình doanh nghiệp <span className="text-brand-500">*</span>
           </label>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            {serviceOptions.map((option) => {
-              const selected = values.businessType === option.value;
+            {visibleServiceOptions.map((option) => {
+              const selected = businessType === option.value;
               return (
                 <label
                   className={`relative flex cursor-pointer items-center gap-3.5 rounded-xl border-2 p-4 transition-all ${
@@ -159,12 +190,7 @@ export function ProfileForm({
                     checked={selected}
                     className="sr-only"
                     name="businessType"
-                    onChange={() =>
-                      setValues((prev) => ({
-                        ...prev,
-                        businessType: option.value,
-                      }))
-                    }
+                    onChange={() => setBusinessType(option.value)}
                     type="radio"
                     value={option.value}
                   />
@@ -207,6 +233,11 @@ export function ProfileForm({
               );
             })}
           </div>
+          {state.fieldErrors?.businessType ? (
+            <p className={fieldErrorClass}>
+              {state.fieldErrors.businessType[0]}
+            </p>
+          ) : null}
         </div>
 
         {/* MST + Địa chỉ */}
@@ -219,14 +250,17 @@ export function ProfileForm({
               <span className={inputIconClass}>receipt</span>
               <input
                 className={iconInputClass}
+                defaultValue={initialValues?.taxCode}
                 id="taxCode"
-                onChange={set("taxCode")}
+                name="taxCode"
                 placeholder="VD: 0101234567"
                 required
                 type="text"
-                value={values.taxCode}
               />
             </div>
+            {state.fieldErrors?.taxCode ? (
+              <p className={fieldErrorClass}>{state.fieldErrors.taxCode[0]}</p>
+            ) : null}
           </div>
           <div>
             <label className={labelClass} htmlFor="address">
@@ -237,14 +271,17 @@ export function ProfileForm({
               <span className={inputIconClass}>location_on</span>
               <input
                 className={iconInputClass}
+                defaultValue={initialValues?.address}
                 id="address"
-                onChange={set("address")}
+                name="address"
                 placeholder="Nhập địa chỉ đăng ký kinh doanh..."
                 required
                 type="text"
-                value={values.address}
               />
             </div>
+            {state.fieldErrors?.address ? (
+              <p className={fieldErrorClass}>{state.fieldErrors.address[0]}</p>
+            ) : null}
           </div>
         </div>
 
@@ -261,13 +298,20 @@ export function ProfileForm({
           </div>
           <textarea
             className="w-full resize-y rounded-xl border border-slate-200 bg-white p-3.5 text-sm font-medium leading-relaxed text-slate-800 transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+            defaultValue={initialValues?.description}
             id="description"
-            onChange={set("description")}
+            maxLength={MAX_DESCRIPTION_LENGTH}
+            name="description"
+            onChange={(event) => setDescription(event.target.value)}
             placeholder="Viết đoạn giới thiệu hấp dẫn về doanh nghiệp của bạn, các giá trị cốt lõi và thế mạnh dịch vụ..."
             required
             rows={5}
-            value={values.description}
           />
+          {state.fieldErrors?.description ? (
+            <p className={fieldErrorClass}>
+              {state.fieldErrors.description[0]}
+            </p>
+          ) : null}
         </div>
 
         {/* Link hồ sơ + Website */}
@@ -280,13 +324,18 @@ export function ProfileForm({
               <span className={inputIconClass}>link</span>
               <input
                 className={iconInputClass}
+                defaultValue={initialValues?.legalDocUrl}
                 id="legalDocUrl"
-                onChange={set("legalDocUrl")}
+                name="legalDocUrl"
                 placeholder="https://drive.google.com/..."
                 type="url"
-                value={values.legalDocUrl}
               />
             </div>
+            {state.fieldErrors?.licenseUrl ? (
+              <p className={fieldErrorClass}>
+                {state.fieldErrors.licenseUrl[0]}
+              </p>
+            ) : null}
           </div>
           <div>
             <label className={labelClass} htmlFor="websiteUrl">
@@ -296,13 +345,16 @@ export function ProfileForm({
               <span className={inputIconClass}>language</span>
               <input
                 className={iconInputClass}
+                defaultValue={initialValues?.websiteUrl}
                 id="websiteUrl"
-                onChange={set("websiteUrl")}
+                name="websiteUrl"
                 placeholder="https://baliexplorer.co"
                 type="url"
-                value={values.websiteUrl}
               />
             </div>
+            {state.fieldErrors?.website ? (
+              <p className={fieldErrorClass}>{state.fieldErrors.website[0]}</p>
+            ) : null}
           </div>
         </div>
 
@@ -312,22 +364,20 @@ export function ProfileForm({
             Ảnh đại diện / Logo doanh nghiệp
           </label>
           <div className="flex flex-col items-center gap-6 rounded-xl border border-slate-200 bg-slate-50/50 p-5 sm:flex-row">
-            {logoUrl ? (
+            {logoPreview ? (
               <div className="group relative h-36 w-full shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-inner sm:w-60">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  alt={values.businessName || "Ảnh đại diện"}
+                  alt="Ảnh đại diện"
                   className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  src={logoUrl}
+                  src={logoPreview}
                 />
-                <div className="absolute inset-0 flex flex-col items-center justify-end bg-gradient-to-t from-black/60 via-black/20 to-transparent px-2 pb-2.5">
-                  <span className="text-xs font-extrabold tracking-wide text-white uppercase drop-shadow">
-                    {values.businessName || "Roamly"}
-                  </span>
-                </div>
                 <button
                   className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-lg bg-white/90 text-rose-600 shadow-sm transition-colors hover:bg-white"
-                  onClick={() => setLogoUrl("")}
+                  onClick={() => {
+                    setLogoPreview("");
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  }}
                   title="Xóa hình ảnh này"
                   type="button"
                 >
@@ -346,7 +396,7 @@ export function ProfileForm({
             <div className="w-full space-y-2.5 text-center sm:text-left">
               <div>
                 <p className="text-xs font-bold text-slate-800">
-                  {logoUrl
+                  {logoPreview
                     ? "Ảnh đại diện doanh nghiệp đang hoạt động"
                     : "Chưa có ảnh đại diện"}
                 </p>
@@ -354,6 +404,9 @@ export function ProfileForm({
                   Khuyến nghị tỷ lệ tiêu chuẩn: 1200 × 630 px hoặc ảnh vuông sắc
                   nét (định dạng JPG, PNG dưới 5MB).
                 </p>
+                {state.fieldErrors?.logo ? (
+                  <p className={fieldErrorClass}>{state.fieldErrors.logo[0]}</p>
+                ) : null}
               </div>
               <div className="flex items-center justify-center gap-2.5 pt-1 sm:justify-start">
                 <label
@@ -363,43 +416,54 @@ export function ProfileForm({
                   <span className="material-symbols-outlined text-[16px] text-slate-500">
                     upload
                   </span>
-                  <span>{logoUrl ? "Thay đổi hình ảnh" : "Tải hình ảnh lên"}</span>
+                  <span>
+                    {logoPreview ? "Thay đổi hình ảnh" : "Tải hình ảnh lên"}
+                  </span>
                   <input
+                    accept="image/png,image/jpeg"
                     className="hidden"
+                    name="logo"
                     onChange={(event) => {
                       const file = event.target.files?.[0];
-                      if (file) setLogoUrl(URL.createObjectURL(file));
+                      if (file) setLogoPreview(URL.createObjectURL(file));
                     }}
+                    ref={fileInputRef}
                     type="file"
-                    accept="image/png,image/jpeg"
                   />
                 </label>
               </div>
             </div>
           </div>
         </div>
-      </form>
 
-      {/* Footer actions */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-12">
-        <div className="flex items-center gap-3">
-          <button
-            className="inline-flex items-center gap-2 rounded-2xl bg-brand-500 px-6 py-3 text-sm font-bold text-white shadow-md shadow-brand-500/25 transition-all hover:bg-brand-600 active:scale-95"
-            type="button"
+        {/* Footer actions */}
+        <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
+          <div className="flex items-center gap-3">
+            <button
+              className="inline-flex items-center gap-2 rounded-2xl bg-brand-500 px-6 py-3 text-sm font-bold text-white shadow-md shadow-brand-500/25 transition-all hover:bg-brand-600 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isPending}
+              type="submit"
+            >
+              <span className="material-symbols-outlined text-[18px]">
+                send
+              </span>
+              <span>
+                {isPending
+                  ? "Đang xử lý..."
+                  : mode === "create"
+                    ? "Lưu & Gửi thẩm định"
+                    : "Lưu & Gửi thẩm định lại"}
+              </span>
+            </button>
+          </div>
+          <a
+            className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:text-slate-900 active:scale-95"
+            href="/provider/profiles"
           >
-            <span className="material-symbols-outlined text-[18px]">send</span>
-            <span>
-              {mode === "create" ? "Lưu & Gửi thẩm định" : "Lưu & Gửi thẩm định lại"}
-            </span>
-          </button>
+            Hủy bỏ
+          </a>
         </div>
-        <button
-          className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:text-slate-900 active:scale-95"
-          type="button"
-        >
-          Hủy bỏ
-        </button>
-      </div>
+      </form>
     </div>
   );
 }

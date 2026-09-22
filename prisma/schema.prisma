@@ -61,11 +61,10 @@ model ProviderProfile {
   businessType    BusinessType
   taxCode         String?
   licenseUrl      String?
-  licensePathname String?
   website         String?
   address         String?
   description     String?
-  photos          Json           @default("[]")
+  photoUrl        String?
   approvalStatus  ApprovalStatus @default(not_submitted)
   rejectionReason String?
 
