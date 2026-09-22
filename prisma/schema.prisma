@@ -36,6 +36,20 @@ enum ProvinceType {
   city
 }
 
+enum ServiceStatus {
+  pending
+  published
+  paused
+  rejected
+}
+
+enum TourDepartureStatus {
+  scheduled
+  full
+  cancelled
+  completed
+}
+
 model User {
   id                  String     @id @default(cuid())
   email               String     @unique
@@ -69,6 +83,8 @@ model ProviderProfile {
   approvalStatus  ApprovalStatus @default(not_submitted)
   rejectionReason String?
 
+  tours Tour[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -79,6 +95,8 @@ model Tag {
   id   String @id @default(cuid())
   name String @unique
   slug String @unique
+
+  tours TourTag[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -91,6 +109,59 @@ model Province {
   slug     String       @unique
   type     ProvinceType
   imageUrl String?
+
+  tours Tour[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Tour {
+  id                String        @id @default(cuid())
+  providerProfileId String
+  providerProfile   ProviderProfile @relation(fields: [providerProfileId], references: [id])
+  provinceId        String
+  province          Province      @relation(fields: [provinceId], references: [id])
+  title             String
+  slug              String        @unique
+  description       String?
+  images            Json          @default("[]")
+  itinerary         Json          @default("[]")
+  includeServices   String[]      @default([])
+  excludeServices   String[]      @default([])
+  durationDays      Int
+  durationNights    Int
+  basePrice         Decimal       @db.Decimal(12, 2)
+  status            ServiceStatus @default(pending)
+
+  tags       TourTag[]
+  departures TourDeparture[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TourTag {
+  tourId String
+  tour   Tour   @relation(fields: [tourId], references: [id])
+  tagId  String
+  tag    Tag    @relation(fields: [tagId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@id([tourId, tagId])
+}
+
+model TourDeparture {
+  id            String              @id @default(cuid())
+  tourId        String
+  tour          Tour                @relation(fields: [tourId], references: [id])
+  departureDate DateTime
+  returnDate    DateTime?
+  price         Decimal?            @db.Decimal(12, 2)
+  totalSlots    Int
+  bookedSlots   Int                 @default(0)
+  status        TourDepartureStatus @default(scheduled)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
