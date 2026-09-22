@@ -31,6 +31,11 @@ enum ApprovalStatus {
   rejected
 }
 
+enum ProvinceType {
+  province
+  city
+}
+
 model User {
   id                  String     @id @default(cuid())
   email               String     @unique
@@ -68,4 +73,25 @@ model ProviderProfile {
   updatedAt DateTime @updatedAt
 
   @@unique([userId, businessType])
+}
+
+model Tag {
+  id   String @id @default(cuid())
+  name String @unique
+  slug String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Province {
+  id       String       @id @default(cuid())
+  name     String       @unique
+  fullName String
+  slug     String       @unique
+  type     ProvinceType
+  imageUrl String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
