@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  customer
+  provider
+}
+
+enum UserStatus {
+  active
+  inactive
+  banned
+}
+
+enum BusinessType {
+  tour
+  hotel
+  restaurant
+}
+
+enum ApprovalStatus {
+  not_submitted
+  pending
+  approved
+  rejected
+}
+
+model User {
+  id                  String     @id @default(cuid())
+  email               String     @unique
+  phone               String     @unique
+  password            String
+  fullname            String
+  status              UserStatus @default(active)
+  onboardingCompleted Boolean    @default(false)
+  preferences         Json       @default("{}")
+  role                Role
+
+  providerProfiles ProviderProfile[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProviderProfile {
+  id              String         @id @default(cuid())
+  userId          String
+  user            User           @relation(fields: [userId], references: [id])
+  businessName    String
+  businessType    BusinessType
+  taxCode         String?
+  licenseUrl      String?
+  licensePathname String?
+  website         String?
+  address         String?
+  description     String?
+  photos          Json           @default("[]")
+  approvalStatus  ApprovalStatus @default(not_submitted)
+  rejectionReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, businessType])
+}

@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { PasswordEyeIcon } from "@/features/khach-hang/components/password-eye-icon";
 
 type AccountType = "customer" | "provider";
@@ -23,8 +25,37 @@ const INPUT_CLASS =
   "w-full bg-[#f6f7f9] border-0 focus:ring-2 focus:ring-slate-900 text-[14px] text-slate-900 placeholder:text-slate-400 rounded-2xl py-3 pl-11 pr-4 transition duration-150";
 
 export function LoginForm() {
+  const router = useRouter();
   const [accountType, setAccountType] = useState<AccountType>("customer");
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+
+    const formData = new FormData(event.currentTarget);
+    const email = String(formData.get("email") ?? "");
+    const password = String(formData.get("password") ?? "");
+
+    const result = await signIn("credentials", {
+      email,
+      password,
+      role: accountType,
+      redirect: false,
+    });
+
+    setIsSubmitting(false);
+
+    if (result?.error) {
+      setError("Email, mật khẩu hoặc vai trò không đúng.");
+      return;
+    }
+
+    router.push(accountType === "customer" ? "/khach-hang/trang-chu" : "/");
+  }
 
   return (
     <main className="flex-1 py-6 px-4 md:px-8 flex items-center justify-center">
@@ -95,12 +126,13 @@ export function LoginForm() {
             </p>
           </div>
 
-          <form
-            action="#"
-            className="space-y-4"
-            method="POST"
-            onSubmit={(event) => event.preventDefault()}
-          >
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            {error && (
+              <p className="rounded-xl bg-rose-50 px-4 py-2.5 text-[13px] text-rose-600">
+                {error}
+              </p>
+            )}
+
             <div data-purpose="input-group">
               <label
                 className="block text-xs font-medium text-slate-500 mb-1.5 ml-1"
@@ -196,10 +228,11 @@ export function LoginForm() {
 
             <div className="pt-2">
               <button
-                className="w-full bg-[#18181b] hover:bg-black text-white font-medium text-[15px] py-3.5 px-6 rounded-full shadow-lg shadow-black/10 hover:shadow-black/20 active:scale-[0.99] transition duration-150"
+                className="w-full bg-[#18181b] hover:bg-black text-white font-medium text-[15px] py-3.5 px-6 rounded-full shadow-lg shadow-black/10 hover:shadow-black/20 active:scale-[0.99] transition duration-150 disabled:opacity-60"
+                disabled={isSubmitting}
                 type="submit"
               >
-                Đăng nhập
+                {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập"}
               </button>
             </div>
           </form>

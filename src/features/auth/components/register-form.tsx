@@ -1,8 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { PasswordEyeIcon } from "@/features/khach-hang/components/password-eye-icon";
+import { registerAction, type RegisterActionState } from "@/features/auth/actions";
+
+const INITIAL_STATE: RegisterActionState = { status: "idle" };
 
 type AccountType = "customer" | "provider";
 
@@ -23,9 +28,55 @@ const INPUT_CLASS =
   "w-full bg-[#f6f7f9] border-0 focus:ring-2 focus:ring-slate-900 text-[14px] text-slate-900 placeholder:text-slate-400 rounded-2xl py-3 pl-11 pr-4 transition duration-150";
 
 export function RegisterForm() {
+  const router = useRouter();
   const [accountType, setAccountType] = useState<AccountType>("customer");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [signInError, setSignInError] = useState<string | null>(null);
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const submittedCredentials = useRef<{ email: string; password: string } | null>(
+    null
+  );
+  const [state, formAction, isPending] = useActionState(
+    registerAction,
+    INITIAL_STATE
+  );
+
+  function handleSubmit() {
+    submittedCredentials.current = {
+      email: emailRef.current?.value ?? "",
+      password: passwordRef.current?.value ?? "",
+    };
+  }
+
+  useEffect(() => {
+    if (state.status !== "success") return;
+    if (!submittedCredentials.current) return;
+
+    const { email, password } = submittedCredentials.current;
+
+    setIsSigningIn(true);
+    signIn("credentials", {
+      email,
+      password,
+      role: accountType,
+      redirect: false,
+    })
+      .then((result) => {
+        if (result?.error) {
+          setSignInError("Đăng ký thành công, vui lòng đăng nhập lại.");
+          router.push("/dang-nhap");
+          return;
+        }
+        router.push(
+          accountType === "customer" ? "/khach-hang/trang-chu" : "/"
+        );
+      })
+      .finally(() => setIsSigningIn(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   return (
     <main className="flex-1 py-6 px-4 md:px-8 flex items-center justify-center">
@@ -97,11 +148,23 @@ export function RegisterForm() {
           </div>
 
           <form
-            action="#"
+            action={formAction}
             className="space-y-4"
-            method="POST"
-            onSubmit={(event) => event.preventDefault()}
+            onSubmit={handleSubmit}
           >
+            <input name="role" type="hidden" value={accountType} />
+
+            {state.status === "error" && state.formError && (
+              <p className="rounded-xl bg-rose-50 px-4 py-2.5 text-[13px] text-rose-600">
+                {state.formError}
+              </p>
+            )}
+            {signInError && (
+              <p className="rounded-xl bg-rose-50 px-4 py-2.5 text-[13px] text-rose-600">
+                {signInError}
+              </p>
+            )}
+
             <div data-purpose="input-group">
               <label
                 className="block text-xs font-medium text-slate-500 mb-1.5 ml-1"
@@ -134,6 +197,11 @@ export function RegisterForm() {
                   type="text"
                 />
               </div>
+              {state.fieldErrors?.fullname && (
+                <p className="mt-1 ml-1 text-[11.5px] text-rose-500">
+                  {state.fieldErrors.fullname[0]}
+                </p>
+              )}
             </div>
 
             <div data-purpose="input-group">
@@ -164,10 +232,16 @@ export function RegisterForm() {
                   id="email"
                   name="email"
                   placeholder="ví dụ: hello@roamly.com"
+                  ref={emailRef}
                   required
                   type="email"
                 />
               </div>
+              {state.fieldErrors?.email && (
+                <p className="mt-1 ml-1 text-[11.5px] text-rose-500">
+                  {state.fieldErrors.email[0]}
+                </p>
+              )}
             </div>
 
             <div data-purpose="input-group">
@@ -202,6 +276,11 @@ export function RegisterForm() {
                   type="tel"
                 />
               </div>
+              {state.fieldErrors?.phone && (
+                <p className="mt-1 ml-1 text-[11.5px] text-rose-500">
+                  {state.fieldErrors.phone[0]}
+                </p>
+              )}
             </div>
 
             <div data-purpose="input-group">
@@ -243,6 +322,11 @@ export function RegisterForm() {
                   <PasswordEyeIcon open={showConfirm} />
                 </button>
               </div>
+              {state.fieldErrors?.confirm_password && (
+                <p className="mt-1 ml-1 text-[11.5px] text-rose-500">
+                  {state.fieldErrors.confirm_password[0]}
+                </p>
+              )}
             </div>
 
             <div data-purpose="input-group">
@@ -273,6 +357,7 @@ export function RegisterForm() {
                   id="password"
                   name="password"
                   placeholder="Tạo mật khẩu mạnh"
+                  ref={passwordRef}
                   required
                   type={showPassword ? "text" : "password"}
                 />
@@ -284,9 +369,15 @@ export function RegisterForm() {
                   <PasswordEyeIcon open={showPassword} />
                 </button>
               </div>
-              <p className="text-[11.5px] text-slate-400 mt-1.5 ml-1">
-                Mật khẩu phải có ít nhất 8 ký tự.
-              </p>
+              {state.fieldErrors?.password ? (
+                <p className="mt-1 ml-1 text-[11.5px] text-rose-500">
+                  {state.fieldErrors.password[0]}
+                </p>
+              ) : (
+                <p className="text-[11.5px] text-slate-400 mt-1.5 ml-1">
+                  Mật khẩu phải có ít nhất 8 ký tự.
+                </p>
+              )}
             </div>
 
             <div className="pt-2 pb-2">
@@ -318,10 +409,11 @@ export function RegisterForm() {
 
             <div className="pt-2">
               <button
-                className="w-full bg-[#18181b] hover:bg-black text-white font-medium text-[15px] py-3.5 px-6 rounded-full shadow-lg shadow-black/10 hover:shadow-black/20 active:scale-[0.99] transition duration-150"
+                className="w-full bg-[#18181b] hover:bg-black text-white font-medium text-[15px] py-3.5 px-6 rounded-full shadow-lg shadow-black/10 hover:shadow-black/20 active:scale-[0.99] transition duration-150 disabled:opacity-60"
+                disabled={isPending || isSigningIn}
                 type="submit"
               >
-                Đăng ký
+                {isPending || isSigningIn ? "Đang xử lý..." : "Đăng ký"}
               </button>
             </div>
           </form>
