@@ -1,0 +1,220 @@
+import Image from "next/image";
+import Link from "next/link";
+
+const workspaceImage =
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuDIm0K5T-KIYRkVrZ-F4putaSupTL1osmbaavBGCzbvKsO45bOmix6FaE_zcuzLsjzk8PNaeyaY4jLw8a-u9ff-TGt6KgxCIKunqfGy1Tfs-pO0MT1wnr_HY-VN2GS61dB9AaqRdd8wxVWxEZLGrPiQE2iPyrPkPJgpEkFXhBI9LIHQsxzRUTVNppl2aLXY6sbpwqZ6GWwoYAeiSQZYiX7x8JR49zg3x2jazwOSHBErOYgJf9GzCEny";
+
+type NavItem = {
+  label: string;
+  href: string;
+  icon: string[];
+  viewBox?: string;
+  filled?: boolean;
+  active?: boolean;
+  expandable?: boolean;
+};
+
+const navItems: NavItem[] = [
+  {
+    label: "Bảng điều khiển",
+    href: "#",
+    icon: [
+      "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6",
+    ],
+  },
+  {
+    label: "Quản lý dịch vụ",
+    href: "#",
+    expandable: true,
+    icon: ["M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"],
+  },
+  {
+    label: "Đơn đặt chỗ",
+    href: "#",
+    icon: [
+      "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z",
+    ],
+  },
+  {
+    label: "Hồ sơ doanh nghiệp",
+    href: "/provider/profiles",
+    active: true,
+    filled: true,
+    viewBox: "0 0 20 20",
+    icon: [
+      "M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z",
+    ],
+  },
+  {
+    label: "Báo cáo & Thống kê",
+    href: "#",
+    icon: [
+      "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z",
+    ],
+  },
+];
+
+const navItemClass =
+  "flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100/70 hover:text-slate-900";
+const navItemActiveClass =
+  "flex items-center justify-between rounded-xl border border-brand-100/80 bg-brand-50 px-3.5 py-2.5 text-sm font-bold text-brand-600 shadow-sm";
+
+function NavIcon({ item }: { item: NavItem }) {
+  if (item.filled) {
+    return (
+      <svg
+        className="h-5 w-5 text-brand-500"
+        fill="currentColor"
+        viewBox={item.viewBox ?? "0 0 24 24"}
+      >
+        {item.icon.map((d) => (
+          <path key={d} clipRule="evenodd" d={d} fillRule="evenodd" />
+        ))}
+      </svg>
+    );
+  }
+  return (
+    <svg
+      className="h-5 w-5 text-slate-400"
+      fill="none"
+      stroke="currentColor"
+      viewBox={item.viewBox ?? "0 0 24 24"}
+    >
+      {item.icon.map((d) => (
+        <path
+          key={d}
+          d={d}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="1.8"
+        />
+      ))}
+    </svg>
+  );
+}
+
+export function ProviderSidebar() {
+  return (
+    <aside
+      className="z-20 flex w-72 shrink-0 select-none flex-col justify-between border-r border-slate-200/80 bg-white"
+      data-purpose="sidebar-navigation"
+    >
+      <div className="overflow-y-auto p-6">
+        <Link href="/" className="mb-7 flex h-9 items-center" aria-label="Roamly">
+          <Image
+            src="/logo.png"
+            alt="Roamly"
+            width={2172}
+            height={724}
+            priority
+            className="h-auto w-[145px]"
+          />
+        </Link>
+
+        <div className="mb-6 flex cursor-pointer items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/70 p-2.5 transition hover:bg-slate-100/70">
+          <div className="flex min-w-0 items-center gap-3">
+            {/* The source design uses this remote supplier avatar. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              alt="Bali Explorer Co."
+              className="h-10 w-10 shrink-0 rounded-full object-cover shadow-sm ring-2 ring-white"
+              src={workspaceImage}
+            />
+            <div className="truncate leading-tight">
+              <div className="truncate text-sm font-bold text-slate-900">
+                Bali Explorer Co.
+              </div>
+              <div className="text-[11px] font-medium text-slate-500">
+                Bảng điều khiển Đối tác
+              </div>
+            </div>
+          </div>
+          <svg
+            className="ml-1 h-4 w-4 shrink-0 text-slate-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M9 5l7 7-7 7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+            />
+          </svg>
+        </div>
+
+        <nav aria-label="Menu chính" className="space-y-1">
+          {navItems.map((item) => (
+            <Link
+              key={item.label}
+              className={item.active ? navItemActiveClass : navItemClass}
+              href={item.href}
+            >
+              <div className="flex items-center gap-3.5">
+                <NavIcon item={item} />
+                <span>{item.label}</span>
+              </div>
+              {item.expandable ? (
+                <svg
+                  className="h-4 w-4 text-slate-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M9 5l7 7-7 7"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                  />
+                </svg>
+              ) : null}
+            </Link>
+          ))}
+        </nav>
+      </div>
+
+      <div className="border-t border-slate-100 p-5">
+        <div className="rounded-2xl border border-slate-200/80 bg-slate-50 p-4">
+          <div className="mb-1.5 flex items-center gap-2 text-sm font-bold text-slate-800">
+            <svg
+              className="h-4 w-4 text-slate-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+              />
+            </svg>
+            <span>Cần hỗ trợ?</span>
+          </div>
+          <p className="mb-3.5 text-xs leading-relaxed text-slate-500">
+            Truy cập Trung tâm hỗ trợ hoặc kết nối trực tiếp với đội ngũ chăm sóc
+            đối tác.
+          </p>
+          <button className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50">
+            <svg
+              className="h-3.5 w-3.5 text-slate-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+              />
+            </svg>
+            Liên hệ Hỗ trợ
+          </button>
+        </div>
+      </div>
+    </aside>
+  );
+}
