@@ -174,7 +174,7 @@ export function ProfileForm({
           <label className="mb-2 block text-xs font-bold text-slate-700">
             Loại hình doanh nghiệp <span className="text-brand-500">*</span>
           </label>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[repeat(auto-fit,minmax(0,1fr))]">
             {visibleServiceOptions.map((option) => {
               const selected = businessType === option.value;
               return (

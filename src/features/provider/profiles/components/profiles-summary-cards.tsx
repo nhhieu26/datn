@@ -7,39 +7,50 @@ type SummaryCard = {
   filled?: boolean;
 };
 
-const cards: SummaryCard[] = [
-  {
-    label: "Tổng hồ sơ",
-    value: 3,
-    icon: "description",
-    iconClass: "bg-slate-100 text-slate-700",
-    valueClass: "text-slate-900",
-  },
-  {
-    label: "Đang hoạt động / Đã duyệt",
-    value: 1,
-    icon: "check_circle",
-    iconClass: "bg-emerald-50 text-emerald-600",
-    valueClass: "text-emerald-600",
-    filled: true,
-  },
-  {
-    label: "Đang chờ thẩm định",
-    value: 1,
-    icon: "schedule",
-    iconClass: "bg-amber-50 text-amber-600",
-    valueClass: "text-amber-600",
-  },
-  {
-    label: "Cần bổ sung / Từ chối",
-    value: 1,
-    icon: "error",
-    iconClass: "bg-rose-50 text-rose-600",
-    valueClass: "text-rose-600",
-  },
-];
+export type ProfilesSummary = {
+  total: number;
+  approved: number;
+  pending: number;
+  rejected: number;
+};
 
-export function ProfilesSummaryCards() {
+export function ProfilesSummaryCards({
+  summary,
+}: {
+  summary: ProfilesSummary;
+}) {
+  const cards: SummaryCard[] = [
+    {
+      label: "Tổng hồ sơ",
+      value: summary.total,
+      icon: "description",
+      iconClass: "bg-slate-100 text-slate-700",
+      valueClass: "text-slate-900",
+    },
+    {
+      label: "Đang hoạt động / Đã duyệt",
+      value: summary.approved,
+      icon: "check_circle",
+      iconClass: "bg-emerald-50 text-emerald-600",
+      valueClass: "text-emerald-600",
+      filled: true,
+    },
+    {
+      label: "Đang chờ thẩm định",
+      value: summary.pending,
+      icon: "schedule",
+      iconClass: "bg-amber-50 text-amber-600",
+      valueClass: "text-amber-600",
+    },
+    {
+      label: "Cần bổ sung / Từ chối",
+      value: summary.rejected,
+      icon: "error",
+      iconClass: "bg-rose-50 text-rose-600",
+      valueClass: "text-rose-600",
+    },
+  ];
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {cards.map((card) => (

@@ -11,6 +11,13 @@ export async function findBusinessTypesByUserId(
   return rows.map((row) => row.businessType);
 }
 
+export function findAllByUserId(userId: string): Promise<ProviderProfile[]> {
+  return prisma.providerProfile.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
 export function create(
   input: CreateProviderProfileInput & { userId: string; photoUrl: string | null }
 ): Promise<ProviderProfile> {

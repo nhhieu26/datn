@@ -1,15 +1,33 @@
+import { auth } from "@/lib/auth";
+import { providerProfileRepo } from "@/entities/provider-profile";
 import {
   ProfilesSummaryCards,
   ProfilesTable,
 } from "@/features/provider/profiles";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Roamly - Quản lý Hồ sơ Doanh nghiệp | Kênh Đối tác",
 };
 
-export default function ProviderProfilesPage() {
+export default async function ProviderProfilesPage() {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/sign-in");
+
+  const profiles = await providerProfileRepo.findAllByUserId(session.user.id);
+
+  const summary = {
+    total: profiles.length,
+    approved: profiles.filter((p) => p.approvalStatus === "approved").length,
+    pending: profiles.filter((p) => p.approvalStatus === "pending").length,
+    rejected: profiles.filter(
+      (p) =>
+        p.approvalStatus === "rejected" || p.approvalStatus === "not_submitted"
+    ).length,
+  };
+
   return (
     <main className="flex-1 overflow-y-auto px-8 py-7">
       <div className="mx-auto flex w-full max-w-7xl flex-col space-y-6">
@@ -36,7 +54,7 @@ export default function ProviderProfilesPage() {
           </div>
         </div>
 
-        <ProfilesSummaryCards />
+        <ProfilesSummaryCards summary={summary} />
 
         <div className="flex items-start gap-3.5 rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50/70 to-indigo-50/40 p-4 shadow-sm">
           <div className="mt-0.5 shrink-0 rounded-lg bg-blue-500/10 p-1.5 text-blue-600">
@@ -52,7 +70,7 @@ export default function ProviderProfilesPage() {
           </p>
         </div>
 
-        <ProfilesTable />
+        <ProfilesTable profiles={profiles} />
       </div>
     </main>
   );
