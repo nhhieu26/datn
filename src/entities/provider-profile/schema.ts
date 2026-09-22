@@ -23,3 +23,7 @@ export const createProviderProfileSchema = z.object({
   licenseUrl: optionalUrlSchema,
   website: optionalUrlSchema,
 });
+
+export const updateProviderProfileSchema = createProviderProfileSchema.omit({
+  businessType: true,
+});

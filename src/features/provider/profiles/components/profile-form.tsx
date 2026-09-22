@@ -1,9 +1,11 @@
 "use client";
 
 import type { BusinessType } from "@/generated/prisma/client";
+import Link from "next/link";
 import { useActionState, useRef, useState } from "react";
 import {
   createProviderProfileAction,
+  updateProviderProfileAction,
   type CreateProfileActionState,
 } from "../actions";
 
@@ -56,28 +58,24 @@ type ProfileFormValues = {
   logo: string;
 };
 
-// Edit mode is display-only for now — no backend wiring, so submitting it is a no-op.
-async function noopAction(
-  state: CreateProfileActionState
-): Promise<CreateProfileActionState> {
-  return state;
-}
-
 export function ProfileForm({
   mode,
   availableBusinessTypes,
   initialValues,
+  profileId,
   rejection,
 }: {
   mode: "create" | "edit";
   availableBusinessTypes: BusinessType[];
   initialValues?: ProfileFormValues;
+  profileId?: string;
   rejection?: { reason: string; timestamp: string };
 }) {
-  const [state, formAction, isPending] = useActionState(
-    mode === "create" ? createProviderProfileAction : noopAction,
-    INITIAL_STATE
-  );
+  const action =
+    mode === "create"
+      ? createProviderProfileAction
+      : updateProviderProfileAction.bind(null, profileId!);
+  const [state, formAction, isPending] = useActionState(action, INITIAL_STATE);
   const [businessType, setBusinessType] = useState<BusinessType>(
     initialValues?.businessType ?? availableBusinessTypes[0]
   );
@@ -85,6 +83,7 @@ export function ProfileForm({
     initialValues?.description ?? ""
   );
   const [logoPreview, setLogoPreview] = useState(initialValues?.logo ?? "");
+  const [removeLogo, setRemoveLogo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const visibleServiceOptions = serviceOptions.filter((option) =>
@@ -179,7 +178,9 @@ export function ProfileForm({
               const selected = businessType === option.value;
               return (
                 <label
-                  className={`relative flex cursor-pointer items-center gap-3.5 rounded-xl border-2 p-4 transition-all ${
+                  className={`relative flex items-center gap-3.5 rounded-xl border-2 p-4 transition-all ${
+                    mode === "edit" ? "cursor-not-allowed opacity-70" : "cursor-pointer"
+                  } ${
                     selected
                       ? "border-brand-500 bg-brand-50/50 shadow-2xs"
                       : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60"
@@ -189,6 +190,7 @@ export function ProfileForm({
                   <input
                     checked={selected}
                     className="sr-only"
+                    disabled={mode === "edit"}
                     name="businessType"
                     onChange={() => setBusinessType(option.value)}
                     type="radio"
@@ -376,6 +378,7 @@ export function ProfileForm({
                   className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-lg bg-white/90 text-rose-600 shadow-sm transition-colors hover:bg-white"
                   onClick={() => {
                     setLogoPreview("");
+                    setRemoveLogo(true);
                     if (fileInputRef.current) fileInputRef.current.value = "";
                   }}
                   title="Xóa hình ảnh này"
@@ -425,7 +428,10 @@ export function ProfileForm({
                     name="logo"
                     onChange={(event) => {
                       const file = event.target.files?.[0];
-                      if (file) setLogoPreview(URL.createObjectURL(file));
+                      if (file) {
+                        setLogoPreview(URL.createObjectURL(file));
+                        setRemoveLogo(false);
+                      }
                     }}
                     ref={fileInputRef}
                     type="file"
@@ -434,6 +440,11 @@ export function ProfileForm({
               </div>
             </div>
           </div>
+          <input
+            name="removeLogo"
+            type="hidden"
+            value={removeLogo ? "true" : ""}
+          />
         </div>
 
         {/* Footer actions */}
@@ -456,12 +467,12 @@ export function ProfileForm({
               </span>
             </button>
           </div>
-          <a
+          <Link
             className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:text-slate-900 active:scale-95"
             href="/provider/profiles"
           >
             Hủy bỏ
-          </a>
+          </Link>
         </div>
       </form>
     </div>

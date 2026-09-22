@@ -65,6 +65,7 @@ model ProviderProfile {
   address         String?
   description     String?
   photoUrl        String?
+  photoFileId     String?
   approvalStatus  ApprovalStatus @default(not_submitted)
   rejectionReason String?
 
