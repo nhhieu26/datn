@@ -36,8 +36,9 @@ export function HeroSection() {
             Một Điểm Đến
           </h1>
           <p className="text-base sm:text-lg text-gray-200 max-w-lg font-normal leading-relaxed">
-            Khách sạn, nhà hàng, tour trải nghiệm và những điểm đến độc đáo — tất
-            cả trong một nơi. Lập kế hoạch thông minh hơn, du lịch sâu sắc hơn.
+            Khách sạn, nhà hàng, tour trải nghiệm và những điểm đến độc đáo —
+            tất cả trong một nơi. Lập kế hoạch thông minh hơn, du lịch sâu sắc
+            hơn.
           </p>
           <div className="pt-2">
             <button className="inline-flex items-center gap-2 bg-white text-gray-900 hover:bg-gray-100 font-semibold px-6 py-3.5 rounded-full shadow-lg transition transform hover:-translate-y-0.5 text-sm">
@@ -76,9 +77,6 @@ export function HeroSection() {
             <div className="flex items-center justify-between pb-4 border-b border-gray-200/60 mb-5">
               <button className="font-bold text-sm text-gray-900 pb-2 relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-[2.5px] after:bg-[#111827] after:rounded-full">
                 Lên lịch trình
-              </button>
-              <button className="font-medium text-sm text-gray-500 hover:text-gray-800 pb-2">
-                Tìm chỗ ở
               </button>
             </div>
 

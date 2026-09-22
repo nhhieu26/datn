@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { HeaderAuthButton } from "@/features/khach-hang/components/header-auth-button";
 
 const NAV_ITEMS = [
   { label: "Điểm đến", href: "#destinations" },
@@ -16,7 +17,7 @@ export function MainHeader() {
       <Link
         className="flex items-center gap-2 group"
         data-purpose="site-brand"
-        href="#"
+        href="/khach-hang"
       >
         <Image
           alt="Roamly Logo"
@@ -29,7 +30,7 @@ export function MainHeader() {
       </Link>
 
       <nav
-        className="hidden lg:flex items-center space-x-8 text-sm font-semibold text-gray-700"
+        className="hidden lg:flex items-center space-x-8 text-sm font-medium text-gray-700"
         data-purpose="desktop-nav"
       >
         {NAV_ITEMS.map((item) => (
@@ -81,9 +82,7 @@ export function MainHeader() {
           <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-brand-orange rounded-full" />
         </button>
 
-        <button className="bg-[#111827] hover:bg-black text-white text-xs md:text-sm font-semibold px-5 py-2.5 rounded-full transition shadow-sm">
-          Đăng nhập
-        </button>
+        <HeaderAuthButton />
       </div>
     </header>
   );

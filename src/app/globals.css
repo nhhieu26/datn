@@ -32,6 +32,36 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+.mesh-gradient-bg {
+  background:
+    radial-gradient(
+      circle at 18% 28%,
+      rgba(29, 99, 114, 0.95) 0%,
+      transparent 52%
+    ),
+    radial-gradient(
+      circle at 45% 38%,
+      rgba(42, 137, 153, 0.85) 0%,
+      transparent 58%
+    ),
+    radial-gradient(
+      circle at 86% 65%,
+      rgba(247, 143, 115, 0.9) 0%,
+      transparent 54%
+    ),
+    radial-gradient(
+      circle at 75% 30%,
+      rgba(135, 198, 203, 0.6) 0%,
+      transparent 48%
+    ),
+    radial-gradient(
+      circle at 92% 85%,
+      rgba(235, 105, 90, 0.92) 0%,
+      transparent 45%
+    ),
+    linear-gradient(135deg, #1b5366 0%, #2f7587 35%, #97a8ab 65%, #eea08c 100%);
+}
+
 .glassmorphism {
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(16px);
