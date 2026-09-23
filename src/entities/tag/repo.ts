@@ -5,6 +5,11 @@ export function findAll(): Promise<Tag[]> {
   return prisma.tag.findMany({ orderBy: { name: "asc" } });
 }
 
+export function findManyByIds(ids: string[]): Promise<Tag[]> {
+  if (ids.length === 0) return Promise.resolve([]);
+  return prisma.tag.findMany({ where: { id: { in: ids } } });
+}
+
 export function upsertBySlug(input: {
   name: string;
   slug: string;

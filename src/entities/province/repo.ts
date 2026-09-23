@@ -9,6 +9,10 @@ export function findBySlug(slug: string): Promise<Province | null> {
   return prisma.province.findUnique({ where: { slug } });
 }
 
+export function findById(id: string): Promise<Province | null> {
+  return prisma.province.findUnique({ where: { id } });
+}
+
 export function upsertBySlug(input: {
   name: string;
   fullName: string;

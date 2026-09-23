@@ -24,6 +24,20 @@ export function findAllByUserId(userId: string): Promise<ProviderProfile[]> {
   });
 }
 
+export function findApprovedByUserIdAndBusinessType(
+  userId: string,
+  businessType: BusinessType
+): Promise<ProviderProfile | null> {
+  return prisma.providerProfile.findFirst({
+    where: {
+      userId,
+      businessType,
+      approvalStatus: "approved",
+      user: { is: { role: "provider", status: "active" } },
+    },
+  });
+}
+
 export function create(
   input: CreateProviderProfileInput & {
     userId: string;

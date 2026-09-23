@@ -14,8 +14,11 @@
     "seed": "bun prisma/seed.ts"
   },
   "dependencies": {
+    "@ai-sdk/google": "^4.0.77",
+    "@pinecone-database/pinecone": "^9.0.0",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "7.10.0",
+    "ai": "^7.0.111",
     "bcryptjs": "^3.0.3",
     "dotenv": "^18.0.2",
     "imagekit": "^6.0.0",

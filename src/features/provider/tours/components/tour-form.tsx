@@ -1,14 +1,17 @@
 "use client";
 
 import type { Province, Tag } from "@/generated/prisma/client";
-import { useMemo, useState } from "react";
+import { startTransition, useActionState, useMemo, useState } from "react";
 import {
   StepFooter,
   StepperNav,
   useMultiStepForm,
   type StepDefinition,
 } from "@/shared/components/multi-step-form";
+import { createTourAction } from "@/features/provider/tours/actions";
 import { TourPreviewCard } from "./tour-preview-card";
+
+const INITIAL_ACTION_STATE = { status: "idle" as const };
 
 const MAX_DESCRIPTION_LENGTH = 2000;
 const MAX_PHOTOS = 5;
@@ -157,6 +160,10 @@ export function TourForm({
   );
   const { currentStep, goTo, next, prev, isFirst, isLast } =
     useMultiStepForm(steps.length);
+  const [actionState, formAction, isPending] = useActionState(
+    createTourAction,
+    INITIAL_ACTION_STATE
+  );
 
   const update = <K extends keyof TourFormState>(
     key: K,
@@ -169,7 +176,33 @@ export function TourForm({
   );
 
   const handleSubmit = () => {
-    console.log("Tour form state", form);
+    const fd = new FormData();
+    fd.append("title", form.title);
+    fd.append("provinceId", form.provinceId);
+    fd.append("durationDays", form.durationDays);
+    fd.append("durationNights", form.durationNights);
+    fd.append("description", form.description);
+    fd.append("basePrice", form.basePrice);
+    fd.append("tagIds", JSON.stringify(form.tagIds));
+    fd.append("includeServices", JSON.stringify(form.includeServices));
+    fd.append("excludeServices", JSON.stringify(form.excludeServices));
+    fd.append("itinerary", JSON.stringify(form.itinerary));
+    fd.append(
+      "departures",
+      JSON.stringify(
+        form.departures.map((departure) => ({
+          departureDate: departure.departureDate,
+          returnDate: departure.returnDate || null,
+          price: departure.price || null,
+          totalSlots: departure.totalSlots,
+        }))
+      )
+    );
+    form.photos.forEach((photo) => fd.append("photos", photo.file));
+
+    startTransition(() => {
+      formAction(fd);
+    });
   };
 
   const addItineraryDay = () =>
@@ -247,6 +280,21 @@ export function TourForm({
           Nhập thông tin chi tiết để giới thiệu tour của bạn tới khách du lịch.
         </p>
       </section>
+
+      {actionState.status === "error" && actionState.formError ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600">
+          {actionState.formError}
+        </div>
+      ) : null}
+      {actionState.status === "error" && actionState.fieldErrors ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600">
+          <ul className="list-inside list-disc space-y-1">
+            {Object.entries(actionState.fieldErrors).map(([field, messages]) => (
+              <li key={field}>{messages.join(", ")}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
         <StepperNav currentStep={currentStep} onStepClick={goTo} steps={steps} />
@@ -682,7 +730,8 @@ export function TourForm({
             cancelHref="/provider/profiles"
             isFirst={isFirst}
             isLast={isLast}
-            lastLabel="Hoàn tất & Xuất bản Tour"
+            lastLabel={isPending ? "Đang tạo tour..." : "Hoàn tất & Xuất bản Tour"}
+            nextDisabled={isLast && isPending}
             onBack={prev}
             onNext={isLast ? handleSubmit : next}
           />

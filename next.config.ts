@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    serverActions: {
+      // 5 photos x 5MB, plus multipart overhead and the remaining form fields.
+      bodySizeLimit: "30mb",
+    },
+  },
   images: {
     remotePatterns: [
       {

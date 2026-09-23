@@ -115,6 +115,7 @@ export function StepFooter({
   backLabel = "Quay lại bước trước",
   nextLabel = "Tiếp tục",
   lastLabel = "Hoàn tất",
+  nextDisabled = false,
 }: {
   isFirst: boolean;
   isLast: boolean;
@@ -124,6 +125,7 @@ export function StepFooter({
   backLabel?: string;
   nextLabel?: string;
   lastLabel?: string;
+  nextDisabled?: boolean;
 }) {
   return (
     <div className="flex items-center justify-between border-t border-slate-100 pt-5">
@@ -144,7 +146,8 @@ export function StepFooter({
         </button>
       )}
       <button
-        className="inline-flex items-center gap-2 rounded-2xl bg-brand-500 px-6 py-2.5 text-sm font-bold text-white shadow-md shadow-brand-500/25 transition-all hover:bg-brand-600 active:scale-95"
+        className="inline-flex items-center gap-2 rounded-2xl bg-brand-500 px-6 py-2.5 text-sm font-bold text-white shadow-md shadow-brand-500/25 transition-all hover:bg-brand-600 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+        disabled={nextDisabled}
         onClick={onNext}
         type="button"
       >
