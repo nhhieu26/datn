@@ -1,9 +1,11 @@
 import { auth } from "@/lib/auth";
+import { tourRepo } from "@/entities/tour";
+import { providerProfileRepo } from "@/entities/provider-profile";
 import {
-  MOCK_TOURS,
   ToursManager,
   ToursSummaryCards,
   getToursSummary,
+  mapTourToListItem,
 } from "@/features/provider/tours";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -17,7 +19,17 @@ export default async function ProviderToursPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/sign-in");
 
-  const summary = getToursSummary(MOCK_TOURS);
+  const providerProfile =
+    await providerProfileRepo.findApprovedByUserIdAndBusinessType(
+      session.user.id,
+      "tour"
+    );
+  const tours = providerProfile
+    ? await tourRepo.findAllByProviderProfileId(providerProfile.id)
+    : [];
+  const tourListItems = tours.map(mapTourToListItem);
+
+  const summary = getToursSummary(tourListItems);
 
   return (
     <main className="flex-1 overflow-y-auto px-8 py-7">
@@ -47,7 +59,7 @@ export default async function ProviderToursPage() {
 
         <ToursSummaryCards summary={summary} />
 
-        <ToursManager tours={MOCK_TOURS} />
+        <ToursManager tours={tourListItems} />
       </div>
     </main>
   );

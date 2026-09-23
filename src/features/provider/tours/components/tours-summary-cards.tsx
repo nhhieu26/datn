@@ -70,7 +70,9 @@ export function ToursSummaryCards({ summary }: { summary: ToursSummary }) {
             <div className="truncate text-xs font-semibold tracking-wide text-slate-500 uppercase">
               {card.label}
             </div>
-            <div className={`mt-0.5 text-2xl font-extrabold ${card.valueClass}`}>
+            <div
+              className={`mt-0.5 text-2xl font-extrabold ${card.valueClass}`}
+            >
               {card.value}
             </div>
             <div className="truncate text-[11px] font-medium text-slate-400">

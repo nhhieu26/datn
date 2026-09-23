@@ -1,8 +1,22 @@
 import { prisma } from "@/lib/prisma";
-import type { CreateTourInput, Tour } from "./type";
+import type { CreateTourInput, Tour, TourWithRelations } from "./type";
 
 export function findBySlug(slug: string): Promise<Tour | null> {
   return prisma.tour.findUnique({ where: { slug } });
+}
+
+export function findAllByProviderProfileId(
+  providerProfileId: string
+): Promise<TourWithRelations[]> {
+  return prisma.tour.findMany({
+    where: { providerProfileId },
+    include: {
+      province: true,
+      tags: { include: { tag: true } },
+      departures: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
 }
 
 export function create(
