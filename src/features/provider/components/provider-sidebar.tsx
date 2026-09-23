@@ -1,5 +1,9 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
 
 type NavItem = {
   label: string;
@@ -9,6 +13,7 @@ type NavItem = {
   filled?: boolean;
   active?: boolean;
   expandable?: boolean;
+  children?: { label: string; href: string }[];
 };
 
 const navItems: NavItem[] = [
@@ -24,6 +29,11 @@ const navItems: NavItem[] = [
     href: "#",
     expandable: true,
     icon: ["M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"],
+    children: [
+      { label: "Tour du lịch", href: "/provider/tours/create" },
+      { label: "Khách sạn & Lưu trú", href: "#" },
+      { label: "Nhà hàng & Ẩm thực", href: "#" },
+    ],
   },
   {
     label: "Đơn đặt chỗ",
@@ -35,7 +45,6 @@ const navItems: NavItem[] = [
   {
     label: "Hồ sơ doanh nghiệp",
     href: "/provider/profiles",
-    active: true,
     filled: true,
     viewBox: "0 0 20 20",
     icon: [
@@ -97,6 +106,16 @@ export function ProviderSidebar({
 }) {
   const displayName = user.name || user.email || "Đối tác";
   const initial = displayName.charAt(0).toUpperCase();
+  const pathname = usePathname();
+
+  const isChildActive = (item: NavItem) =>
+    item.children?.some(
+      (child) => child.href !== "#" && pathname.startsWith(child.href)
+    ) ?? false;
+
+  const [expandedLabel, setExpandedLabel] = useState<string | null>(
+    navItems.find((item) => isChildActive(item))?.label ?? null
+  );
 
   return (
     <aside
@@ -145,33 +164,84 @@ export function ProviderSidebar({
         </div>
 
         <nav aria-label="Menu chính" className="space-y-1">
-          {navItems.map((item) => (
-            <Link
-              key={item.label}
-              className={item.active ? navItemActiveClass : navItemClass}
-              href={item.href}
-            >
-              <div className="flex items-center gap-3.5">
-                <NavIcon item={item} />
-                <span>{item.label}</span>
-              </div>
-              {item.expandable ? (
-                <svg
-                  className="h-4 w-4 text-slate-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    d="M9 5l7 7-7 7"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                  />
-                </svg>
-              ) : null}
-            </Link>
-          ))}
+          {navItems.map((item) => {
+            const active =
+              item.active ??
+              (item.href !== "#" && pathname.startsWith(item.href));
+            const expanded = expandedLabel === item.label;
+
+            if (item.children) {
+              return (
+                <div key={item.label}>
+                  <button
+                    className={`w-full ${
+                      active || isChildActive(item)
+                        ? navItemActiveClass
+                        : navItemClass
+                    }`}
+                    onClick={() =>
+                      setExpandedLabel(expanded ? null : item.label)
+                    }
+                    type="button"
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <NavIcon item={item} />
+                      <span>{item.label}</span>
+                    </div>
+                    <svg
+                      className={`h-4 w-4 text-slate-400 transition-transform ${
+                        expanded ? "rotate-90" : ""
+                      }`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M9 5l7 7-7 7"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                      />
+                    </svg>
+                  </button>
+                  {expanded ? (
+                    <div className="mt-1 ml-4 space-y-1 border-l border-slate-200 pl-4">
+                      {item.children.map((child) => {
+                        const childActive =
+                          child.href !== "#" && pathname.startsWith(child.href);
+                        return (
+                          <Link
+                            className={`block rounded-lg px-3 py-2 text-sm font-medium transition ${
+                              childActive
+                                ? "text-brand-600 font-bold"
+                                : "text-slate-600 hover:bg-slate-100/70 hover:text-slate-900"
+                            }`}
+                            href={child.href}
+                            key={child.label}
+                          >
+                            {child.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            }
+
+            return (
+              <Link
+                key={item.label}
+                className={active ? navItemActiveClass : navItemClass}
+                href={item.href}
+              >
+                <div className="flex items-center gap-3.5">
+                  <NavIcon item={item} />
+                  <span>{item.label}</span>
+                </div>
+              </Link>
+            );
+          })}
         </nav>
       </div>
 
