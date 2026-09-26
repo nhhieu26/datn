@@ -1,14 +1,17 @@
 "use client";
 
 import type { Province } from "@/generated/prisma/client";
-import { useMemo, useState } from "react";
+import { startTransition, useActionState, useMemo, useState } from "react";
 import {
   StepFooter,
   StepperNav,
   useMultiStepForm,
   type StepDefinition,
 } from "@/shared/components/multi-step-form";
+import { createHotelAction } from "@/features/provider/hotels/actions";
 import { HotelPreviewCard } from "./hotel-preview-card";
+
+const INITIAL_ACTION_STATE = { status: "idle" as const };
 
 const MAX_DESCRIPTION_LENGTH = 2000;
 const MAX_PHOTOS = 5;
@@ -198,6 +201,10 @@ export function HotelForm({ provinces }: { provinces: Province[] }) {
   );
   const { currentStep, goTo, next, prev, isFirst, isLast } =
     useMultiStepForm(steps.length);
+  const [actionState, formAction, isPending] = useActionState(
+    createHotelAction,
+    INITIAL_ACTION_STATE
+  );
 
   const update = <K extends keyof HotelFormState>(
     key: K,
@@ -263,7 +270,35 @@ export function HotelForm({ provinces }: { provinces: Province[] }) {
   };
 
   const handleSubmit = () => {
-    // UI only — không có backend, chưa gửi dữ liệu đi đâu cả.
+    const fd = new FormData();
+    fd.append("name", form.name);
+    fd.append("provinceId", form.provinceId);
+    fd.append("address", form.address);
+    fd.append("description", form.description);
+    fd.append("amenities", JSON.stringify(form.amenities));
+    fd.append(
+      "rooms",
+      JSON.stringify(
+        form.rooms.map((room) => ({
+          name: room.name,
+          description: room.description,
+          capacity: room.capacity,
+          quantity: room.quantity,
+          basePrice: room.basePrice,
+          amenities: room.amenities,
+        }))
+      )
+    );
+    form.photos.forEach((photo) => fd.append("photos", photo.file));
+    form.rooms.forEach((room, index) => {
+      room.photos.forEach((photo) =>
+        fd.append(`room-photos-${index}`, photo.file)
+      );
+    });
+
+    startTransition(() => {
+      formAction(fd);
+    });
   };
 
   return (
@@ -277,6 +312,21 @@ export function HotelForm({ provinces }: { provinces: Province[] }) {
           lịch.
         </p>
       </section>
+
+      {actionState.status === "error" && actionState.formError ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600">
+          {actionState.formError}
+        </div>
+      ) : null}
+      {actionState.status === "error" && actionState.fieldErrors ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600">
+          <ul className="list-inside list-disc space-y-1">
+            {Object.entries(actionState.fieldErrors).map(([field, messages]) => (
+              <li key={field}>{messages.join(", ")}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
         <StepperNav currentStep={currentStep} onStepClick={goTo} steps={steps} />
@@ -552,7 +602,10 @@ export function HotelForm({ provinces }: { provinces: Province[] }) {
             cancelHref="/provider/profiles"
             isFirst={isFirst}
             isLast={isLast}
-            lastLabel="Hoàn tất & Xuất bản Khách sạn"
+            lastLabel={
+              isPending ? "Đang tạo khách sạn..." : "Hoàn tất & Xuất bản Khách sạn"
+            }
+            nextDisabled={isLast && isPending}
             onBack={prev}
             onNext={isLast ? handleSubmit : next}
           />
