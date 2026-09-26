@@ -49,3 +49,27 @@ export async function deleteHotelEmbedding(id: string): Promise<void> {
 export async function clearHotelEmbeddings(): Promise<void> {
   await getHotelIndex().deleteAll();
 }
+
+function getRestaurantIndex() {
+  return pinecone
+    .index(process.env.PINECONE_INDEX!)
+    .namespace(process.env.PINECONE_NAMESPACE_RESTAURANTS || "restaurants");
+}
+
+export async function upsertRestaurantEmbedding(
+  id: string,
+  values: number[],
+  metadata: Record<string, string | number | boolean | string[]>
+): Promise<void> {
+  const index = getRestaurantIndex();
+  await index.upsert({ records: [{ id, values, metadata }] });
+}
+
+export async function deleteRestaurantEmbedding(id: string): Promise<void> {
+  const index = getRestaurantIndex();
+  await index.deleteOne({ id });
+}
+
+export async function clearRestaurantEmbeddings(): Promise<void> {
+  await getRestaurantIndex().deleteAll();
+}

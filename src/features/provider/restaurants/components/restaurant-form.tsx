@@ -1,14 +1,17 @@
 "use client";
 
 import type { Province, Tag } from "@/generated/prisma/client";
-import { useMemo, useState } from "react";
+import { startTransition, useActionState, useMemo, useState } from "react";
 import {
   StepFooter,
   StepperNav,
   useMultiStepForm,
   type StepDefinition,
 } from "@/shared/components/multi-step-form";
+import { createRestaurantAction } from "@/features/provider/restaurants/actions";
 import { RestaurantPreviewCard } from "./restaurant-preview-card";
+
+const INITIAL_ACTION_STATE = { status: "idle" as const };
 
 const MAX_DESCRIPTION_LENGTH = 2000;
 const MAX_PHOTOS = 5;
@@ -90,6 +93,10 @@ export function RestaurantForm({
   );
   const { currentStep, goTo, next, prev, isFirst, isLast } =
     useMultiStepForm(steps.length);
+  const [actionState, formAction, isPending] = useActionState(
+    createRestaurantAction,
+    INITIAL_ACTION_STATE
+  );
 
   const update = <K extends keyof RestaurantFormState>(
     key: K,
@@ -163,7 +170,21 @@ export function RestaurantForm({
     );
 
   const handleSubmit = () => {
-    // UI only — không có backend, chưa gửi dữ liệu đi đâu cả.
+    const fd = new FormData();
+    fd.append("name", form.name);
+    fd.append("provinceId", form.provinceId);
+    fd.append("address", form.address);
+    fd.append("phone", form.phone);
+    fd.append("capacity", form.capacity);
+    fd.append("description", form.description);
+    fd.append("tagIds", JSON.stringify(form.tagIds));
+    fd.append("menu", JSON.stringify(form.menu));
+    fd.append("timeSlots", JSON.stringify(form.timeSlots));
+    form.photos.forEach((photo) => fd.append("photos", photo.file));
+
+    startTransition(() => {
+      formAction(fd);
+    });
   };
 
   return (
@@ -176,6 +197,21 @@ export function RestaurantForm({
           Nhập thông tin chi tiết để giới thiệu nhà hàng của bạn tới thực khách.
         </p>
       </section>
+
+      {actionState.status === "error" && actionState.formError ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600">
+          {actionState.formError}
+        </div>
+      ) : null}
+      {actionState.status === "error" && actionState.fieldErrors ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600">
+          <ul className="list-inside list-disc space-y-1">
+            {Object.entries(actionState.fieldErrors).map(([field, messages]) => (
+              <li key={field}>{messages.join(", ")}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
         <StepperNav currentStep={currentStep} onStepClick={goTo} steps={steps} />
@@ -530,7 +566,10 @@ export function RestaurantForm({
             cancelHref="/provider/profiles"
             isFirst={isFirst}
             isLast={isLast}
-            lastLabel="Hoàn tất & Xuất bản Nhà hàng"
+            lastLabel={
+              isPending ? "Đang tạo nhà hàng..." : "Hoàn tất & Xuất bản Nhà hàng"
+            }
+            nextDisabled={isLast && isPending}
             onBack={prev}
             onNext={isLast ? handleSubmit : next}
           />
