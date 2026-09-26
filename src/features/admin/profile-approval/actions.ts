@@ -13,6 +13,7 @@ import {
   runAction,
   type ActionState,
 } from "@/shared/lib/action-state";
+import { requireAdmin } from "@/shared/lib/require-admin";
 import type { ApprovalMutationResult, ApprovalProfilePatch } from "./types";
 
 const approveProfilesSchema = z.object({
@@ -56,6 +57,8 @@ export async function approveProviderProfilesAction(
   ids: string[]
 ): Promise<ActionState<ApprovalMutationResult>> {
   const result = await runAction<ApprovalMutationResult>(async () => {
+    await requireAdmin();
+
     const parsed = approveProfilesSchema.safeParse({ ids });
     if (!parsed.success) {
       throw new ValidationError(fromZodError(parsed.error));
@@ -90,6 +93,8 @@ export async function rejectProviderProfileAction(
   reason: string
 ): Promise<ActionState<ApprovalMutationResult>> {
   const result = await runAction<ApprovalMutationResult>(async () => {
+    await requireAdmin();
+
     const parsed = rejectProfileSchema.safeParse({ id, reason });
     if (!parsed.success) {
       throw new ValidationError(fromZodError(parsed.error));
