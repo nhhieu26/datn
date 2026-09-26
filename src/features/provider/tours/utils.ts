@@ -1,8 +1,19 @@
 import type { TourWithRelations } from "@/entities/tour";
-import type { TourListItem } from "./mock-data";
+import { TourListItem, ToursSummary } from "./types";
+import { formatEntityCode } from "@/lib/utils";
 
-const FALLBACK_IMAGE =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuCXSk5PTysU3Sjo7Su5I8eJg_cWR-089y-SyD1w3ABaxYMxyDP6KgpxlPxFXUTkZTniN1jjC92DKfydxZ9rDARlAlvK2u_BoiWonq8JVerK8BqxPHAEKkw5RdauYz5U_YQjre4CCkEis50GIGxtHACko2G2zABMpeH5_A68lQ5xE18KuV2V7PpDu5fZ6x-dHw6cAFM-85Wgn6lVjvr4QCNlBMtXb4Qhq1Y4VW3JNTPB4ZsykqzZSdAS";
+const FALLBACK_IMAGE = "/image-notfound.png";
+
+export function getToursSummary(tours: TourListItem[]): ToursSummary {
+  return {
+    total: tours.length,
+    published: tours.filter((tour) => tour.status === "published").length,
+    pending: tours.filter((tour) => tour.status === "pending").length,
+    inactive: tours.filter(
+      (tour) => tour.status === "paused" || tour.status === "rejected",
+    ).length,
+  };
+}
 
 function extractImageUrl(images: unknown): string {
   if (Array.isArray(images) && images.length > 0) {
@@ -13,23 +24,22 @@ function extractImageUrl(images: unknown): string {
 }
 
 function findNearestScheduledDeparture(
-  departures: TourWithRelations["departures"]
+  departures: TourWithRelations["departures"],
 ): string | null {
   const now = new Date();
   const upcoming = departures
     .filter(
       (departure) =>
-        departure.status === "scheduled" && departure.departureDate >= now
+        departure.status === "scheduled" && departure.departureDate >= now,
     )
     .sort((a, b) => a.departureDate.getTime() - b.departureDate.getTime());
   return upcoming.length > 0 ? upcoming[0].departureDate.toISOString() : null;
 }
 
 export function mapTourToListItem(tour: TourWithRelations): TourListItem {
-  const code = `TR-${tour.id.slice(-8).toUpperCase()}`;
+  const code = formatEntityCode("TR", tour.id);
   const category =
-    tour.tags.map((tourTag) => tourTag.tag.name).join(", ") ||
-    "Chưa phân loại";
+    tour.tags.map((tourTag) => tourTag.tag.name).join(", ") || "Chưa phân loại";
 
   return {
     id: tour.id,

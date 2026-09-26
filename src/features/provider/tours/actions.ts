@@ -7,11 +7,8 @@ import { Prisma } from "@/generated/prisma/client";
 import { auth } from "@/lib/auth";
 import { deleteImage, uploadImage } from "@/lib/imagekit";
 import { embedText } from "@/lib/gemini";
-import {
-  deleteTourEmbedding,
-  upsertTourEmbedding,
-} from "@/lib/pinecone";
-import { slugify } from "@/lib/slug";
+import { deleteTourEmbedding, upsertTourEmbedding } from "@/lib/pinecone";
+import { slugify } from "@/lib/utils";
 import {
   createTourSchema,
   tourRepo,
@@ -69,7 +66,7 @@ async function createTourWithUniqueSlug(
   input: CreateTourInput & {
     providerProfileId: string;
     images: UploadedImage[];
-  }
+  },
 ): Promise<Tour> {
   const baseSlug = slugify(input.title) || "tour";
 
@@ -80,7 +77,10 @@ async function createTourWithUniqueSlug(
     try {
       return await tourRepo.create({ ...input, slug });
     } catch (error) {
-      if (!isUniqueConstraintError(error) || attempt === MAX_SLUG_ATTEMPTS - 1) {
+      if (
+        !isUniqueConstraintError(error) ||
+        attempt === MAX_SLUG_ATTEMPTS - 1
+      ) {
         throw error;
       }
     }
@@ -144,8 +144,8 @@ async function rollbackTourCreation(input: {
 
   const imageCleanupResults = await Promise.allSettled(
     input.uploadedImages.map((image) =>
-      retryCleanup(() => deleteImage(image.fileId))
-    )
+      retryCleanup(() => deleteImage(image.fileId)),
+    ),
   );
   imageCleanupResults.forEach((result, index) => {
     if (result.status === "rejected") {
@@ -161,7 +161,7 @@ async function rollbackTourCreation(input: {
 
 export async function createTourAction(
   _prevState: CreateTourActionState,
-  formData: FormData
+  formData: FormData,
 ): Promise<CreateTourActionState> {
   const uploadedImages: UploadedImage[] = [];
   let createdTourId: string | null = null;
@@ -183,7 +183,7 @@ export async function createTourAction(
     const providerProfile =
       await providerProfileRepo.findApprovedByUserIdAndBusinessType(
         session.user.id,
-        "tour"
+        "tour",
       );
     if (!providerProfile) {
       return {
@@ -204,12 +204,12 @@ export async function createTourAction(
       includeServices: parseJsonField<string[]>(
         formData,
         "includeServices",
-        []
+        [],
       ),
       excludeServices: parseJsonField<string[]>(
         formData,
         "excludeServices",
-        []
+        [],
       ),
       itinerary: parseJsonField(formData, "itinerary", []),
       basePrice: formData.get("basePrice"),
@@ -274,7 +274,7 @@ export async function createTourAction(
 
     stage = "upload";
     const uploadResults = await Promise.allSettled(
-      photos.map((photo) => uploadImage(photo, `tours/${providerProfile.id}`))
+      photos.map((photo) => uploadImage(photo, `tours/${providerProfile.id}`)),
     );
     for (const result of uploadResults) {
       if (result.status === "fulfilled") {
@@ -285,7 +285,7 @@ export async function createTourAction(
       }
     }
     const uploadFailure = uploadResults.find(
-      (result): result is PromiseRejectedResult => result.status === "rejected"
+      (result): result is PromiseRejectedResult => result.status === "rejected",
     );
     if (uploadFailure) throw uploadFailure.reason;
 

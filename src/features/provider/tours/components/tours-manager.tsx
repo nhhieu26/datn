@@ -3,13 +3,8 @@
 import type { ServiceStatus } from "@/generated/prisma/client";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import {
-  formatDepartureDate,
-  formatDuration,
-  formatTourCode,
-  formatTourPrice,
-} from "../format";
-import type { TourListItem } from "../mock-data";
+import { formatCurrency, formatDate, formatTourDuration } from "@/lib/utils";
+import { TourListItem } from "../types";
 
 type TourStatusMeta = {
   label: string;
@@ -116,7 +111,7 @@ function TourRow({ tour }: { tour: TourListItem }) {
           />
           <div className="flex min-w-0 flex-col">
             <span className="font-mono text-[11px] font-bold tracking-wider text-brand-500 uppercase">
-              {formatTourCode(tour.code)}
+              {tour.code}
             </span>
             <span className="truncate text-sm font-bold text-slate-900">
               {tour.title}
@@ -134,13 +129,13 @@ function TourRow({ tour }: { tour: TourListItem }) {
       <td className="px-4 py-5 align-middle whitespace-nowrap">
         <div className="flex flex-col">
           <span className="text-sm font-bold text-slate-900">
-            {formatTourPrice(tour.basePrice)}
+            {formatCurrency(tour.basePrice)}
             <span className="ml-1 text-xs font-normal text-slate-400">
               / khách
             </span>
           </span>
           <span className="mt-0.5 text-xs text-slate-400">
-            Khởi hành: {formatDepartureDate(tour.nearestDepartureDate)}
+            Khởi hành: {formatDate(tour.nearestDepartureDate)}
           </span>
         </div>
       </td>
@@ -217,15 +212,17 @@ function TourCard({ tour }: { tour: TourListItem }) {
             >
               star
             </span>
-            {tour.rating ? `${tour.rating.toFixed(1)} (${tour.reviewCount})` : "Mới"}
+            {tour.rating
+              ? `${tour.rating.toFixed(1)} (${tour.reviewCount})`
+              : "Mới"}
           </span>
         </div>
         <div className="absolute right-3 bottom-3 left-3 flex items-center justify-between text-white">
           <span className="font-mono text-[11px] font-extrabold tracking-wider text-amber-300 uppercase">
-            {formatTourCode(tour.code)}
+            {tour.code}
           </span>
           <span className="text-xs opacity-90">
-            {formatDuration(tour.durationDays, tour.durationNights)}
+            {formatTourDuration(tour.durationDays, tour.durationNights)}
           </span>
         </div>
       </div>
@@ -250,7 +247,7 @@ function TourCard({ tour }: { tour: TourListItem }) {
           <div className="flex items-baseline justify-between rounded-xl bg-slate-50 px-3.5 py-2">
             <span className="text-xs text-slate-500">Giá khởi điểm</span>
             <span className="text-base font-bold text-brand-600">
-              {formatTourPrice(tour.basePrice)}
+              {formatCurrency(tour.basePrice)}
               <span className="ml-1 text-xs font-normal text-slate-400">
                 / khách
               </span>
@@ -298,7 +295,9 @@ function ToursEmptyState() {
         className="mt-1 inline-flex items-center gap-2 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600"
         href="/provider/tours/create"
       >
-        <span className="material-symbols-outlined text-[20px]">add_circle</span>
+        <span className="material-symbols-outlined text-[20px]">
+          add_circle
+        </span>
         Tạo Tour mới
       </Link>
     </div>
@@ -308,14 +307,16 @@ function ToursEmptyState() {
 export function ToursManager({ tours }: { tours: TourListItem[] }) {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<ServiceStatus | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<ServiceStatus | "all">(
+    "all",
+  );
   const [view, setView] = useState<"table" | "card">("table");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
 
   const categories = useMemo(
     () => [...new Set(tours.map((tour) => tour.category))],
-    [tours]
+    [tours],
   );
 
   const filteredTours = useMemo(() => {
@@ -338,10 +339,7 @@ export function ToursManager({ tours }: { tours: TourListItem[] }) {
   const totalPages = Math.max(1, Math.ceil(filteredTours.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const startIndex = (currentPage - 1) * pageSize;
-  const paginatedTours = filteredTours.slice(
-    startIndex,
-    startIndex + pageSize
-  );
+  const paginatedTours = filteredTours.slice(startIndex, startIndex + pageSize);
 
   const handleReset = () => {
     setSearch("");
@@ -472,16 +470,28 @@ export function ToursManager({ tours }: { tours: TourListItem[] }) {
                 <th className="w-[340px] px-5 py-4" scope="col">
                   Tour &amp; Danh mục
                 </th>
-                <th className="w-[190px] px-4 py-4 whitespace-nowrap" scope="col">
+                <th
+                  className="w-[190px] px-4 py-4 whitespace-nowrap"
+                  scope="col"
+                >
                   Giá cơ bản / Lịch gần nhất
                 </th>
-                <th className="w-[110px] px-4 py-4 whitespace-nowrap" scope="col">
+                <th
+                  className="w-[110px] px-4 py-4 whitespace-nowrap"
+                  scope="col"
+                >
                   Tổng booking
                 </th>
-                <th className="w-[110px] px-4 py-4 whitespace-nowrap" scope="col">
+                <th
+                  className="w-[110px] px-4 py-4 whitespace-nowrap"
+                  scope="col"
+                >
                   Đánh giá
                 </th>
-                <th className="w-[140px] px-4 py-4 whitespace-nowrap" scope="col">
+                <th
+                  className="w-[140px] px-4 py-4 whitespace-nowrap"
+                  scope="col"
+                >
                   Trạng thái
                 </th>
                 <th className="w-[160px] px-5 py-4 text-right" scope="col">
@@ -581,7 +591,7 @@ export function ToursManager({ tours }: { tours: TourListItem[] }) {
               >
                 {pageNumber}
               </button>
-            )
+            ),
           )}
           <button
             className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"

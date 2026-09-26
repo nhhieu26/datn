@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { prisma } from "../src/lib/prisma";
 import type { ProvinceType } from "../src/generated/prisma/client";
+import { slugify } from "@/lib/utils";
 
 type ProvinceSeed = {
   name: string;
@@ -44,18 +45,6 @@ const PROVINCES: ProvinceSeed[] = [
   { name: "Hà Nội", fullName: "Thành phố Hà Nội", type: "city" },
   { name: "Huế", fullName: "Thành phố Huế", type: "city" },
 ];
-
-function slugify(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/đ/gi, "d")
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-");
-}
 
 export async function seedProvinces() {
   for (const province of PROVINCES) {

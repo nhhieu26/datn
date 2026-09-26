@@ -22,7 +22,7 @@ export default async function ProviderToursPage() {
   const providerProfile =
     await providerProfileRepo.findApprovedByUserIdAndBusinessType(
       session.user.id,
-      "tour"
+      "tour",
     );
   const tours = providerProfile
     ? await tourRepo.findAllByProviderProfileId(providerProfile.id)

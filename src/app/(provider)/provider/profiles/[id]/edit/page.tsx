@@ -1,9 +1,9 @@
 import { providerProfileRepo } from "@/entities/provider-profile";
 import { auth } from "@/lib/auth";
 import { ProfileForm } from "@/features/provider/profiles";
-import { formatUpdatedLabel } from "@/features/provider/profiles/format";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { formatUpdatedLabel } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Roamly - Chỉnh sửa Hồ sơ Doanh nghiệp | Kênh Đối tác",

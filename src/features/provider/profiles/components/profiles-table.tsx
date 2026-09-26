@@ -8,11 +8,7 @@ import type {
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { getServiceMeta, getStatusMeta } from "../../utils";
-import {
-  formatProfileCode,
-  formatSubmittedDate,
-  formatUpdatedLabel,
-} from "../format";
+import { formatDate, formatEntityCode, formatUpdatedLabel } from "@/lib/utils";
 
 function ServiceBadge({ type }: { type: BusinessType }) {
   const meta = getServiceMeta(type);
@@ -88,7 +84,7 @@ function ProfileRow({ profile }: { profile: ProviderProfile }) {
     >
       <td className={`${cell} whitespace-nowrap`}>
         <span className="inline-block rounded-lg border border-slate-200/80 bg-slate-100 px-2.5 py-1 font-mono text-xs font-semibold text-slate-700">
-          {formatProfileCode(profile.id)}
+          {formatEntityCode("PR", profile.id)}
         </span>
       </td>
 
@@ -138,7 +134,7 @@ function ProfileRow({ profile }: { profile: ProviderProfile }) {
       <td className={`${cell} whitespace-nowrap`}>
         <div className="flex flex-col">
           <span className="text-sm font-medium text-slate-800">
-            {formatSubmittedDate(profile.createdAt)}
+            {formatDate(profile.createdAt)}
           </span>
           <span className="mt-0.5 text-xs text-slate-400">
             {formatUpdatedLabel(profile.updatedAt)}
@@ -309,7 +305,7 @@ export function ProfilesTable({ profiles }: { profiles: ProviderProfile[] }) {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<BusinessType | "all">("all");
   const [statusFilter, setStatusFilter] = useState<ApprovalStatus | "all">(
-    "all"
+    "all",
   );
 
   const filteredProfiles = useMemo(() => {
