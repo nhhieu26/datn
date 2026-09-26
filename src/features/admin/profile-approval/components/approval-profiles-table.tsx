@@ -156,22 +156,36 @@ export function ApprovalProfilesTable({
                     <StatusBadge status={profile.approvalStatus} />
                   </td>
                   <td className="px-4 py-4 text-right">
-                    <button
-                      className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onViewProfile(profile.id);
-                      }}
-                      type="button"
-                      title="Xem chi tiết"
-                    >
-                      <span
-                        className="material-symbols-outlined"
-                        style={{ fontSize: "18px" }}
+                    <div className="inline-flex items-center gap-1">
+                      <button
+                        className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onViewProfile(profile.id);
+                        }}
+                        type="button"
+                        title="Xem chi tiết"
                       >
-                        visibility
-                      </span>
-                    </button>
+                        <span
+                          className="material-symbols-outlined"
+                          style={{ fontSize: "18px" }}
+                        >
+                          visibility
+                        </span>
+                      </button>
+                      <button
+                        className="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                        type="button"
+                        title="Cấm provider"
+                      >
+                        <span
+                          className="material-symbols-outlined"
+                          style={{ fontSize: "18px" }}
+                        >
+                          block
+                        </span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
