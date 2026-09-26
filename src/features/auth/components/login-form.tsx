@@ -54,7 +54,7 @@ export function LoginForm() {
       return;
     }
 
-    router.push("/");
+    router.push(accountType === "provider" ? "/provider" : "/");
   }
 
   return (

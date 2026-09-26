@@ -31,8 +31,7 @@ const navItems: NavItem[] = [
     icon: ["M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"],
     children: [
       { label: "Tour du lịch", href: "/provider/tours" },
-      { label: "Tạo tour mới", href: "/provider/tours/create" },
-      { label: "Khách sạn & Lưu trú", href: "#" },
+      { label: "Khách sạn & Lưu trú", href: "/provider/hotels/create" },
       { label: "Nhà hàng & Ẩm thực", href: "#" },
     ],
   },
@@ -66,11 +65,11 @@ const navItemClass =
 const navItemActiveClass =
   "flex items-center justify-between rounded-xl border border-brand-100/80 bg-brand-50 px-3.5 py-2.5 text-sm font-bold text-brand-600 shadow-sm";
 
-function NavIcon({ item }: { item: NavItem }) {
+function NavIcon({ item, active }: { item: NavItem; active?: boolean }) {
   if (item.filled) {
     return (
       <svg
-        className="h-5 w-5 text-brand-500"
+        className={`h-5 w-5 ${active ? "text-brand-500" : "text-slate-400"}`}
         fill="currentColor"
         viewBox={item.viewBox ?? "0 0 24 24"}
       >
@@ -82,7 +81,7 @@ function NavIcon({ item }: { item: NavItem }) {
   }
   return (
     <svg
-      className="h-5 w-5 text-slate-400"
+      className={`h-5 w-5 ${active ? "text-brand-500" : "text-slate-400"}`}
       fill="none"
       stroke="currentColor"
       viewBox={item.viewBox ?? "0 0 24 24"}
@@ -186,7 +185,7 @@ export function ProviderSidebar({
                     type="button"
                   >
                     <div className="flex items-center gap-3.5">
-                      <NavIcon item={item} />
+                      <NavIcon item={item} active={active || isChildActive(item)} />
                       <span>{item.label}</span>
                     </div>
                     <svg
@@ -237,7 +236,7 @@ export function ProviderSidebar({
                 href={item.href}
               >
                 <div className="flex items-center gap-3.5">
-                  <NavIcon item={item} />
+                  <NavIcon item={item} active={active} />
                   <span>{item.label}</span>
                 </div>
               </Link>
