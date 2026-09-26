@@ -24,6 +24,14 @@ const ACCOUNT_TABS: { id: AccountType; label: string; icon: string }[] = [
 const INPUT_CLASS =
   "w-full bg-[#f6f7f9] border-0 focus:ring-2 focus:ring-slate-900 text-[14px] text-slate-900 placeholder:text-slate-400 rounded-2xl py-3 pl-11 pr-4 transition duration-150";
 
+const DEV_CREDENTIALS =
+  process.env.NODE_ENV === "development"
+    ? {
+        customer: { email: "customer1@example.com", password: "Password123" },
+        provider: { email: "provider1@example.com", password: "Password123" },
+      }
+    : null;
+
 export function LoginForm() {
   const router = useRouter();
   const [accountType, setAccountType] = useState<AccountType>("customer");
@@ -126,7 +134,11 @@ export function LoginForm() {
             </p>
           </div>
 
-          <form className="space-y-4" onSubmit={handleSubmit}>
+          <form
+            className="space-y-4"
+            key={DEV_CREDENTIALS ? accountType : undefined}
+            onSubmit={handleSubmit}
+          >
             {error && (
               <p className="rounded-xl bg-rose-50 px-4 py-2.5 text-[13px] text-rose-600">
                 {error}
@@ -158,6 +170,7 @@ export function LoginForm() {
                 </span>
                 <input
                   className={INPUT_CLASS}
+                  defaultValue={DEV_CREDENTIALS?.[accountType]?.email}
                   id="email"
                   name="email"
                   placeholder="ví dụ: hello@roamly.com"
@@ -192,6 +205,7 @@ export function LoginForm() {
                 </span>
                 <input
                   className={`${INPUT_CLASS} pr-11`}
+                  defaultValue={DEV_CREDENTIALS?.[accountType]?.password}
                   id="password"
                   name="password"
                   placeholder="Nhập mật khẩu của bạn"

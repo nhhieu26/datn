@@ -21,3 +21,7 @@ export async function deleteTourEmbedding(id: string): Promise<void> {
   const index = getTourIndex();
   await index.deleteOne({ id });
 }
+
+export async function clearTourEmbeddings(): Promise<void> {
+  await getTourIndex().deleteAll();
+}

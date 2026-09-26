@@ -22,3 +22,7 @@ export async function uploadImage(
 export async function deleteImage(fileId: string): Promise<void> {
   await imagekit.deleteFile(fileId);
 }
+
+export async function deleteFolder(folderPath: string): Promise<void> {
+  await imagekit.deleteFolder(folderPath);
+}

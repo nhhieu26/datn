@@ -15,6 +15,7 @@ export default async function ProviderLayout({
 }) {
   const session = await auth();
   if (!session?.user) redirect("/sign-in");
+  if (session.user.role !== "provider") redirect("/");
 
   return (
     <div className="provider-shell flex h-dvh w-full overflow-hidden bg-[#F8FAFC] font-sans text-slate-800 antialiased">

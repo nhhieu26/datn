@@ -727,7 +727,7 @@ export function TourForm({
           ) : null}
 
           <StepFooter
-            cancelHref="/provider/profiles"
+            cancelHref="/provider/tours"
             isFirst={isFirst}
             isLast={isLast}
             lastLabel={isPending ? "Đang tạo tour..." : "Hoàn tất & Xuất bản Tour"}

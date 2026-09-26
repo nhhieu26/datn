@@ -47,10 +47,6 @@ export function create(
   });
 }
 
-export async function removeWithRelations(id: string): Promise<void> {
-  await prisma.$transaction([
-    prisma.tourTag.deleteMany({ where: { tourId: id } }),
-    prisma.tourDeparture.deleteMany({ where: { tourId: id } }),
-    prisma.tour.deleteMany({ where: { id } }),
-  ]);
+export function remove(id: string): Promise<Tour> {
+  return prisma.tour.delete({ where: { id } });
 }

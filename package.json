@@ -7,11 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:seed": "bun prisma/seed.ts",
-    "db:clear": "bun prisma/clear.ts"
+    "db:seed": "bun scripts/seed.ts",
+    "db:clear": "bun scripts/clear.ts",
+    "cloud:clear": "bun scripts/clear-cloud.ts"
   },
   "prisma": {
-    "seed": "bun prisma/seed.ts"
+    "seed": "bun scripts/seed.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.77",

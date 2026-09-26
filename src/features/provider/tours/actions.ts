@@ -21,12 +21,9 @@ import {
 import { providerProfileRepo } from "@/entities/provider-profile";
 import { provinceRepo } from "@/entities/province";
 import { tagRepo } from "@/entities/tag";
+import type { ActionState } from "@/shared/lib/action-state";
 
-export type CreateTourActionState = {
-  status: "idle" | "error" | "success";
-  formError?: string;
-  fieldErrors?: Record<string, string[]>;
-};
+export type CreateTourActionState = ActionState;
 
 type UploadedImage = { url: string; fileId: string };
 type CreationStage =
@@ -107,7 +104,7 @@ async function hasValidImageSignature(file: File): Promise<boolean> {
   return isJpeg || isPng;
 }
 
-async function retryCleanup(operation: () => Promise<void>): Promise<void> {
+async function retryCleanup(operation: () => Promise<unknown>): Promise<void> {
   let lastError: unknown;
 
   for (let attempt = 0; attempt < CLEANUP_ATTEMPTS; attempt += 1) {
@@ -139,7 +136,7 @@ async function rollbackTourCreation(input: {
 
   if (input.createdTourId) {
     try {
-      await retryCleanup(() => tourRepo.removeWithRelations(input.createdTourId!));
+      await retryCleanup(() => tourRepo.remove(input.createdTourId!));
     } catch (reason) {
       failures.push({ resource: `tour:${input.createdTourId}`, reason });
     }
@@ -342,6 +339,6 @@ export async function createTourAction(
     };
   }
 
-  revalidatePath("/provider/profiles");
-  redirect("/provider/profiles");
+  revalidatePath("/provider/tours");
+  redirect("/provider/tours");
 }
