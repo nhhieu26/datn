@@ -32,7 +32,7 @@ const navItems: NavItem[] = [
     children: [
       { label: "Tour du lịch", href: "/provider/tours" },
       { label: "Khách sạn & Lưu trú", href: "/provider/hotels" },
-      { label: "Nhà hàng & Ẩm thực", href: "#" },
+      { label: "Nhà hàng & Ẩm thực", href: "/provider/restaurants/create" },
     ],
   },
   {
