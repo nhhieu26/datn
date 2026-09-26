@@ -1,13 +1,7 @@
+import { formatDate, formatEntityCode, formatTime } from "@/lib/utils";
 import type { ApprovalProfile } from "../types";
 import { ApprovalFilterBar } from "./approval-filter-bar";
-import {
-  BusinessBadge,
-  ProfileAvatar,
-  StatusBadge,
-  formatDate,
-  formatTime,
-  profileCode,
-} from "./approval-shared";
+import { BusinessBadge, ProfileAvatar, StatusBadge } from "./approval-shared";
 import type {
   ApprovalCounts,
   StatusFilter,
@@ -112,7 +106,7 @@ export function ApprovalProfilesTable({
                       <div className="min-w-0">
                         <div className="mb-1 flex items-center gap-1.5">
                           <span className="font-mono text-[10px] font-bold text-sky-700">
-                            #{profileCode(profile.id)}
+                            {formatEntityCode("PR", profile.id)}
                           </span>
                           <BusinessBadge type={profile.businessType} />
                         </div>

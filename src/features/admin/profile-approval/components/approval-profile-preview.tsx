@@ -1,11 +1,7 @@
 import Image from "next/image";
 import type { ApprovalProfile } from "../types";
-import {
-  BusinessBadge,
-  formatDate,
-  formatTime,
-  profileCode,
-} from "./approval-shared";
+import { BusinessBadge } from "./approval-shared";
+import { formatDate, formatEntityCode, formatTime } from "@/lib/utils";
 
 function VerificationRow({
   icon,
@@ -70,7 +66,7 @@ export function ApprovalProfilePreview({
             </h2>
           </div>
           <span className="rounded-md bg-sky-50 px-2 py-1 font-mono text-[10px] font-bold text-sky-700">
-            #{profileCode(profile.id)}
+            {formatEntityCode("PR", profile.id)}
           </span>
         </div>
       </div>

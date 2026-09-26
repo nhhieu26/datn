@@ -1,7 +1,4 @@
-import type {
-  ApprovalStatus,
-  BusinessType,
-} from "@/generated/prisma/client";
+import type { ApprovalStatus, BusinessType } from "@/generated/prisma/client";
 import Image from "next/image";
 import type { ApprovalProfile } from "../types";
 
@@ -68,28 +65,6 @@ export const statusMeta: Record<
     dot: "bg-slate-400",
   },
 };
-
-export function profileCode(id: string) {
-  return `PRV-${id
-    .replace(/[^a-zA-Z0-9]/g, "")
-    .slice(-4)
-    .toUpperCase()}`;
-}
-
-export function formatDate(value: string) {
-  return new Intl.DateTimeFormat("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(new Date(value));
-}
-
-export function formatTime(value: string) {
-  return new Intl.DateTimeFormat("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
 
 export function BusinessBadge({ type }: { type: BusinessType }) {
   const meta = businessMeta[type];

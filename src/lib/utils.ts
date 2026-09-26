@@ -45,3 +45,10 @@ export function formatCurrency(value: number): string {
 export function formatTourDuration(days: number, nights: number): string {
   return nights > 0 ? `${days} ngày ${nights} đêm` : `${days} ngày`;
 }
+
+export function formatTime(value: string) {
+  return new Intl.DateTimeFormat("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
