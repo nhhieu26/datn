@@ -1,11 +1,12 @@
 import "dotenv/config";
 import { createInterface } from "node:readline/promises";
-import { clearTourEmbeddings } from "../src/lib/pinecone";
+import { clearHotelEmbeddings, clearTourEmbeddings } from "../src/lib/pinecone";
 import { deleteFolder } from "../src/lib/imagekit";
 
 const INDEX = process.env.PINECONE_INDEX!;
-const NAMESPACE = process.env.PINECONE_NAMESPACE_TOURS || "tours";
-const FOLDERS = ["/tours", "/provider-profiles"];
+const TOUR_NAMESPACE = process.env.PINECONE_NAMESPACE_TOURS || "tours";
+const HOTEL_NAMESPACE = process.env.PINECONE_NAMESPACE_HOTELS || "hotels";
+const FOLDERS = ["/tours", "/hotels", "/provider-profiles"];
 
 function isNotFound(error: unknown): boolean {
   const status = (error as { $ResponseMetadata?: { statusCode?: number } })
@@ -15,7 +16,9 @@ function isNotFound(error: unknown): boolean {
 
 async function main() {
   console.log("Xoá tài nguyên cloud của dự án:");
-  console.log(`  Pinecone: index="${INDEX}" namespace="${NAMESPACE}"`);
+  console.log(
+    `  Pinecone: index="${INDEX}" namespaces="${TOUR_NAMESPACE}, ${HOTEL_NAMESPACE}"`,
+  );
   console.log(`  ImageKit: ${FOLDERS.join(", ")}`);
 
   const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -28,7 +31,14 @@ async function main() {
   }
 
   const tasks: { name: string; run: () => Promise<unknown> }[] = [
-    { name: `Pinecone ${INDEX}/${NAMESPACE}`, run: () => clearTourEmbeddings() },
+    {
+      name: `Pinecone ${INDEX}/${TOUR_NAMESPACE}`,
+      run: () => clearTourEmbeddings(),
+    },
+    {
+      name: `Pinecone ${INDEX}/${HOTEL_NAMESPACE}`,
+      run: () => clearHotelEmbeddings(),
+    },
     ...FOLDERS.map((folder) => ({
       name: `ImageKit ${folder}`,
       run: () => deleteFolder(folder),
