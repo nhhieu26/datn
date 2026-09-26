@@ -1,12 +1,26 @@
 "use client";
 
-import type { ApprovalStatus } from "@/generated/prisma/client";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import {
+  approveProviderProfilesAction,
+  rejectProviderProfileAction,
+} from "../actions";
 import { ApprovalProfilePreview } from "./approval-profile-preview";
 import { ApprovalProfilesTable } from "./approval-profiles-table";
 import type { StatusFilter, TypeFilter } from "./approval-shared";
 import { ApprovalSummaryCards } from "./approval-summary-cards";
-import type { ApprovalProfile } from "../types";
+import type {
+  ApprovalMutationResult,
+  ApprovalProfile,
+  ApprovalProfilePatch,
+} from "../types";
+import type { ActionState } from "@/shared/lib/action-state";
+
+function getActionError(state: ActionState<ApprovalMutationResult>) {
+  if (state.formError) return state.formError;
+  const firstFieldError = Object.values(state.fieldErrors ?? {})[0]?.[0];
+  return firstFieldError ?? "Đã có lỗi xảy ra. Vui lòng thử lại.";
+}
 
 export function ProfileApprovalDashboard({
   initialProfiles,
@@ -17,10 +31,14 @@ export function ProfileApprovalDashboard({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
-  const [selectedId, setSelectedId] = useState(initialProfiles[0]?.id ?? "");
+  const [selectedId, setSelectedId] = useState(
+    initialProfiles.find((profile) => profile.approvalStatus === "pending")
+      ?.id ?? initialProfiles[0]?.id ?? "",
+  );
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
-  const [note, setNote] = useState("");
+  const [noteDraft, setNoteDraft] = useState({ profileId: "", value: "" });
   const [message, setMessage] = useState("");
+  const [isPending, startTransition] = useTransition();
 
   const counts = useMemo(
     () => ({
@@ -61,9 +79,12 @@ export function ProfileApprovalDashboard({
   }, [profiles, search, statusFilter, typeFilter]);
 
   const selectedProfile =
-    profiles.find((profile) => profile.id === selectedId) ??
-    filteredProfiles[0] ??
-    profiles[0];
+    filteredProfiles.find((profile) => profile.id === selectedId) ??
+    filteredProfiles[0];
+  const note =
+    noteDraft.profileId === selectedProfile?.id
+      ? noteDraft.value
+      : (selectedProfile?.rejectionReason ?? "");
 
   const pendingIds = filteredProfiles
     .filter((profile) => profile.approvalStatus === "pending")
@@ -71,38 +92,55 @@ export function ProfileApprovalDashboard({
   const allPendingChecked =
     pendingIds.length > 0 && pendingIds.every((id) => checkedIds.has(id));
 
-  const updateStatus = (
-    ids: string[],
-    status: ApprovalStatus,
-    rejectionReason: string | null = null,
-  ) => {
+  const applyPatches = (patches: ApprovalProfilePatch[]) => {
+    const patchesById = new Map(patches.map((patch) => [patch.id, patch]));
     setProfiles((current) =>
-      current.map((profile) =>
-        ids.includes(profile.id)
-          ? {
-              ...profile,
-              approvalStatus: status,
-              rejectionReason,
-              updatedAt: new Date().toISOString(),
-            }
-          : profile,
-      ),
+      current.map((profile) => ({
+        ...profile,
+        ...patchesById.get(profile.id),
+      })),
     );
     setCheckedIds(new Set());
-    setMessage(
-      status === "approved"
-        ? `Đã duyệt ${ids.length} hồ sơ trên giao diện mẫu.`
-        : "Đã cập nhật trạng thái từ chối trên giao diện mẫu.",
+  };
+
+  const runMutation = (
+    mutation: () => Promise<ActionState<ApprovalMutationResult>>,
+    getSuccessMessage: (result: ApprovalMutationResult) => string,
+  ) => {
+    setMessage("");
+    startTransition(async () => {
+      const result = await mutation();
+      if (result.status === "error" || !result.data) {
+        setMessage(getActionError(result));
+        return;
+      }
+
+      applyPatches(result.data.profiles);
+      setMessage(getSuccessMessage(result.data));
+    });
+  };
+
+  const handleApprove = (ids: string[]) => {
+    if (ids.length === 0) return;
+    runMutation(
+      () => approveProviderProfilesAction(ids),
+      ({ updatedCount }) =>
+        updatedCount > 0
+          ? `Đã duyệt ${updatedCount} hồ sơ.`
+          : "Không còn hồ sơ chờ duyệt trong lựa chọn này.",
     );
   };
 
   const handleReject = () => {
-    if (!selectedProfile) return;
+    if (!selectedProfile || selectedProfile.approvalStatus !== "pending") return;
     if (!note.trim()) {
       setMessage("Vui lòng nhập lý do trước khi từ chối hồ sơ.");
       return;
     }
-    updateStatus([selectedProfile.id], "rejected", note.trim());
+    runMutation(
+      () => rejectProviderProfileAction(selectedProfile.id, note),
+      () => "Đã từ chối hồ sơ và lưu lý do phản hồi.",
+    );
   };
 
   const toggleChecked = (id: string) => {
@@ -116,7 +154,6 @@ export function ProfileApprovalDashboard({
 
   const handleSelectProfile = (profile: ApprovalProfile) => {
     setSelectedId(profile.id);
-    setNote(profile.rejectionReason ?? "");
   };
 
   const resetFilters = () => {
@@ -153,15 +190,15 @@ export function ProfileApprovalDashboard({
               Duyệt hồ sơ đối tác
             </h1>
             <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-slate-500">
-              Xác minh thông tin doanh nghiệp, mã số thuế và giấy phép trước khi
-              cấp quyền đăng tải dịch vụ trên Roamly.
+              Xác minh thông tin doanh nghiệp, mã số thuế và hồ sơ pháp lý trước
+              khi cấp quyền đăng tải dịch vụ trên Roamly.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
               className="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={checkedIds.size === 0}
-              onClick={() => updateStatus([...checkedIds], "approved")}
+              disabled={checkedIds.size === 0 || isPending}
+              onClick={() => handleApprove([...checkedIds])}
               type="button"
             >
               <span className="material-symbols-outlined text-[18px]">
@@ -201,9 +238,12 @@ export function ProfileApprovalDashboard({
             <ApprovalProfilePreview
               profile={selectedProfile}
               note={note}
-              onNoteChange={setNote}
-              onApprove={() => updateStatus([selectedProfile.id], "approved")}
+              onNoteChange={(value) =>
+                setNoteDraft({ profileId: selectedProfile.id, value })
+              }
+              onApprove={() => handleApprove([selectedProfile.id])}
               onReject={handleReject}
+              isPending={isPending}
             />
           ) : null}
         </div>

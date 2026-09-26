@@ -24,6 +24,77 @@ export function findAllByUserId(userId: string): Promise<ProviderProfile[]> {
   });
 }
 
+export function findAllForApproval() {
+  return prisma.providerProfile.findMany({
+    where: {
+      approvalStatus: { in: ["pending", "approved", "rejected"] },
+      user: { is: { role: "provider" } },
+    },
+    select: {
+      id: true,
+      userId: true,
+      businessName: true,
+      businessType: true,
+      taxCode: true,
+      licenseUrl: true,
+      website: true,
+      address: true,
+      description: true,
+      photoUrl: true,
+      approvalStatus: true,
+      rejectionReason: true,
+      createdAt: true,
+      updatedAt: true,
+      user: {
+        select: {
+          fullname: true,
+          email: true,
+          phone: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export function findApprovalStatesByIds(ids: string[]) {
+  return prisma.providerProfile.findMany({
+    where: { id: { in: ids } },
+    select: {
+      id: true,
+      approvalStatus: true,
+      rejectionReason: true,
+      updatedAt: true,
+    },
+  });
+}
+
+export function approvePendingByIds(ids: string[]) {
+  return prisma.providerProfile.updateMany({
+    where: {
+      id: { in: ids },
+      approvalStatus: "pending",
+    },
+    data: {
+      approvalStatus: "approved",
+      rejectionReason: null,
+    },
+  });
+}
+
+export function rejectPendingById(id: string, rejectionReason: string) {
+  return prisma.providerProfile.updateMany({
+    where: {
+      id,
+      approvalStatus: "pending",
+    },
+    data: {
+      approvalStatus: "rejected",
+      rejectionReason,
+    },
+  });
+}
+
 export function findApprovedByUserIdAndBusinessType(
   userId: string,
   businessType: BusinessType

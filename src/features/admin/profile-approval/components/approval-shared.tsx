@@ -1,8 +1,8 @@
-import type { ApprovalStatus, BusinessType } from "@/generated/prisma/client";
+import type { BusinessType } from "@/generated/prisma/client";
 import Image from "next/image";
-import type { ApprovalProfile } from "../types";
+import type { ApprovalProfile, ReviewApprovalStatus } from "../types";
 
-export type StatusFilter = ApprovalStatus | "all";
+export type StatusFilter = ReviewApprovalStatus | "all";
 export type TypeFilter = BusinessType | "all";
 
 export type ApprovalCounts = {
@@ -37,7 +37,7 @@ export const businessMeta: Record<
 };
 
 export const statusMeta: Record<
-  ApprovalStatus,
+  ReviewApprovalStatus,
   { label: string; icon: string; className: string; dot: string }
 > = {
   pending: {
@@ -58,12 +58,6 @@ export const statusMeta: Record<
     className: "border-rose-200 bg-rose-50 text-rose-700",
     dot: "bg-rose-500",
   },
-  not_submitted: {
-    label: "Chưa nộp",
-    icon: "draft",
-    className: "border-slate-200 bg-slate-50 text-slate-600",
-    dot: "bg-slate-400",
-  },
 };
 
 export function BusinessBadge({ type }: { type: BusinessType }) {
@@ -80,7 +74,7 @@ export function BusinessBadge({ type }: { type: BusinessType }) {
   );
 }
 
-export function StatusBadge({ status }: { status: ApprovalStatus }) {
+export function StatusBadge({ status }: { status: ReviewApprovalStatus }) {
   const meta = statusMeta[status];
   return (
     <span

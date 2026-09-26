@@ -1,5 +1,9 @@
 import type { NextConfig } from "next";
 
+const imageKitRemotePattern = process.env.IMAGEKIT_URL_ENDPOINT
+  ? new URL(`${process.env.IMAGEKIT_URL_ENDPOINT.replace(/\/+$/, "")}/**`)
+  : null;
+
 const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
@@ -25,6 +29,7 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "fastly.picsum.photos",
       },
+      ...(imageKitRemotePattern ? [imageKitRemotePattern] : []),
     ],
   },
 };

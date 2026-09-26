@@ -132,8 +132,8 @@ export function ApprovalProfilesTable({
                         {profile.licenseUrl ? "description" : "warning"}
                       </span>
                       {profile.licenseUrl
-                        ? "Đã đính kèm giấy phép"
-                        : "Thiếu giấy phép kinh doanh"}
+                        ? "Đã đính kèm hồ sơ"
+                        : "Thiếu hồ sơ pháp lý"}
                     </p>
                   </td>
                   <td className="px-4 py-4">

@@ -48,13 +48,17 @@ export function ApprovalProfilePreview({
   onNoteChange,
   onApprove,
   onReject,
+  isPending,
 }: {
   profile: ApprovalProfile;
   note: string;
   onNoteChange: (value: string) => void;
   onApprove: () => void;
   onReject: () => void;
+  isPending: boolean;
 }) {
+  const canReview = profile.approvalStatus === "pending";
+
   return (
     <aside className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm 2xl:sticky 2xl:top-0">
       <div className="border-b border-slate-100 px-5 py-4">
@@ -110,8 +114,8 @@ export function ApprovalProfilePreview({
             />
             <VerificationRow
               icon={profile.licenseUrl ? "task_alt" : "help"}
-              label="Giấy phép kinh doanh"
-              value={profile.licenseUrl ? "Có tệp" : "Cần bổ sung"}
+              label="Hồ sơ pháp lý / năng lực"
+              value={profile.licenseUrl ? "Có liên kết" : "Cần bổ sung"}
               tone={profile.licenseUrl ? "success" : "warning"}
             />
             <VerificationRow
@@ -173,7 +177,7 @@ export function ApprovalProfilePreview({
             <span className="material-symbols-outlined text-[16px]">
               description
             </span>
-            Xem giấy phép
+            Mở hồ sơ
           </a>
           <a
             className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-[11px] font-bold transition ${
@@ -197,15 +201,17 @@ export function ApprovalProfilePreview({
             Ghi chú phản hồi / Lý do từ chối
             <textarea
               className="mt-2 min-h-20 w-full resize-y rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-normal normal-case text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10"
+              disabled={!canReview || isPending}
               onChange={(event) => onNoteChange(event.target.value)}
               placeholder="Nhập lý do để gửi lại cho đối tác..."
+              maxLength={1000}
               value={note}
             />
           </label>
           <div className="mt-3 grid grid-cols-2 gap-2">
             <button
               className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-rose-50 px-3 py-3 text-xs font-bold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-40"
-              disabled={profile.approvalStatus === "rejected"}
+              disabled={!canReview || isPending}
               onClick={onReject}
               type="button"
             >
@@ -216,7 +222,7 @@ export function ApprovalProfilePreview({
             </button>
             <button
               className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-brand-500 px-3 py-3 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
-              disabled={profile.approvalStatus === "approved"}
+              disabled={!canReview || isPending}
               onClick={onApprove}
               type="button"
             >

@@ -320,19 +320,27 @@ export function ProfileForm({
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label className={labelClass} htmlFor="legalDocUrl">
-              Liên kết hồ sơ pháp lý / Năng lực (Google Drive, Dropbox...)
+              Liên kết hồ sơ pháp lý / năng lực
             </label>
             <div className="relative">
               <span className={inputIconClass}>link</span>
               <input
+                aria-describedby="legalDocUrlHint"
                 className={iconInputClass}
                 defaultValue={initialValues?.legalDocUrl}
                 id="legalDocUrl"
                 name="legalDocUrl"
-                placeholder="https://drive.google.com/..."
+                placeholder="https://drive.google.com/... hoặc https://dropbox.com/..."
                 type="url"
               />
             </div>
+            <p
+              className="mt-1.5 text-[11px] leading-relaxed text-slate-500"
+              id="legalDocUrlHint"
+            >
+              Dán liên kết Google Drive, Dropbox hoặc dịch vụ lưu trữ khác và
+              bật quyền xem cho bất kỳ ai có liên kết.
+            </p>
             {state.fieldErrors?.licenseUrl ? (
               <p className={fieldErrorClass}>
                 {state.fieldErrors.licenseUrl[0]}

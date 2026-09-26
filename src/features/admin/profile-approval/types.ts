@@ -3,6 +3,8 @@ import type {
   BusinessType,
 } from "@/generated/prisma/client";
 
+export type ReviewApprovalStatus = Exclude<ApprovalStatus, "not_submitted">;
+
 export type ApprovalProfile = {
   id: string;
   userId: string;
@@ -14,7 +16,7 @@ export type ApprovalProfile = {
   address: string | null;
   description: string | null;
   photoUrl: string | null;
-  approvalStatus: ApprovalStatus;
+  approvalStatus: ReviewApprovalStatus;
   rejectionReason: string | null;
   createdAt: string;
   updatedAt: string;
@@ -23,4 +25,14 @@ export type ApprovalProfile = {
     email: string;
     phone: string;
   };
+};
+
+export type ApprovalProfilePatch = Pick<
+  ApprovalProfile,
+  "id" | "approvalStatus" | "rejectionReason" | "updatedAt"
+>;
+
+export type ApprovalMutationResult = {
+  profiles: ApprovalProfilePatch[];
+  updatedCount: number;
 };

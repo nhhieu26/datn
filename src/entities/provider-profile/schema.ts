@@ -6,9 +6,18 @@ const optionalUrlSchema = z
   .string()
   .trim()
   .optional()
-  .refine((value) => !value || z.string().url().safeParse(value).success, {
-    message: "Đường dẫn không hợp lệ",
-  });
+  .refine(
+    (value) => {
+      if (!value) return true;
+      const parsed = z.string().url().safeParse(value);
+      if (!parsed.success) return false;
+      const protocol = new URL(parsed.data).protocol;
+      return protocol === "http:" || protocol === "https:";
+    },
+    {
+      message: "Liên kết phải là địa chỉ HTTP hoặc HTTPS hợp lệ",
+    }
+  );
 
 export const createProviderProfileSchema = z.object({
   businessName: z.string().trim().min(1, "Vui lòng nhập tên doanh nghiệp"),
