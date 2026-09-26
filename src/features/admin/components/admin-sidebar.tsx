@@ -3,7 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
 
 const navigation = [
   { label: "Tổng quan", icon: "space_dashboard", href: "/admin" },
@@ -35,30 +34,6 @@ export function AdminSidebar() {
             className="h-auto w-[145px]"
           />
         </Link>
-
-        <button
-          className="mb-6 flex w-full cursor-pointer items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/70 p-2.5 text-left transition hover:bg-slate-100/70"
-          onClick={() => signOut({ callbackUrl: "/admin/sign-in" })}
-          title="Đăng xuất"
-          type="button"
-        >
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-500 text-sm font-bold text-white shadow-sm ring-2 ring-white">
-              AD
-            </div>
-            <div className="truncate leading-tight">
-              <div className="truncate text-sm font-bold text-slate-900">
-                Admin Roamly
-              </div>
-              <div className="text-[11px] font-medium text-slate-500">
-                Quản trị viên
-              </div>
-            </div>
-          </div>
-          <span className="material-symbols-outlined ml-1 shrink-0 text-[18px] text-slate-400">
-            logout
-          </span>
-        </button>
 
         <nav aria-label="Menu quản trị" className="space-y-1.5">
           {navigation.map((item) => {
