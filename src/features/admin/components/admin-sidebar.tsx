@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 
 const navigation = [
   { label: "Tổng quan", icon: "space_dashboard", href: "/admin" },
@@ -35,7 +36,12 @@ export function AdminSidebar() {
           />
         </Link>
 
-        <div className="mb-6 flex cursor-pointer items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/70 p-2.5 transition hover:bg-slate-100/70">
+        <button
+          className="mb-6 flex w-full cursor-pointer items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/70 p-2.5 text-left transition hover:bg-slate-100/70"
+          onClick={() => signOut({ callbackUrl: "/admin/sign-in" })}
+          title="Đăng xuất"
+          type="button"
+        >
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-500 text-sm font-bold text-white shadow-sm ring-2 ring-white">
               AD
@@ -49,20 +55,10 @@ export function AdminSidebar() {
               </div>
             </div>
           </div>
-          <svg
-            className="ml-1 h-4 w-4 shrink-0 text-slate-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              d="M9 5l7 7-7 7"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-            />
-          </svg>
-        </div>
+          <span className="material-symbols-outlined ml-1 shrink-0 text-[18px] text-slate-400">
+            logout
+          </span>
+        </button>
 
         <nav aria-label="Menu quản trị" className="space-y-1.5">
           {navigation.map((item) => {
