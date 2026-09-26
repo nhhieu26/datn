@@ -1,4 +1,4 @@
-import type { ToursSummary } from "../mock-data";
+import { ToursSummary } from "../types";
 
 type SummaryCard = {
   label: string;
