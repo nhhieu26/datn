@@ -9,6 +9,11 @@ import {
   type StepDefinition,
 } from "@/shared/components/multi-step-form";
 import { createRestaurantAction } from "@/features/provider/restaurants/actions";
+import {
+  FIXED_TIME_SLOTS,
+  TIME_BOUNDARIES,
+  getSlotsWithinRange,
+} from "@/entities/restaurant/time-slots";
 import { LocationPicker, type LatLng } from "@/shared/components/location-picker";
 import { RestaurantPreviewCard } from "./restaurant-preview-card";
 
@@ -64,10 +69,6 @@ function createInitialMenuItem(): MenuItemDraft {
   return { name: "", description: "", price: "" };
 }
 
-function createInitialTimeSlot(): TimeSlotDraft {
-  return { startTime: "", endTime: "" };
-}
-
 function createInitialState(provinces: Province[]): RestaurantFormState {
   return {
     name: "",
@@ -80,8 +81,12 @@ function createInitialState(provinces: Province[]): RestaurantFormState {
     tagIds: [],
     photos: [],
     menu: [createInitialMenuItem()],
-    timeSlots: [createInitialTimeSlot()],
+    timeSlots: [],
   };
+}
+
+function sortTimeSlots(slots: TimeSlotDraft[]): TimeSlotDraft[] {
+  return [...slots].sort((a, b) => a.startTime.localeCompare(b.startTime));
 }
 
 export function RestaurantForm({
@@ -93,6 +98,10 @@ export function RestaurantForm({
 }) {
   const [form, setForm] = useState<RestaurantFormState>(() =>
     createInitialState(provinces)
+  );
+  const [rangeStart, setRangeStart] = useState(TIME_BOUNDARIES[0]);
+  const [rangeEnd, setRangeEnd] = useState(
+    TIME_BOUNDARIES[TIME_BOUNDARIES.length - 1]
   );
   const { currentStep, goTo, next, prev, isFirst, isLast } =
     useMultiStepForm(steps.length);
@@ -153,24 +162,31 @@ export function RestaurantForm({
       form.menu.filter((_, i) => i !== index)
     );
 
-  const updateTimeSlot = <K extends keyof TimeSlotDraft>(
-    index: number,
-    key: K,
-    value: TimeSlotDraft[K]
-  ) =>
+  const toggleTimeSlot = (slot: TimeSlotDraft) => {
+    const isSelected = form.timeSlots.some(
+      (s) => s.startTime === slot.startTime
+    );
     update(
       "timeSlots",
-      form.timeSlots.map((slot, i) =>
-        i === index ? { ...slot, [key]: value } : slot
+      sortTimeSlots(
+        isSelected
+          ? form.timeSlots.filter((s) => s.startTime !== slot.startTime)
+          : [...form.timeSlots, slot]
       )
     );
-  const addTimeSlot = () =>
-    update("timeSlots", [...form.timeSlots, createInitialTimeSlot()]);
-  const removeTimeSlot = (index: number) =>
-    update(
-      "timeSlots",
-      form.timeSlots.filter((_, i) => i !== index)
+  };
+
+  const applyRange = (rangeStart: string, rangeEnd: string) => {
+    const slotsInRange = getSlotsWithinRange(rangeStart, rangeEnd);
+    const existingStartTimes = new Set(
+      form.timeSlots.map((slot) => slot.startTime)
     );
+    const merged = [
+      ...form.timeSlots,
+      ...slotsInRange.filter((slot) => !existingStartTimes.has(slot.startTime)),
+    ];
+    update("timeSlots", sortTimeSlots(merged));
+  };
 
   const handleSubmit = () => {
     const fd = new FormData();
@@ -507,70 +523,94 @@ export function RestaurantForm({
                 Khung giờ phục vụ
               </h2>
               <p className="text-xs font-semibold text-slate-400">
-                Mỗi khung giờ bắt đầu không được trùng nhau.
+                Chọn khung giờ có sẵn bên dưới, hoặc chọn một khoảng thời gian để
+                hệ thống tự động chọn các khung giờ khả thi.
               </p>
-              <div className="space-y-4">
-                {form.timeSlots.map((slot, index) => (
-                  <div
-                    className="space-y-4 rounded-xl border border-slate-200 p-4"
-                    key={index}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-50 text-xs font-bold text-brand-600">
-                        {index + 1}
-                      </span>
-                      {form.timeSlots.length > 1 ? (
-                        <button
-                          className="text-xs font-semibold text-rose-500 hover:text-rose-600"
-                          onClick={() => removeTimeSlot(index)}
-                          type="button"
-                        >
-                          Xóa khung giờ này
-                        </button>
-                      ) : null}
-                    </div>
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <div>
-                        <label className={labelClass}>
-                          Giờ bắt đầu <span className="text-brand-500">*</span>
-                        </label>
-                        <input
-                          className={inputClass}
-                          onChange={(event) =>
-                            updateTimeSlot(
-                              index,
-                              "startTime",
-                              event.target.value
-                            )
-                          }
-                          type="time"
-                          value={slot.startTime}
-                        />
-                      </div>
-                      <div>
-                        <label className={labelClass}>
-                          Giờ kết thúc <span className="text-brand-500">*</span>
-                        </label>
-                        <input
-                          className={inputClass}
-                          onChange={(event) =>
-                            updateTimeSlot(index, "endTime", event.target.value)
-                          }
-                          type="time"
-                          value={slot.endTime}
-                        />
-                      </div>
-                    </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <label className={labelClass}>Chọn theo khoảng thời gian</label>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+                  <div>
+                    <label className="mb-1 block text-[11px] font-semibold text-slate-500">
+                      Từ
+                    </label>
+                    <select
+                      className={inputClass}
+                      onChange={(event) => setRangeStart(event.target.value)}
+                      value={rangeStart}
+                    >
+                      {TIME_BOUNDARIES.map((time) => (
+                        <option key={time} value={time}>
+                          {time}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                ))}
+                  <div>
+                    <label className="mb-1 block text-[11px] font-semibold text-slate-500">
+                      Đến
+                    </label>
+                    <select
+                      className={inputClass}
+                      onChange={(event) => setRangeEnd(event.target.value)}
+                      value={rangeEnd}
+                    >
+                      {TIME_BOUNDARIES.map((time) => (
+                        <option key={time} value={time}>
+                          {time}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    className="rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={rangeStart >= rangeEnd}
+                    onClick={() => applyRange(rangeStart, rangeEnd)}
+                    type="button"
+                  >
+                    Áp dụng khoảng giờ
+                  </button>
+                </div>
               </div>
-              <button
-                className="w-full rounded-xl border border-dashed border-slate-300 py-2.5 text-sm font-semibold text-slate-500 transition hover:border-brand-400 hover:text-brand-600"
-                onClick={addTimeSlot}
-                type="button"
-              >
-                + Thêm khung giờ mới
-              </button>
+
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <label className={labelClass}>
+                    Khung giờ cố định (bước 30 phút){" "}
+                    <span className="text-brand-500">*</span>
+                  </label>
+                  {form.timeSlots.length > 0 ? (
+                    <button
+                      className="text-xs font-semibold text-rose-500 hover:text-rose-600"
+                      onClick={() => update("timeSlots", [])}
+                      type="button"
+                    >
+                      Bỏ chọn tất cả
+                    </button>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {FIXED_TIME_SLOTS.map((slot) => {
+                    const selected = form.timeSlots.some(
+                      (s) => s.startTime === slot.startTime
+                    );
+                    return (
+                      <button
+                        className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold transition ${
+                          selected
+                            ? "border-brand-500 bg-brand-50 text-brand-600"
+                            : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                        }`}
+                        key={slot.startTime}
+                        onClick={() => toggleTimeSlot(slot)}
+                        type="button"
+                      >
+                        {slot.startTime} - {slot.endTime}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           ) : null}
 

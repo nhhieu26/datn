@@ -12,7 +12,7 @@ const valid = {
   description: "",
   tagIds: ["t1"],
   menu: [{ name: "Tôm hùm", description: "", price: "350000" }],
-  timeSlots: [{ startTime: "09:00", endTime: "22:00" }],
+  timeSlots: [{ startTime: "09:00", endTime: "09:30" }],
 };
 
 const ok = createRestaurantSchema.safeParse(valid);
@@ -50,8 +50,8 @@ if (!outOfRange.success) {
 const dup = createRestaurantSchema.safeParse({
   ...valid,
   timeSlots: [
-    { startTime: "09:00", endTime: "12:00" },
-    { startTime: "09:00", endTime: "22:00" },
+    { startTime: "09:00", endTime: "09:30" },
+    { startTime: "09:00", endTime: "09:30" },
   ],
 });
 assert.ok(!dup.success, "trùng giờ bắt đầu phải fail");
@@ -67,6 +67,12 @@ const badTime = createRestaurantSchema.safeParse({
   timeSlots: [{ startTime: "25:00", endTime: "26:00" }],
 });
 assert.ok(!badTime.success, "giờ không hợp lệ phải fail");
+
+const notOnGrid = createRestaurantSchema.safeParse({
+  ...valid,
+  timeSlots: [{ startTime: "09:00", endTime: "09:45" }],
+});
+assert.ok(!notOnGrid.success, "khung giờ không khớp lưới cố định phải fail");
 
 const emptyMenu = createRestaurantSchema.safeParse({ ...valid, menu: [] });
 assert.ok(!emptyMenu.success, "menu rỗng phải fail");
