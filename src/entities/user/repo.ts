@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { CreateUserInput, PublicUser, User } from "./type";
+import type { CreateUserInput, ProfileUser, PublicUser, User } from "./type";
 
 export function toPublicUser(user: User): PublicUser {
   const { password: _password, ...publicUser } = user;
@@ -12,6 +12,20 @@ export function findByEmail(email: string): Promise<User | null> {
 
 export function findByPhone(phone: string): Promise<User | null> {
   return prisma.user.findUnique({ where: { phone } });
+}
+
+export function findProfileById(id: string): Promise<ProfileUser | null> {
+  return prisma.user.findUnique({
+    where: { id },
+    select: {
+      fullname: true,
+      email: true,
+      phone: true,
+      role: true,
+      createdAt: true,
+      preferences: true,
+    },
+  });
 }
 
 export function createUser(
