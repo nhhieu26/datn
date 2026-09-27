@@ -9,6 +9,7 @@ import {
   type StepDefinition,
 } from "@/shared/components/multi-step-form";
 import { createRestaurantAction } from "@/features/provider/restaurants/actions";
+import { LocationPicker, type LatLng } from "@/shared/components/location-picker";
 import { RestaurantPreviewCard } from "./restaurant-preview-card";
 
 const INITIAL_ACTION_STATE = { status: "idle" as const };
@@ -43,6 +44,7 @@ export type RestaurantFormState = {
   name: string;
   provinceId: string;
   address: string;
+  location: LatLng | null;
   phone: string;
   capacity: string;
   description: string;
@@ -71,6 +73,7 @@ function createInitialState(provinces: Province[]): RestaurantFormState {
     name: "",
     provinceId: provinces[0]?.id ?? "",
     address: "",
+    location: null,
     phone: "",
     capacity: "1",
     description: "",
@@ -174,6 +177,10 @@ export function RestaurantForm({
     fd.append("name", form.name);
     fd.append("provinceId", form.provinceId);
     fd.append("address", form.address);
+    if (form.location) {
+      fd.append("latitude", String(form.location.lat));
+      fd.append("longitude", String(form.location.lng));
+    }
     fd.append("phone", form.phone);
     fd.append("capacity", form.capacity);
     fd.append("description", form.description);
@@ -301,6 +308,11 @@ export function RestaurantForm({
                   value={form.address}
                 />
               </div>
+
+              <LocationPicker
+                onChange={(value) => update("location", value)}
+                value={form.location}
+              />
 
               <div>
                 <label className={labelClass}>Thẻ / Tag phân loại</label>

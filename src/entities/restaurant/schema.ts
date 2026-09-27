@@ -2,6 +2,19 @@ import { z } from "zod";
 
 const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
 
+function coordinate(min: number, max: number, message: string) {
+  return z.preprocess(
+    (value) =>
+      value === "" || value === null || value === undefined
+        ? undefined
+        : Number(value),
+    z
+      .number({ error: message })
+      .min(min, "Toạ độ không hợp lệ")
+      .max(max, "Toạ độ không hợp lệ"),
+  );
+}
+
 export const menuItemDraftSchema = z.object({
   name: z.string().trim().min(1, "Vui lòng nhập tên món").max(200),
   description: z
@@ -27,6 +40,8 @@ export const createRestaurantSchema = z
     name: z.string().trim().min(1, "Vui lòng nhập tên nhà hàng").max(200),
     provinceId: z.string().trim().min(1, "Vui lòng chọn tỉnh/thành"),
     address: z.string().trim().min(1, "Vui lòng nhập địa chỉ").max(500),
+    latitude: coordinate(-90, 90, "Vui lòng chọn vị trí trên bản đồ"),
+    longitude: coordinate(-180, 180, "Vui lòng chọn vị trí trên bản đồ"),
     phone: z
       .string()
       .trim()

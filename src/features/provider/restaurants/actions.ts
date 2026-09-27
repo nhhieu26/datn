@@ -243,6 +243,8 @@ export async function createRestaurantAction(
       name: formData.get("name"),
       provinceId: formData.get("provinceId"),
       address: formData.get("address"),
+      latitude: formData.get("latitude"),
+      longitude: formData.get("longitude"),
       phone: formData.get("phone") ?? "",
       capacity: formData.get("capacity"),
       description: formData.get("description") ?? "",
