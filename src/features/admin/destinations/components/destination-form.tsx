@@ -1,7 +1,7 @@
 "use client";
 
 import type { Province, Tag } from "@/generated/prisma/client";
-import { useMemo, useState } from "react";
+import { startTransition, useActionState, useMemo, useState } from "react";
 import {
   StepFooter,
   StepperNav,
@@ -12,7 +12,10 @@ import {
   LocationPicker,
   type LatLng,
 } from "@/shared/components/location-picker";
+import { createDestinationAction } from "../actions";
 import { DestinationPreviewCard } from "./destination-preview-card";
+
+const INITIAL_ACTION_STATE = { status: "idle" as const };
 
 const MAX_DESCRIPTION_LENGTH = 2000;
 const MAX_PHOTOS = 5;
@@ -69,9 +72,12 @@ export function DestinationForm({
   const [form, setForm] = useState<DestinationFormState>(() =>
     createInitialState(provinces)
   );
-  const [submitted, setSubmitted] = useState(false);
   const { currentStep, goTo, next, prev, isFirst, isLast } = useMultiStepForm(
     steps.length
+  );
+  const [actionState, formAction, isPending] = useActionState(
+    createDestinationAction,
+    INITIAL_ACTION_STATE
   );
 
   const update = <K extends keyof DestinationFormState>(
@@ -109,8 +115,21 @@ export function DestinationForm({
     );
 
   const handleSubmit = () => {
-    // ponytail: UI-only — nối vào server action / API khi backend sẵn sàng.
-    setSubmitted(true);
+    const fd = new FormData();
+    fd.append("name", form.name);
+    fd.append("provinceId", form.provinceId);
+    fd.append("address", form.address);
+    fd.append("description", form.description);
+    fd.append("latitude", form.location ? String(form.location.lat) : "");
+    fd.append("longitude", form.location ? String(form.location.lng) : "");
+    fd.append("ticketPrice", form.ticketPrice);
+    fd.append("isPublished", form.isPublished ? "true" : "false");
+    fd.append("tagIds", JSON.stringify(form.tagIds));
+    form.photos.forEach((photo) => fd.append("photos", photo.file));
+
+    startTransition(() => {
+      formAction(fd);
+    });
   };
 
   return (
@@ -124,9 +143,18 @@ export function DestinationForm({
         </p>
       </section>
 
-      {submitted ? (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-600">
-          Đã ghi nhận thông tin địa điểm. Chức năng lưu đang chờ backend.
+      {actionState.status === "error" && actionState.formError ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600">
+          {actionState.formError}
+        </div>
+      ) : null}
+      {actionState.status === "error" && actionState.fieldErrors ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600">
+          <ul className="list-inside list-disc space-y-1">
+            {Object.entries(actionState.fieldErrors).map(([field, messages]) => (
+              <li key={field}>{messages.join(", ")}</li>
+            ))}
+          </ul>
         </div>
       ) : null}
 
@@ -336,10 +364,13 @@ export function DestinationForm({
           ) : null}
 
           <StepFooter
-            cancelHref="/admin"
+            cancelHref="/admin/destinations"
             isFirst={isFirst}
             isLast={isLast}
-            lastLabel="Hoàn tất & Lưu Địa điểm"
+            lastLabel={
+              isPending ? "Đang tạo địa điểm..." : "Hoàn tất & Lưu Địa điểm"
+            }
+            nextDisabled={isLast && isPending}
             onBack={prev}
             onNext={isLast ? handleSubmit : next}
           />

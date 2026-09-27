@@ -9,9 +9,9 @@ const navigation = [
   { label: "Duyệt hồ sơ đối tác", icon: "badge", href: "/admin/profile-approval" },
   { label: "Duyệt dịch vụ", icon: "verified", href: "#" },
   {
-    label: "Tạo địa điểm du lịch",
+    label: "Quản lý địa điểm",
     icon: "add_location_alt",
-    href: "/admin/destinations/create",
+    href: "/admin/destinations",
   },
   { label: "Quản lý người dùng", icon: "group", href: "#" },
   { label: "Báo cáo & thống kê", icon: "monitoring", href: "#" },
