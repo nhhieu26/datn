@@ -26,6 +26,7 @@ export function HotelPreviewCard({
   address,
   description,
   amenities,
+  tagNames,
   rooms,
   photoUrl,
   photoCount,
@@ -35,6 +36,7 @@ export function HotelPreviewCard({
   address: string;
   description: string;
   amenities: string[];
+  tagNames: string[];
   rooms: RoomDraft[];
   photoUrl?: string;
   photoCount: number;
@@ -118,6 +120,19 @@ export function HotelPreviewCard({
 
             {address ? (
               <p className="text-xs font-medium text-slate-500">{address}</p>
+            ) : null}
+
+            {tagNames.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {tagNames.map((tagName) => (
+                  <span
+                    className="inline-block rounded-full border border-emerald-200/60 bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700"
+                    key={tagName}
+                  >
+                    {tagName}
+                  </span>
+                ))}
+              </div>
             ) : null}
 
             {amenities.length > 0 ? (

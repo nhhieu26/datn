@@ -18,6 +18,7 @@ import {
 } from "@/entities/hotel";
 import { providerProfileRepo } from "@/entities/provider-profile";
 import { provinceRepo } from "@/entities/province";
+import { tagRepo } from "@/entities/tag";
 import type { ActionState } from "@/shared/lib/action-state";
 
 export type CreateHotelActionState = ActionState;
@@ -247,6 +248,7 @@ export async function createHotelAction(
       longitude: formData.get("longitude"),
       description: formData.get("description"),
       amenities: parseJsonField<string[]>(formData, "amenities", []),
+      tagIds: parseJsonField<string[]>(formData, "tagIds", []),
       rooms: rawRooms,
     });
 
@@ -284,6 +286,15 @@ export async function createHotelAction(
       return {
         status: "error",
         fieldErrors: { provinceId: ["Tỉnh/thành đã chọn không tồn tại."] },
+      };
+    }
+
+    const tagIds = [...new Set(parsed.data.tagIds)];
+    const tags = await tagRepo.findManyByIds(tagIds);
+    if (tags.length !== tagIds.length) {
+      return {
+        status: "error",
+        fieldErrors: { tagIds: ["Một hoặc nhiều thẻ đã chọn không tồn tại."] },
       };
     }
 
@@ -345,6 +356,7 @@ export async function createHotelAction(
     stage = "database";
     const hotel = await createHotelWithUniqueSlug({
       ...parsed.data,
+      tagIds,
       providerProfileId: providerProfile.id,
       images: hotelImages,
       rooms: parsed.data.rooms.map((room, index) => ({
@@ -360,6 +372,7 @@ export async function createHotelAction(
       parsed.data.description,
       province.fullName,
       parsed.data.address,
+      tags.map((tag) => tag.name).join(", "),
       parsed.data.amenities.join(", "),
       parsed.data.rooms.map((room) => room.name).join(", "),
       parsed.data.rooms.map((room) => room.description).join(", "),
@@ -372,6 +385,7 @@ export async function createHotelAction(
     await upsertHotelEmbedding(hotel.id, vector, {
       name: parsed.data.name,
       provinceId: parsed.data.provinceId,
+      tagIds,
       status: hotel.status,
       providerProfileId: providerProfile.id,
     });

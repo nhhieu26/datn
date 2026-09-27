@@ -31,6 +31,18 @@ assert(ok.success, "toạ độ hợp lệ phải được chấp nhận");
 if (ok.success) {
   assert(ok.data.latitude === 16.05, "latitude phải ép về number");
   assert(ok.data.longitude === 108.2, "longitude phải ép về number");
+  assert(ok.data.tagIds.length === 0, "tagIds mặc định là mảng rỗng");
+}
+
+const withTags = createHotelSchema.safeParse({
+  ...base,
+  latitude: "16.05",
+  longitude: "108.2",
+  tagIds: ["t1", "t2"],
+});
+assert(withTags.success, "tagIds hợp lệ phải được chấp nhận");
+if (withTags.success) {
+  assert(withTags.data.tagIds.length === 2, "tagIds phải giữ đủ id");
 }
 
 const missing = createHotelSchema.safeParse({

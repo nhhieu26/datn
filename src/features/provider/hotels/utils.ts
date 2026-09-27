@@ -53,6 +53,7 @@ export function mapHotelToListItem(hotel: HotelWithRelations): HotelListItem {
     totalRoomQuantity: hotel.rooms.reduce((sum, room) => sum + room.quantity, 0),
     lowestRoomPrice: findLowestRoomBasePrice(hotel.rooms),
     averageRoomPrice: findAverageRoomBasePrice(hotel.rooms),
+    tagNames: hotel.tags.map((item) => item.tag.name),
     totalBookings: 0,
     rating: null,
     reviewCount: 0,

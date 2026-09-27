@@ -1,6 +1,6 @@
 "use client";
 
-import type { Province } from "@/generated/prisma/client";
+import type { Province, Tag } from "@/generated/prisma/client";
 import { startTransition, useActionState, useMemo, useState } from "react";
 import {
   StepFooter,
@@ -45,6 +45,7 @@ export type HotelFormState = {
   location: LatLng | null;
   description: string;
   amenities: string[];
+  tagIds: string[];
   photos: HotelPhoto[];
   rooms: RoomDraft[];
 };
@@ -75,6 +76,7 @@ function createInitialState(provinces: Province[]): HotelFormState {
     location: null,
     description: "",
     amenities: [],
+    tagIds: [],
     photos: [],
     rooms: [createInitialRoom()],
   };
@@ -198,7 +200,13 @@ function PhotoPicker({
   );
 }
 
-export function HotelForm({ provinces }: { provinces: Province[] }) {
+export function HotelForm({
+  provinces,
+  tags,
+}: {
+  provinces: Province[];
+  tags: Tag[];
+}) {
   const [form, setForm] = useState<HotelFormState>(() =>
     createInitialState(provinces)
   );
@@ -218,6 +226,15 @@ export function HotelForm({ provinces }: { provinces: Province[] }) {
     () => provinces.find((province) => province.id === form.provinceId),
     [provinces, form.provinceId]
   );
+
+  const toggleTag = (tagId: string) => {
+    update(
+      "tagIds",
+      form.tagIds.includes(tagId)
+        ? form.tagIds.filter((id) => id !== tagId)
+        : [...form.tagIds, tagId]
+    );
+  };
 
   const handlePhotoSelect = (files: FileList | null) => {
     if (!files) return;
@@ -283,6 +300,7 @@ export function HotelForm({ provinces }: { provinces: Province[] }) {
     }
     fd.append("description", form.description);
     fd.append("amenities", JSON.stringify(form.amenities));
+    fd.append("tagIds", JSON.stringify(form.tagIds));
     fd.append(
       "rooms",
       JSON.stringify(
@@ -402,6 +420,34 @@ export function HotelForm({ provinces }: { provinces: Province[] }) {
                 onChange={(value) => update("location", value)}
                 value={form.location}
               />
+
+              <div>
+                <label className={labelClass}>Thẻ / Tag phân loại</label>
+                <div className="flex flex-wrap gap-2">
+                  {tags.map((tag) => {
+                    const selected = form.tagIds.includes(tag.id);
+                    return (
+                      <button
+                        className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold transition ${
+                          selected
+                            ? "border-brand-500 bg-brand-50 text-brand-600"
+                            : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                        }`}
+                        key={tag.id}
+                        onClick={() => toggleTag(tag.id)}
+                        type="button"
+                      >
+                        {tag.name}
+                      </button>
+                    );
+                  })}
+                  {tags.length === 0 ? (
+                    <p className="text-xs font-medium text-slate-400">
+                      Chưa có tag nào trong hệ thống.
+                    </p>
+                  ) : null}
+                </div>
+              </div>
 
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
@@ -634,6 +680,9 @@ export function HotelForm({ provinces }: { provinces: Province[] }) {
               photoUrl={form.photos[0]?.previewUrl}
               provinceName={selectedProvince?.fullName}
               rooms={form.rooms}
+              tagNames={tags
+                .filter((tag) => form.tagIds.includes(tag.id))
+                .map((tag) => tag.name)}
             />
           </div>
         </div>

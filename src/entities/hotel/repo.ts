@@ -18,6 +18,7 @@ export function findAllByProviderProfileId(
     where: { providerProfileId },
     include: {
       province: true,
+      tags: { include: { tag: true } },
       rooms: true,
     },
     orderBy: { createdAt: "desc" },
@@ -35,13 +36,17 @@ export function create(input: {
   providerProfileId: string;
   slug: string;
   images: UploadedImage[];
+  tagIds: string[];
   rooms: (RoomDraftInput & { images: UploadedImage[] })[];
 }): Promise<Hotel> {
-  const { rooms, images, ...rest } = input;
+  const { rooms, images, tagIds, ...rest } = input;
   return prisma.hotel.create({
     data: {
       ...rest,
       images,
+      tags: {
+        create: tagIds.map((tagId) => ({ tagId })),
+      },
       rooms: {
         create: rooms.map((room) => ({
           name: room.name,

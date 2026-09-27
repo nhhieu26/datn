@@ -122,6 +122,11 @@ function HotelRow({ hotel }: { hotel: HotelListItem }) {
               />
               {hotel.provinceName}
             </span>
+            {hotel.tagNames.length > 0 ? (
+              <span className="mt-0.5 truncate text-xs text-slate-400">
+                {hotel.tagNames.join(", ")}
+              </span>
+            ) : null}
           </div>
         </div>
       </td>
@@ -330,7 +335,8 @@ export function HotelsManager({ hotels }: { hotels: HotelListItem[] }) {
         hotel.name.toLowerCase().includes(query) ||
         hotel.code.toLowerCase().includes(query) ||
         hotel.provinceName.toLowerCase().includes(query) ||
-        hotel.address.toLowerCase().includes(query);
+        hotel.address.toLowerCase().includes(query) ||
+        hotel.tagNames.some((tag) => tag.toLowerCase().includes(query));
       const matchesStatus =
         statusFilter === "all" || hotel.status === statusFilter;
       return matchesSearch && matchesStatus;
