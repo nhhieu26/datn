@@ -9,6 +9,7 @@ export type RoomDraftInput = z.infer<typeof roomDraftSchema>;
 export type HotelWithRelations = Prisma.HotelGetPayload<{
   include: {
     province: true;
+    tags: { include: { tag: true } };
     rooms: true;
   };
 }>;

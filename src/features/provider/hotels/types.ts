@@ -12,6 +12,7 @@ export type HotelListItem = {
   totalRoomQuantity: number;
   lowestRoomPrice: number | null;
   averageRoomPrice: number | null;
+  tagNames: string[];
   totalBookings: number;
   rating: number | null;
   reviewCount: number;

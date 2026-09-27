@@ -38,5 +38,6 @@ export const createHotelSchema = z.object({
     .min(1, "Vui lòng nhập mô tả")
     .max(2000, "Mô tả tối đa 2000 ký tự"),
   amenities: z.array(z.string()).default([]),
+  tagIds: z.array(z.string()).default([]),
   rooms: z.array(roomDraftSchema).min(1, "Cần ít nhất 1 loại phòng"),
 });
