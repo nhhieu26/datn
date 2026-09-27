@@ -364,3 +364,115 @@ export async function createRestaurantAction(
   revalidatePath("/provider/restaurants");
   redirect("/provider/restaurants");
 }
+
+export async function createRestaurantFromLinksAction(
+  _prevState: CreateRestaurantActionState,
+  formData: FormData
+): Promise<CreateRestaurantActionState> {
+  let createdRestaurantId: string | null = null;
+  let embeddingUpsertAttempted = false;
+  let stage: CreationStage = "authorization";
+
+  try {
+    const providerProfileId = formData.get("providerProfileId");
+    if (typeof providerProfileId !== "string" || !providerProfileId) {
+      return { status: "error", formError: "Thiếu hồ sơ nhà cung cấp." };
+    }
+
+    stage = "validation";
+    const parsed = createRestaurantSchema.safeParse({
+      name: formData.get("name"),
+      provinceId: formData.get("provinceId"),
+      address: formData.get("address"),
+      latitude: formData.get("latitude"),
+      longitude: formData.get("longitude"),
+      phone: formData.get("phone") ?? "",
+      capacity: formData.get("capacity"),
+      description: formData.get("description") ?? "",
+      tagIds: parseJsonField<string[]>(formData, "tagIds", []),
+      menu: parseJsonField<unknown[]>(formData, "menu", []),
+      timeSlots: parseJsonField<unknown[]>(formData, "timeSlots", []),
+    });
+
+    if (!parsed.success) {
+      return {
+        status: "error",
+        fieldErrors: parsed.error.flatten().fieldErrors as Record<
+          string,
+          string[]
+        >,
+      };
+    }
+
+    const imageUrls = parseJsonField<string[]>(formData, "imageUrls", []);
+
+    const province = await provinceRepo.findById(parsed.data.provinceId);
+    if (!province) {
+      return {
+        status: "error",
+        fieldErrors: { provinceId: ["Tỉnh/thành đã chọn không tồn tại."] },
+      };
+    }
+
+    const tagIds = [...new Set(parsed.data.tagIds)];
+    const tags = await tagRepo.findManyByIds(tagIds);
+    if (tags.length !== tagIds.length) {
+      return {
+        status: "error",
+        fieldErrors: { tagIds: ["Một hoặc nhiều thẻ đã chọn không tồn tại."] },
+      };
+    }
+
+    stage = "database";
+    const restaurant = await createRestaurantWithUniqueSlug({
+      ...parsed.data,
+      tagIds,
+      providerProfileId,
+      images: imageUrls.map((url) => ({ url, fileId: url })),
+    });
+    createdRestaurantId = restaurant.id;
+
+    stage = "embedding";
+    const embeddingText = [
+      parsed.data.name,
+      parsed.data.description,
+      province.fullName,
+      parsed.data.address,
+      tags.map((tag) => tag.name).join(", "),
+      parsed.data.menu.map((item) => item.name).join(", "),
+      parsed.data.menu.map((item) => item.description).join(", "),
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const vector = await embedText(embeddingText);
+    embeddingUpsertAttempted = true;
+    await upsertRestaurantEmbedding(restaurant.id, vector, {
+      name: parsed.data.name,
+      provinceId: parsed.data.provinceId,
+      tagIds,
+      status: restaurant.status,
+      providerProfileId,
+    });
+  } catch (error) {
+    const cleanupFailures = await rollbackRestaurantCreation({
+      uploadedImages: [],
+      createdRestaurantId,
+      embeddingUpsertAttempted,
+    });
+
+    console.error("Tạo nhà hàng thất bại", {
+      stage,
+      createdRestaurantId,
+      error,
+      cleanupFailures,
+    });
+
+    return {
+      status: "error",
+      formError: STAGE_ERROR_MESSAGES[stage],
+    };
+  }
+
+  return { status: "success" };
+}

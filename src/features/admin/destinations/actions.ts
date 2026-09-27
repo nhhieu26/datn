@@ -327,3 +327,105 @@ export async function createDestinationAction(
   revalidatePath("/admin/destinations");
   redirect("/admin/destinations");
 }
+
+export async function createDestinationFromLinksAction(
+  _prevState: CreateDestinationActionState,
+  formData: FormData
+): Promise<CreateDestinationActionState> {
+  let createdDestinationId: string | null = null;
+  let embeddingUpsertAttempted = false;
+  let stage: CreationStage = "authorization";
+
+  try {
+    stage = "validation";
+    const parsed = createDestinationSchema.safeParse({
+      name: formData.get("name"),
+      provinceId: formData.get("provinceId"),
+      address: formData.get("address"),
+      description: formData.get("description"),
+      latitude: formData.get("latitude"),
+      longitude: formData.get("longitude"),
+      ticketPrice: formData.get("ticketPrice"),
+      isPublished: formData.get("isPublished") ?? "true",
+      tagIds: parseJsonField<string[]>(formData, "tagIds", []),
+    });
+
+    if (!parsed.success) {
+      return {
+        status: "error",
+        fieldErrors: parsed.error.flatten().fieldErrors as Record<
+          string,
+          string[]
+        >,
+      };
+    }
+
+    const imageUrls = parseJsonField<string[]>(formData, "imageUrls", []);
+
+    const tagIds = [...new Set(parsed.data.tagIds)];
+    const [province, tags] = await Promise.all([
+      provinceRepo.findById(parsed.data.provinceId),
+      tagRepo.findManyByIds(tagIds),
+    ]);
+    if (!province) {
+      return {
+        status: "error",
+        fieldErrors: { provinceId: ["Tỉnh/thành đã chọn không tồn tại."] },
+      };
+    }
+    if (tags.length !== tagIds.length) {
+      return {
+        status: "error",
+        fieldErrors: { tagIds: ["Một hoặc nhiều thẻ đã chọn không tồn tại."] },
+      };
+    }
+
+    stage = "database";
+    const destination = await createDestinationWithUniqueSlug({
+      ...parsed.data,
+      tagIds,
+      images: imageUrls.map((url) => ({ url, fileId: url })),
+    });
+    createdDestinationId = destination.id;
+
+    stage = "embedding";
+    const embeddingText = [
+      parsed.data.name,
+      parsed.data.description,
+      province.fullName,
+      parsed.data.address,
+      tags.map((tag) => tag.name).join(", "),
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const vector = await embedText(embeddingText);
+    embeddingUpsertAttempted = true;
+    await upsertDestinationEmbedding(destination.id, vector, {
+      name: parsed.data.name,
+      provinceId: parsed.data.provinceId,
+      tagIds,
+      isPublished: parsed.data.isPublished,
+    });
+  } catch (error) {
+    const cleanupFailures = await rollbackDestinationCreation({
+      uploadedImages: [],
+      createdDestinationId,
+      embeddingUpsertAttempted,
+    });
+
+    console.error("Tạo địa điểm thất bại", {
+      stage,
+      createdDestinationId,
+      error,
+      cleanupFailures,
+    });
+
+    return {
+      status: "error",
+      formError: STAGE_ERROR_MESSAGES[stage],
+    };
+  }
+
+  return { status: "success" };
+}
