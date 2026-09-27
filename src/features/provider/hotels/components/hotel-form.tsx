@@ -10,6 +10,7 @@ import {
 } from "@/shared/components/multi-step-form";
 import { createHotelAction } from "@/features/provider/hotels/actions";
 import { HotelPreviewCard } from "./hotel-preview-card";
+import { LocationPicker, type LatLng } from "@/shared/components/location-picker";
 
 const INITIAL_ACTION_STATE = { status: "idle" as const };
 
@@ -41,6 +42,7 @@ export type HotelFormState = {
   name: string;
   provinceId: string;
   address: string;
+  location: LatLng | null;
   description: string;
   amenities: string[];
   photos: HotelPhoto[];
@@ -70,6 +72,7 @@ function createInitialState(provinces: Province[]): HotelFormState {
     name: "",
     provinceId: provinces[0]?.id ?? "",
     address: "",
+    location: null,
     description: "",
     amenities: [],
     photos: [],
@@ -274,6 +277,10 @@ export function HotelForm({ provinces }: { provinces: Province[] }) {
     fd.append("name", form.name);
     fd.append("provinceId", form.provinceId);
     fd.append("address", form.address);
+    if (form.location) {
+      fd.append("latitude", String(form.location.lat));
+      fd.append("longitude", String(form.location.lng));
+    }
     fd.append("description", form.description);
     fd.append("amenities", JSON.stringify(form.amenities));
     fd.append(
@@ -390,6 +397,11 @@ export function HotelForm({ provinces }: { provinces: Province[] }) {
                   />
                 </div>
               </div>
+
+              <LocationPicker
+                onChange={(value) => update("location", value)}
+                value={form.location}
+              />
 
               <div>
                 <div className="mb-1.5 flex items-center justify-between">

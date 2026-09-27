@@ -28,6 +28,8 @@ export function create(input: {
   name: string;
   provinceId: string;
   address: string;
+  latitude: number;
+  longitude: number;
   description: string;
   amenities: string[];
   providerProfileId: string;

@@ -243,6 +243,8 @@ export async function createHotelAction(
       name: formData.get("name"),
       provinceId: formData.get("provinceId"),
       address: formData.get("address"),
+      latitude: formData.get("latitude"),
+      longitude: formData.get("longitude"),
       description: formData.get("description"),
       amenities: parseJsonField<string[]>(formData, "amenities", []),
       rooms: rawRooms,
