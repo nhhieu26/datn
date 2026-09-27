@@ -45,7 +45,7 @@ const ITINERARY = [
 export function PersonalizedJourneySection() {
   return (
     <section
-      className="py-6 sm:py-10 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center mb-12"
+      className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center py-4 mb-8"
       data-purpose="personalized-itinerary"
     >
       <div className="lg:col-span-5 space-y-6">
@@ -80,12 +80,12 @@ export function PersonalizedJourneySection() {
         </div>
       </div>
 
-      <div className="lg:col-span-7 flex justify-center lg:justify-end relative">
-        <div className="relative w-full max-w-md">
-          <div className="absolute inset-0 bg-white/70 rounded-3xl border border-gray-200/80 shadow-md transform -rotate-3 -translate-x-3 translate-y-3 pointer-events-none" />
-          <div className="absolute inset-0 bg-white/40 rounded-3xl border border-gray-200/50 shadow-sm transform rotate-2 translate-x-2 -translate-y-1 pointer-events-none" />
+      <div className="lg:col-span-7 flex justify-center relative">
+        <div className="relative w-full max-w-md -translate-x-6">
+          <div className="absolute inset-0 bg-white/70 rounded-3xl border border-gray-200/80 shadow-md transform rotate-3 translate-x-3 translate-y-3 pointer-events-none" />
+          <div className="absolute inset-0 bg-white/40 rounded-3xl border border-gray-200/50 shadow-sm transform -rotate-2 -translate-x-2 -translate-y-1 pointer-events-none" />
 
-          <div className="relative bg-white rounded-3xl p-6 shadow-xl border border-gray-100 z-10 space-y-5">
+          <div className="relative bg-white rounded-3xl p-6 shadow-xl border border-gray-100 z-10 space-y-5 hover:-translate-y-1 transition duration-500 hover:shadow-2xl">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <span className="text-brand-orange text-lg">✦</span>

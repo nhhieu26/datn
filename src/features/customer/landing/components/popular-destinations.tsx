@@ -36,18 +36,18 @@ const DESTINATIONS = [
 
 export function PopularDestinations() {
   return (
-    <section className="space-y-6 mb-12" data-purpose="popular-destinations">
+    <section className="space-y-5 mb-8" data-purpose="popular-destinations">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900">
           Điểm Đến Phổ Biến
         </h2>
         <Link
-          className="text-xs sm:text-sm font-semibold text-gray-700 hover:text-black flex items-center gap-1.5 transition"
+          className="group text-xs sm:text-sm font-semibold text-gray-700 hover:text-black flex items-center gap-1.5 transition"
           href="#all-destinations"
         >
           <span className="">Xem tất cả điểm đến</span>
           <svg
-            className="w-4 h-4"
+            className="w-4 h-4 transition-transform group-hover:translate-x-1 duration-200"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -66,7 +66,7 @@ export function PopularDestinations() {
         {DESTINATIONS.map((destination) => (
           <div
             key={destination.name}
-            className="group relative rounded-2xl overflow-hidden aspect-[4/5] shadow-sm cursor-pointer"
+            className="group relative rounded-2xl overflow-hidden aspect-[4/5] shadow-sm cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
           >
             <Image
               alt={destination.name}

@@ -10,7 +10,7 @@ const QUICK_PROMPTS = [
 export function AskPlanTravelAiSection() {
   return (
     <section
-      className="py-8 sm:py-14 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center mb-12"
+      className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center py-4 mb-8"
       data-purpose="ai-assistant-showcase"
     >
       <div className="lg:col-span-4 space-y-6">
@@ -87,9 +87,9 @@ export function AskPlanTravelAiSection() {
           </div>
         </div>
 
-        <div className="relative z-10 w-full max-w-xl bg-white rounded-3xl p-6 sm:p-7 shadow-xl border border-gray-100 space-y-6 md:mr-28">
+        <div className="relative z-10 w-full max-w-xl bg-white rounded-3xl p-6 sm:p-7 shadow-xl border border-gray-100 md:mr-28 space-y-5">
           <div className="flex items-start gap-4">
-            <div className="w-11 h-11 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shrink-0 shadow-sm">
+            <div className="w-11 h-11 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shrink-0 shadow-sm ring-4 ring-indigo-100 transition-all hover:scale-105">
               <svg
                 className="w-6 h-6"
                 fill="currentColor"

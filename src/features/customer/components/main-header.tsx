@@ -30,7 +30,7 @@ export function MainHeader() {
       </Link>
 
       <nav
-        className="hidden lg:flex items-center space-x-8 text-sm font-medium text-gray-700"
+        className="hidden lg:flex items-center space-x-8 text-sm font-semibold text-gray-700"
         data-purpose="desktop-nav"
       >
         {NAV_ITEMS.map((item) => (
@@ -82,7 +82,10 @@ export function MainHeader() {
               strokeWidth="2"
             />
           </svg>
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-brand-orange rounded-full" />
+          <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-orange opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-orange" />
+          </span>
         </button>
 
         <HeaderAuthButton />

@@ -29,7 +29,7 @@ const FILTERS = [
 export function SearchPillsBar() {
   return (
     <section
-      className="flex flex-wrap items-center gap-3 mb-8"
+      className="flex flex-wrap items-center gap-3 mb-5"
       data-purpose="quick-search-filters"
     >
       <div className="relative flex-1 min-w-[280px] max-w-sm">

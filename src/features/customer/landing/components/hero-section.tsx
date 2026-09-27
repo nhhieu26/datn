@@ -10,7 +10,7 @@ const HERO_STATS = [
 export function HeroSection() {
   return (
     <section
-      className="relative rounded-[32px] overflow-hidden shadow-2xl min-h-[580px] flex items-center mb-12"
+      className="relative rounded-[32px] overflow-hidden shadow-2xl min-h-[580px] flex items-center mb-8"
       data-purpose="hero-banner"
     >
       <div className="absolute inset-0 z-0">
@@ -77,6 +77,9 @@ export function HeroSection() {
             <div className="flex items-center justify-between pb-4 border-b border-gray-200/60 mb-5">
               <button className="font-bold text-sm text-gray-900 pb-2 relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-[2.5px] after:bg-[#111827] after:rounded-full">
                 Lên lịch trình
+              </button>
+              <button className="font-medium text-sm text-gray-500 hover:text-gray-800 pb-2">
+                Tìm chỗ ở
               </button>
             </div>
 
