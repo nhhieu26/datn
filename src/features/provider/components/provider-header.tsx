@@ -1,3 +1,7 @@
+"use client";
+
+import { signOut } from "next-auth/react";
+
 export function ProviderHeader({
   user,
 }: {
@@ -32,6 +36,27 @@ export function ProviderHeader({
             />
           </svg>
           <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-brand-500 ring-2 ring-white" />
+        </button>
+        <button
+          className="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-brand-600"
+          onClick={() => signOut({ callbackUrl: "/sign-in" })}
+          type="button"
+          aria-label="Đăng xuất"
+          title="Đăng xuất"
+        >
+          <svg
+            className="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+            />
+          </svg>
         </button>
         <div className="h-6 w-px bg-slate-200" />
         <div className="group flex cursor-pointer items-center gap-3 pl-1">

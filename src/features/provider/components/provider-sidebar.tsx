@@ -123,7 +123,7 @@ export function ProviderSidebar({
       data-purpose="sidebar-navigation"
     >
       <div className="overflow-y-auto p-6">
-        <Link href="/" className="mb-7 flex h-9 items-center" aria-label="Roamly">
+        <Link href="/provider" className="mb-7 flex h-9 items-center" aria-label="Roamly">
           <Image
             src="/logo.png"
             alt="Roamly"
