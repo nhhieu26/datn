@@ -74,7 +74,7 @@ export function RegisterForm() {
           router.push("/sign-in");
           return;
         }
-        router.push(accountType === "provider" ? "/provider" : "/");
+        router.push(accountType === "provider" ? "/provider" : "/profile");
       })
       .finally(() => setIsSigningIn(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps

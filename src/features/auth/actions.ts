@@ -1,7 +1,7 @@
 "use server";
 
 import bcrypt from "bcryptjs";
-import { findByEmail, createUser } from "@/entities/user/repo";
+import { findByEmail, findByPhone, createUser } from "@/entities/user/repo";
 import { registerFormSchema } from "./schema";
 import { fromZodError, runAction, type ActionState } from "@/shared/lib/action-state";
 import { ConflictError, ValidationError } from "@/shared/lib/errors";
@@ -31,6 +31,11 @@ export async function registerAction(
     const existingUser = await findByEmail(email);
     if (existingUser) {
       throw new ConflictError("Email này đã được sử dụng.");
+    }
+
+    const existingPhone = await findByPhone(phone);
+    if (existingPhone) {
+      throw new ConflictError("Số điện thoại này đã được sử dụng.");
     }
 
     const passwordHash = await bcrypt.hash(password, 10);

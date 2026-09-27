@@ -10,6 +10,10 @@ export function findByEmail(email: string): Promise<User | null> {
   return prisma.user.findUnique({ where: { email } });
 }
 
+export function findByPhone(phone: string): Promise<User | null> {
+  return prisma.user.findUnique({ where: { phone } });
+}
+
 export function createUser(
   input: Omit<CreateUserInput, "password"> & { passwordHash: string }
 ): Promise<User> {
