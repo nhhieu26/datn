@@ -6,6 +6,7 @@ import { seedUsers } from "./seed-user";
 import { seedHotels } from "./seed-hotel";
 import { seedRestaurants } from "./seed-restaurant";
 import { seedDestinations } from "./seed-destination";
+import { seedTours } from "./seed-tour";
 
 async function main() {
   console.log("Seeding provinces...");
@@ -25,6 +26,9 @@ async function main() {
 
   console.log("\nSeeding destinations...");
   await seedDestinations();
+
+  console.log("\nSeeding tours...");
+  await seedTours();
 
   console.log("\nAll seeds completed.");
 }

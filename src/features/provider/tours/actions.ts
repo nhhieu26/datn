@@ -342,3 +342,123 @@ export async function createTourAction(
   revalidatePath("/provider/tours");
   redirect("/provider/tours");
 }
+
+export async function createTourFromLinksAction(
+  _prevState: CreateTourActionState,
+  formData: FormData,
+): Promise<CreateTourActionState> {
+  let createdTourId: string | null = null;
+  let embeddingUpsertAttempted = false;
+  let stage: CreationStage = "authorization";
+
+  try {
+    const providerProfileId = formData.get("providerProfileId");
+    if (typeof providerProfileId !== "string" || !providerProfileId) {
+      return { status: "error", formError: "Thiếu hồ sơ nhà cung cấp." };
+    }
+
+    stage = "validation";
+    const parsed = createTourSchema.safeParse({
+      title: formData.get("title"),
+      provinceId: formData.get("provinceId"),
+      tagIds: parseJsonField<string[]>(formData, "tagIds", []),
+      durationDays: formData.get("durationDays"),
+      durationNights: formData.get("durationNights"),
+      description: formData.get("description"),
+      includeServices: parseJsonField<string[]>(
+        formData,
+        "includeServices",
+        [],
+      ),
+      excludeServices: parseJsonField<string[]>(
+        formData,
+        "excludeServices",
+        [],
+      ),
+      itinerary: parseJsonField(formData, "itinerary", []),
+      basePrice: formData.get("basePrice"),
+      departures: parseJsonField(formData, "departures", []),
+    });
+
+    if (!parsed.success) {
+      return {
+        status: "error",
+        fieldErrors: parsed.error.flatten().fieldErrors as Record<
+          string,
+          string[]
+        >,
+      };
+    }
+
+    const imageUrls = parseJsonField<string[]>(formData, "imageUrls", []);
+
+    const tagIds = [...new Set(parsed.data.tagIds)];
+    const [province, tags] = await Promise.all([
+      provinceRepo.findById(parsed.data.provinceId),
+      tagRepo.findManyByIds(tagIds),
+    ]);
+    if (!province) {
+      return {
+        status: "error",
+        fieldErrors: { provinceId: ["Tỉnh/thành đã chọn không tồn tại."] },
+      };
+    }
+    if (tags.length !== tagIds.length) {
+      return {
+        status: "error",
+        fieldErrors: { tagIds: ["Một hoặc nhiều thẻ đã chọn không tồn tại."] },
+      };
+    }
+
+    stage = "database";
+    const tour = await createTourWithUniqueSlug({
+      ...parsed.data,
+      tagIds,
+      providerProfileId,
+      images: imageUrls.map((url) => ({ url, fileId: url })),
+    });
+    createdTourId = tour.id;
+
+    stage = "embedding";
+    const embeddingText = [
+      parsed.data.title,
+      parsed.data.description,
+      province.fullName,
+      tags.map((tag) => tag.name).join(", "),
+      parsed.data.itinerary.map((day) => day.title).join(", "),
+      parsed.data.includeServices.join(", "),
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const vector = await embedText(embeddingText);
+    embeddingUpsertAttempted = true;
+    await upsertTourEmbedding(tour.id, vector, {
+      title: parsed.data.title,
+      provinceId: parsed.data.provinceId,
+      tagIds,
+      status: tour.status,
+      providerProfileId,
+    });
+  } catch (error) {
+    const cleanupFailures = await rollbackTourCreation({
+      uploadedImages: [],
+      createdTourId,
+      embeddingUpsertAttempted,
+    });
+
+    console.error("Tạo tour thất bại", {
+      stage,
+      createdTourId,
+      error,
+      cleanupFailures,
+    });
+
+    return {
+      status: "error",
+      formError: STAGE_ERROR_MESSAGES[stage],
+    };
+  }
+
+  return { status: "success" };
+}
