@@ -82,8 +82,8 @@ export function PersonalizedJourneySection() {
 
       <div className="lg:col-span-7 flex justify-center relative">
         <div className="relative w-full max-w-md -translate-x-6">
-          <div className="absolute inset-0 bg-white/70 rounded-3xl border border-gray-200/80 shadow-md transform rotate-3 translate-x-3 translate-y-3 pointer-events-none" />
-          <div className="absolute inset-0 bg-white/40 rounded-3xl border border-gray-200/50 shadow-sm transform -rotate-2 -translate-x-2 -translate-y-1 pointer-events-none" />
+          <div className="absolute inset-0 bg-white/70 rounded-3xl border border-gray-200/80 shadow-md transform -rotate-8 translate-x-4 -translate-y-3 pointer-events-none" />
+          <div className="absolute inset-0 bg-white/40 rounded-3xl border border-gray-200/50 shadow-sm transform -rotate-2 translate-x-4 translate-y-3 pointer-events-none" />
 
           <div className="relative bg-white rounded-3xl p-6 shadow-xl border border-gray-100 z-10 space-y-5 hover:-translate-y-1 transition duration-500 hover:shadow-2xl">
             <div className="space-y-1">
@@ -142,13 +142,19 @@ export function PersonalizedJourneySection() {
               riêng cho bạn
             </span>
             <svg
-              className="w-7 h-7 text-gray-700 transform -rotate-12 translate-x-2"
+              className="w-8 h-8 text-gray-700 transform -rotate-15 -translate-x-1 translate-y-1"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
               <path
-                d="M3 10h10a5 5 0 015 5v5m0 0l-3-3m3 3l3-3"
+                d="M20 21C20 13 14 8 5 7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="1.8"
+              />
+              <path
+                d="M10 2L4 7l6 5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth="1.8"
