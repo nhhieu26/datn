@@ -3,6 +3,7 @@ import { prisma } from "../src/lib/prisma";
 import { seedProvinces } from "./seed-province";
 import { seedTags } from "./seed-tag";
 import { seedUsers } from "./seed-user";
+import { seedHotels } from "./seed-hotel";
 
 async function main() {
   console.log("Seeding provinces...");
@@ -13,6 +14,9 @@ async function main() {
 
   console.log("\nSeeding users...");
   await seedUsers();
+
+  console.log("\nSeeding hotels...");
+  await seedHotels();
 
   console.log("\nAll seeds completed.");
 }

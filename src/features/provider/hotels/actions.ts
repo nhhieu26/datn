@@ -412,3 +412,137 @@ export async function createHotelAction(
   revalidatePath("/provider/hotels");
   redirect("/provider/hotels");
 }
+
+export async function createHotelFromLinksAction(
+  _prevState: CreateHotelActionState,
+  formData: FormData,
+): Promise<CreateHotelActionState> {
+  let createdHotelId: string | null = null;
+  let embeddingUpsertAttempted = false;
+  let stage: CreationStage = "authorization";
+
+  try {
+    const providerProfileId = formData.get("providerProfileId");
+    if (typeof providerProfileId !== "string" || !providerProfileId) {
+      return { status: "error", formError: "Thiếu hồ sơ nhà cung cấp." };
+    }
+
+    stage = "validation";
+    const rawRooms = parseJsonField<
+      Array<{
+        name: unknown;
+        description: unknown;
+        capacity: unknown;
+        quantity: unknown;
+        basePrice: unknown;
+        amenities: unknown;
+      }>
+    >(formData, "rooms", []);
+
+    const parsed = createHotelSchema.safeParse({
+      name: formData.get("name"),
+      provinceId: formData.get("provinceId"),
+      address: formData.get("address"),
+      latitude: formData.get("latitude"),
+      longitude: formData.get("longitude"),
+      description: formData.get("description"),
+      amenities: parseJsonField<string[]>(formData, "amenities", []),
+      tagIds: parseJsonField<string[]>(formData, "tagIds", []),
+      rooms: rawRooms,
+    });
+
+    if (!parsed.success) {
+      return {
+        status: "error",
+        fieldErrors: parsed.error.flatten().fieldErrors as Record<
+          string,
+          string[]
+        >,
+      };
+    }
+
+    const imageUrls = parseJsonField<string[]>(formData, "imageUrls", []);
+    const roomImageUrls = parseJsonField<string[][]>(
+      formData,
+      "roomImageUrls",
+      [],
+    );
+
+    const province = await provinceRepo.findById(parsed.data.provinceId);
+    if (!province) {
+      return {
+        status: "error",
+        fieldErrors: { provinceId: ["Tỉnh/thành đã chọn không tồn tại."] },
+      };
+    }
+
+    const tagIds = [...new Set(parsed.data.tagIds)];
+    const tags = await tagRepo.findManyByIds(tagIds);
+    if (tags.length !== tagIds.length) {
+      return {
+        status: "error",
+        fieldErrors: { tagIds: ["Một hoặc nhiều thẻ đã chọn không tồn tại."] },
+      };
+    }
+
+    stage = "database";
+    const hotel = await createHotelWithUniqueSlug({
+      ...parsed.data,
+      tagIds,
+      providerProfileId,
+      images: imageUrls.map((url) => ({ url, fileId: url })),
+      rooms: parsed.data.rooms.map((room, index) => ({
+        ...room,
+        images: (roomImageUrls[index] ?? []).map((url) => ({
+          url,
+          fileId: url,
+        })),
+      })),
+    });
+    createdHotelId = hotel.id;
+
+    stage = "embedding";
+    const embeddingText = [
+      parsed.data.name,
+      parsed.data.description,
+      province.fullName,
+      parsed.data.address,
+      tags.map((tag) => tag.name).join(", "),
+      parsed.data.amenities.join(", "),
+      parsed.data.rooms.map((room) => room.name).join(", "),
+      parsed.data.rooms.map((room) => room.description).join(", "),
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const vector = await embedText(embeddingText);
+    embeddingUpsertAttempted = true;
+    await upsertHotelEmbedding(hotel.id, vector, {
+      name: parsed.data.name,
+      provinceId: parsed.data.provinceId,
+      tagIds,
+      status: hotel.status,
+      providerProfileId,
+    });
+  } catch (error) {
+    const cleanupFailures = await rollbackHotelCreation({
+      uploadedImages: [],
+      createdHotelId,
+      embeddingUpsertAttempted,
+    });
+
+    console.error("Tạo khách sạn thất bại", {
+      stage,
+      createdHotelId,
+      error,
+      cleanupFailures,
+    });
+
+    return {
+      status: "error",
+      formError: STAGE_ERROR_MESSAGES[stage],
+    };
+  }
+
+  return { status: "success" };
+}
