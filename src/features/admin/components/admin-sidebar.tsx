@@ -6,13 +6,8 @@ import { usePathname } from "next/navigation";
 
 const navigation = [
   { label: "Tổng quan", icon: "space_dashboard", href: "/admin" },
-  {
-    label: "Duyệt hồ sơ đối tác",
-    icon: "badge",
-    href: "/admin/profile-approval",
-    count: 3,
-  },
-  { label: "Duyệt dịch vụ", icon: "verified", href: "#", count: 8 },
+  { label: "Duyệt hồ sơ đối tác", icon: "badge", href: "/admin/profile-approval" },
+  { label: "Duyệt dịch vụ", icon: "verified", href: "#" },
   { label: "Quản lý người dùng", icon: "group", href: "#" },
   { label: "Báo cáo & thống kê", icon: "monitoring", href: "#" },
   { label: "Cấu hình hệ thống", icon: "settings", href: "#" },
@@ -62,17 +57,6 @@ export function AdminSidebar() {
                   </span>
                   {item.label}
                 </span>
-                {item.count ? (
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                      active
-                        ? "bg-brand-500 text-white"
-                        : "bg-slate-100 text-slate-500"
-                    }`}
-                  >
-                    {item.count}
-                  </span>
-                ) : null}
               </Link>
             );
           })}
