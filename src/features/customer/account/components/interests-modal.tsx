@@ -1,27 +1,51 @@
 "use client";
 
 import type { Tag } from "@/entities/tag";
+import { useState, useTransition, type FormEvent } from "react";
+import { saveInterestsAction } from "../actions";
 
 export function InterestsModal({
-  open,
   onClose,
+  onSaved,
   tags,
   selectedTags,
 }: {
-  open: boolean;
   onClose: () => void;
+  onSaved: (tags: string[]) => void;
   tags: Tag[];
   selectedTags: string[];
 }) {
-  if (!open) return null;
+  const [chosen, setChosen] = useState(selectedTags);
+  const [error, setError] = useState("");
+  const [isPending, startTransition] = useTransition();
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    startTransition(async () => {
+      const result = await saveInterestsAction(formData);
+      if (result.status === "success") {
+        onSaved(formData.getAll("tags") as string[]);
+      } else {
+        setError(
+          result.formError ??
+            result.fieldErrors?.tags?.[0] ??
+            "Không thể lưu sở thích."
+        );
+      }
+    });
+  }
 
   return (
     <div
       role="presentation"
-      onClick={onClose}
+      onClick={() => {
+        if (!isPending) onClose();
+      }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-[2px]"
     >
-      <div
+      <form
+        onSubmit={handleSubmit}
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -31,6 +55,7 @@ export function InterestsModal({
         <button
           type="button"
           onClick={onClose}
+          disabled={isPending}
           aria-label="Đóng"
           className="absolute right-6 top-6 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
         >
@@ -62,23 +87,39 @@ export function InterestsModal({
           Bạn quan tâm đến điều gì?
         </h2>
         <p className="mt-1.5 pr-6 text-xs leading-relaxed text-slate-500">
-          Danh sách tag du lịch và sở thích hiện tại của bạn.
+          Chọn các sở thích du lịch của bạn.
         </p>
 
         <div className="mb-8 mt-6 flex flex-wrap gap-2.5 select-none">
           {tags.map((tag) => {
-            const active = selectedTags.includes(tag.name);
+            const active = chosen.includes(tag.name);
             return (
-              <span
+              <label
                 key={tag.id}
-                className={`inline-flex items-center rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all ${
+                className={`inline-flex cursor-pointer items-center rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all focus-within:ring-2 focus-within:ring-brand-500 ${
                   active
                     ? "border-brand-500 bg-brand-50 text-brand-600 shadow-sm"
                     : "border-slate-200 bg-white text-slate-700"
                 }`}
               >
+                <input
+                  type="checkbox"
+                  name="tags"
+                  value={tag.name}
+                  checked={active}
+                  disabled={isPending}
+                  onChange={() => {
+                    setChosen((current) =>
+                      active
+                        ? current.filter((name) => name !== tag.name)
+                        : [...current, tag.name]
+                    );
+                    setError("");
+                  }}
+                  className="sr-only"
+                />
                 {tag.name}
-              </span>
+              </label>
             );
           })}
           {tags.length === 0 && (
@@ -86,19 +127,24 @@ export function InterestsModal({
           )}
         </div>
 
+        {error && (
+          <p role="alert" className="mb-3 text-xs text-red-600">
+            {error}
+          </p>
+        )}
         <div className="flex items-center justify-between border-t border-slate-50 pt-2">
           <span className="text-xs font-medium tracking-tight text-slate-500">
-            {selectedTags.length} sở thích đã lưu
+            {chosen.length} sở thích đã chọn
           </span>
           <button
-            type="button"
-            onClick={onClose}
+            type="submit"
+            disabled={isPending}
             className="flex items-center gap-2 rounded-full bg-gradient-to-r from-[#ff4d1d] to-[#ff6b3d] px-6 py-2.5 text-xs font-semibold text-white shadow-md shadow-orange-500/25 transition-all hover:opacity-95 active:scale-95"
           >
-            <span>Đóng</span>
+            <span>{isPending ? "Đang lưu..." : "Lưu sở thích"}</span>
           </button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/generated/prisma/client";
 import type { CreateUserInput, ProfileUser, PublicUser, User } from "./type";
 
 export function toPublicUser(user: User): PublicUser {
@@ -26,6 +27,13 @@ export function findProfileById(id: string): Promise<ProfileUser | null> {
       preferences: true,
     },
   });
+}
+
+export function updatePreferences(
+  id: string,
+  preferences: Prisma.InputJsonValue
+) {
+  return prisma.user.update({ where: { id }, data: { preferences } });
 }
 
 export function createUser(

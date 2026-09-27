@@ -16,12 +16,13 @@ export function ProfileDashboard({
 }) {
   const [preferencesOpen, setPreferencesOpen] = useState(false);
   const savedTags = (user.preferences as { tags?: unknown })?.tags;
-  const selectedTags = Array.isArray(savedTags)
+  const initialTags = Array.isArray(savedTags)
     ? savedTags.filter(
         (tag): tag is string =>
           typeof tag === "string" && tags.some((item) => item.name === tag),
       )
     : [];
+  const [selectedTags, setSelectedTags] = useState(initialTags);
 
   return (
     <main className="flex-1 overflow-y-auto px-5 py-6 sm:px-8">
@@ -45,12 +46,17 @@ export function ProfileDashboard({
         </div>
       </div>
 
-      <InterestsModal
-        open={preferencesOpen}
-        onClose={() => setPreferencesOpen(false)}
-        tags={tags}
-        selectedTags={selectedTags}
-      />
+      {preferencesOpen && (
+        <InterestsModal
+          onClose={() => setPreferencesOpen(false)}
+          onSaved={(names) => {
+            setSelectedTags(names);
+            setPreferencesOpen(false);
+          }}
+          tags={tags}
+          selectedTags={selectedTags}
+        />
+      )}
     </main>
   );
 }
