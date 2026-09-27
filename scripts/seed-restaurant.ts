@@ -1,6 +1,42 @@
 import "dotenv/config";
 import { prisma } from "../src/lib/prisma";
 import { createRestaurantFromLinksAction } from "@/features/provider/restaurants/actions";
+import {
+  DAY_END_TIME,
+  DAY_START_TIME,
+  getSlotsWithinRange,
+  type TimeSlot,
+} from "@/entities/restaurant/time-slots";
+
+function clamp(time: string, min: string, max: string): string {
+  if (time < min) return min;
+  if (time > max) return max;
+  return time;
+}
+
+/**
+ * Nguồn RESTAURANTS khai báo giờ mở cửa dưới dạng khoảng (vd 17:30-22:00).
+ * Hàm này quy đổi mỗi khoảng thành các khung giờ cố định 30 phút (06:00-22:30)
+ * mà createRestaurantSchema yêu cầu. Khoảng qua nửa đêm (vd 22:00-03:00) được
+ * cắt tại giờ đóng cửa của lưới (22:30) vì lưới không có khung giờ qua đêm.
+ */
+export function expandTimeRanges(ranges: TimeSlot[]): TimeSlot[] {
+  const seen = new Set<string>();
+  return ranges
+    .flatMap((range) => {
+      const start = clamp(range.startTime, DAY_START_TIME, DAY_END_TIME);
+      const end =
+        range.startTime <= range.endTime
+          ? clamp(range.endTime, DAY_START_TIME, DAY_END_TIME)
+          : DAY_END_TIME;
+      return getSlotsWithinRange(start, end);
+    })
+    .filter((slot) => {
+      if (seen.has(slot.startTime)) return false;
+      seen.add(slot.startTime);
+      return true;
+    });
+}
 
 const IMAGES = [
   "https://picsum.photos/1200/800",
@@ -8,7 +44,7 @@ const IMAGES = [
   "https://picsum.photos/1200/800",
 ];
 
-const RESTAURANTS = [
+export const RESTAURANTS = [
   {
     name: "Buffet Poseidon",
     provinceName: "Hà Nội",
@@ -594,7 +630,10 @@ export async function seedRestaurants() {
       JSON.stringify(restaurant.tagNames.map((name) => tagByName.get(name))),
     );
     formData.set("menu", JSON.stringify(restaurant.menu));
-    formData.set("timeSlots", JSON.stringify(restaurant.timeSlots));
+    formData.set(
+      "timeSlots",
+      JSON.stringify(expandTimeRanges(restaurant.timeSlots)),
+    );
     formData.set("imageUrls", JSON.stringify(IMAGES));
 
     const result = await createRestaurantFromLinksAction(
