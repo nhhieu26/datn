@@ -4,19 +4,17 @@ import { prisma } from "../src/lib/prisma";
 async function main() {
   console.log("Clearing all data...");
 
-  await prisma.$transaction(
-    [
-      prisma.tourTag.deleteMany(),
-      prisma.tourDeparture.deleteMany(),
-      prisma.tour.deleteMany(),
-      prisma.tag.deleteMany(),
-      prisma.providerProfile.deleteMany(),
-      prisma.user.deleteMany(),
-      prisma.province.deleteMany(),
-    ],
-    // ponytail: Neon scale-to-zero cold starts exceed Prisma's default 2s maxWait (P2028)
-    { maxWait: 15_000, timeout: 60_000 }
-  );
+  const tables = await prisma.$queryRaw<{ tablename: string }[]>`
+    SELECT tablename FROM pg_tables
+    WHERE schemaname = 'public' AND tablename <> '_prisma_migrations'
+  `;
+
+  if (tables.length > 0) {
+    const list = tables.map((t) => `"${t.tablename}"`).join(", ");
+    await prisma.$executeRawUnsafe(
+      `TRUNCATE TABLE ${list} RESTART IDENTITY CASCADE`
+    );
+  }
 
   console.log("All data cleared.");
 }
