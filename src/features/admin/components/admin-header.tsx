@@ -1,8 +1,23 @@
 "use client";
 
 import { signOut } from "next-auth/react";
+import { usePathname } from "next/navigation";
+
+const sectionLabels: Record<string, string> = {
+  "/admin/profile-approval": "Duyệt hồ sơ đối tác",
+  "/admin/destinations/create": "Tạo địa điểm du lịch",
+};
+
+function currentSection(pathname: string) {
+  const match = Object.keys(sectionLabels)
+    .filter((href) => pathname.startsWith(href))
+    .sort((a, b) => b.length - a.length)[0];
+  return match ? sectionLabels[match] : "Quản trị";
+}
 
 export function AdminHeader() {
+  const pathname = usePathname();
+
   return (
     <header className="z-20 flex h-16 shrink-0 items-center justify-between border-b border-slate-200/80 bg-white px-5 sm:px-8">
       <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
@@ -11,7 +26,9 @@ export function AdminHeader() {
         </span>
         <span className="hidden sm:inline">Quản trị</span>
         <span className="hidden text-slate-300 sm:inline">/</span>
-        <span className="font-bold text-slate-900">Duyệt hồ sơ đối tác</span>
+        <span className="font-bold text-slate-900">
+          {currentSection(pathname)}
+        </span>
       </div>
 
       <div className="flex items-center gap-3">
