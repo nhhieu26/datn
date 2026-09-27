@@ -20,7 +20,7 @@ export function MainFooter() {
           <div className="flex items-center gap-2">
             <Image
               alt="Roamly Logo"
-              className="h-8 w-auto"
+              className="h-24 w-auto"
               height={724}
               src="/logo-white.png"
               width={2172}

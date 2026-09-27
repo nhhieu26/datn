@@ -21,7 +21,7 @@ export function MainHeader() {
       >
         <Image
           alt="Roamly Logo"
-          className="h-8 md:h-9 w-auto object-contain"
+          className="h-10 md:h-11 w-auto object-contain"
           height={724}
           priority
           src="/logo.png"
