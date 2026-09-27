@@ -24,9 +24,14 @@ const FOLDERS = [
 ];
 
 function isNotFound(error: unknown): boolean {
-  const status = (error as { $ResponseMetadata?: { statusCode?: number } })
-    .$ResponseMetadata?.statusCode;
-  return status === 404;
+  const e = error as {
+    name?: string;
+    $ResponseMetadata?: { statusCode?: number };
+  };
+  return (
+    e.name === "PineconeNotFoundError" ||
+    e.$ResponseMetadata?.statusCode === 404
+  );
 }
 
 async function main() {
