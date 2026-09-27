@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isFixedTimeSlot } from "./time-slots";
 
 const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -33,6 +34,10 @@ export const timeSlotDraftSchema = z
   .refine((slot) => slot.startTime < slot.endTime, {
     message: "Giờ kết thúc phải sau giờ bắt đầu",
     path: ["endTime"],
+  })
+  .refine((slot) => isFixedTimeSlot(slot), {
+    message: "Khung giờ không hợp lệ, vui lòng chọn từ danh sách có sẵn",
+    path: ["startTime"],
   });
 
 export const createRestaurantSchema = z
