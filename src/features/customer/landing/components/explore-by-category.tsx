@@ -7,28 +7,28 @@ const CATEGORIES = [
     description: "Khám phá những vùng đất tuyệt mỹ khắp thế giới",
     cta: "Khám phá",
     icon: "M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z",
-    src: "https://lh3.googleusercontent.com/aida-public/AB6AXuCMKq8nD6jmioPVZuQJA-KRLf_FVxm5fs5ULZWJss70JFuvCEHvMP4IGevDGU_YweOmpKCKWdccCer29Sq3tiApf-M5XziWOnY_RWqqkpenLHRmzIPAqc3hAPtlhUl0e765dXdkEZQTiZKJ6wnyqtKwa_YhEUFL5ZlKWbsRtfH2rbTF8HM5G_ujZLFNV0oUmWYqPhmaNRwdO-1KZ6gfdeEyzVHEoJJsbkGybt4OVWw",
+    src: "/destination.webp",
   },
   {
     title: "Khách sạn",
     description: "Tìm chốn dừng chân hoàn hảo cho bạn",
     cta: "Tìm khách sạn",
     icon: "M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z",
-    src: "https://lh3.googleusercontent.com/aida-public/AB6AXuDc12QM-J9YpM_hah6ij2nF4mhHoklqfdVodpkJFWq8z7zCIiVz74dQmzk5ognqNh1Bunl0i7kmcMKm8bDXhhGSl-N00SXYpopyGsCXdE30WgvrjMzViOWIncptr7jOYU_4VjvqwYCaqGlpJNfeshha-vae8iqwxtmtMxDHkDWPMenWOdU72RbIyIhYr-eACmmWdAgSQ2GB2oVHWTcgWR91-inhxD91eEJCmnDfDwM",
+    src: "/hotel.webp",
   },
   {
     title: "Nhà hàng",
     description: "Trải nghiệm ẩm thực phong phú và tinh tế",
     cta: "Tìm nhà hàng",
     icon: "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253",
-    src: "https://lh3.googleusercontent.com/aida-public/AB6AXuB5QGJTLD8jJaOCPoJQkNBpINHSaAaGW4HJOTU3d6wNqM7woYHsQmp4W50uxokMYRYZG8i-0iqYoGaLqY4ZjGxiUvpqroyR3EAz2lJ1ok-WPY9orCMHTVz4sE_sfQkETbxOJapcRBHELwK9MRSDDnCR0UsarSx1OReQAlFWufYMXgDnPj_RumKFsTt3Q2dX6dhPm0xIxSAcY4n0BiBZFL9cstg4eE53CmAycj8SF7U",
+    src: "/restaurant.webp",
   },
   {
     title: "Tour & Trải nghiệm",
     description: "Những hành trình khó quên đang chờ đón bạn",
     cta: "Khám phá tour",
     icon: "M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z",
-    src: "https://lh3.googleusercontent.com/aida-public/AB6AXuBUy72qk4ijkXGjuc3ajyuyUjfLARYHyUH_LuMzjCFFPIE2lenR1pRJRxYUgrdoRasDZiBSiEWXcgZYozjtFSCa1aD1dWhkvfFukRZCVsw25NKxEUoH1_YEBzRVu85QhxCxynRVikvkEXMctGnk1EZ6es1a3mFYHzqEGUj_Za5b8dWmawKqsKWa7VEpZjrweYZ-TYlaqGMs6Q1zYSCQk1raxkT92YsthpEP8rHj634",
+    src: "/tour.webp",
   },
 ];
 
