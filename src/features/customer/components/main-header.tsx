@@ -1,3 +1,4 @@
+import { auth } from "@/lib/auth";
 import Image from "next/image";
 import Link from "next/link";
 import { HeaderAuthButton } from "./header-auth-button";
@@ -11,7 +12,9 @@ const NAV_ITEMS = [
   { label: "Cẩm nang", href: "#blog" },
 ];
 
-export function MainHeader() {
+export async function MainHeader() {
+  const session = await auth();
+
   return (
     <header className="w-full flex items-center justify-between pb-1">
       <Link
@@ -65,30 +68,29 @@ export function MainHeader() {
           </svg>
         </button>
 
-        <button
-          aria-label="Tin nhắn"
-          className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 relative"
-        >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        {session?.user && (
+          <Link
+            aria-label="Hồ sơ của tôi"
+            href="/profile"
+            className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50"
           >
-            <path
-              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-            />
-          </svg>
-          <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-orange opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-orange" />
-          </span>
-        </button>
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a7.5 7.5 0 0115 0v.75H4.5v-.75z"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+              />
+            </svg>
+          </Link>
+        )}
 
-        <HeaderAuthButton />
+        <HeaderAuthButton isAuthenticated={!!session?.user} />
       </div>
     </header>
   );
