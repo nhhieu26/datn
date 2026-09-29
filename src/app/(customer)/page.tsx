@@ -1,3 +1,4 @@
+import { destinationRepo } from "@/entities/destination";
 import {
   AskPlanTravelAiSection,
   ExploreByCategory,
@@ -14,7 +15,10 @@ export const metadata: Metadata = {
     "Khách sạn, nhà hàng, tour trải nghiệm và những điểm đến độc đáo — tất cả trong một nơi.",
 };
 
-export default function TrangChuPage() {
+// ponytail: 6 mới nhất theo createdAt, chưa có trường popularity trong schema
+export default async function TrangChuPage() {
+  const destinations = await destinationRepo.findRecent(6);
+
   return (
     <>
       <SearchPillsBar />
@@ -22,7 +26,9 @@ export default function TrangChuPage() {
       <PersonalizedJourneySection />
       <ExploreByCategory />
       <AskPlanTravelAiSection />
-      <PopularDestinations />
+      {destinations.length > 0 && (
+        <PopularDestinations destinations={destinations} />
+      )}
     </>
   );
 }

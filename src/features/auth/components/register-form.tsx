@@ -8,7 +8,7 @@ import {
   registerAction,
   type RegisterActionState,
 } from "@/features/auth/actions";
-import { PasswordEyeIcon } from "@/features/customer/components";
+import { PasswordEyeIcon } from "@/features/customer/components/password-eye-icon";
 
 const INITIAL_STATE: RegisterActionState = { status: "idle" };
 

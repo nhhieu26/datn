@@ -19,6 +19,15 @@ export function findAll(): Promise<DestinationWithRelations[]> {
   });
 }
 
+export function findRecent(take: number) {
+  return prisma.destination.findMany({
+    where: { isPublished: true },
+    include: { province: true },
+    orderBy: { createdAt: "desc" },
+    take,
+  });
+}
+
 export function create(
   input: CreateDestinationInput & {
     slug: string;

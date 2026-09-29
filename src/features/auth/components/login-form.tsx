@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { PasswordEyeIcon } from "@/features/customer/components";
+import { PasswordEyeIcon } from "@/features/customer/components/password-eye-icon";
 
 type AccountType = "customer" | "provider";
 
