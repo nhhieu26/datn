@@ -74,15 +74,6 @@ export function HeroSection() {
             className="w-full max-w-[400px] glassmorphism rounded-[26px] p-6 shadow-2xl border border-white/40 text-gray-800"
             data-purpose="trip-booking-card"
           >
-            <div className="flex items-center justify-between pb-4 border-b border-gray-200/60 mb-5">
-              <button className="font-bold text-sm text-gray-900 pb-2 relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-[2.5px] after:bg-[#111827] after:rounded-full">
-                Lên lịch trình
-              </button>
-              <button className="font-medium text-sm text-gray-500 hover:text-gray-800 pb-2">
-                Tìm chỗ ở
-              </button>
-            </div>
-
             <div className="space-y-3.5">
               <div className="bg-gray-100/80 hover:bg-gray-100 rounded-2xl p-3 px-4 border border-transparent focus-within:border-gray-300 transition">
                 <span className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
