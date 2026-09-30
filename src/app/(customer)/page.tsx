@@ -5,7 +5,6 @@ import {
   HeroSection,
   PersonalizedJourneySection,
   PopularDestinations,
-  SearchPillsBar,
 } from "@/features/customer/landing";
 import type { Metadata } from "next";
 
@@ -21,7 +20,6 @@ export default async function TrangChuPage() {
 
   return (
     <>
-      <SearchPillsBar />
       <HeroSection />
       <PersonalizedJourneySection />
       <ExploreByCategory />

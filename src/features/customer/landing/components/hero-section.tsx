@@ -74,6 +74,12 @@ export function HeroSection() {
             className="w-full max-w-[400px] glassmorphism rounded-[26px] p-6 shadow-2xl border border-white/40 text-gray-800"
             data-purpose="trip-booking-card"
           >
+            <div className="flex items-center justify-between pb-4 border-b border-gray-200/60 mb-5">
+              <button className="font-bold text-sm text-gray-900 pb-2 relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-[2.5px] after:bg-[#111827] after:rounded-full">
+                Tìm kiếm nhanh
+              </button>
+            </div>
+
             <div className="space-y-3.5">
               <div className="bg-gray-100/80 hover:bg-gray-100 rounded-2xl p-3 px-4 border border-transparent focus-within:border-gray-300 transition">
                 <span className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
@@ -94,8 +100,34 @@ export function HeroSection() {
                     />
                   </svg>
                   <input
-                    className="w-full bg-transparent p-0 border-none font-semibold text-sm text-gray-900 focus:ring-0"
+                    className="w-full bg-transparent p-0 border-none font-semibold text-sm text-gray-900 focus:outline-none focus:ring-0"
                     defaultValue="Bali, Indonesia"
+                    type="text"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-gray-100/80 hover:bg-gray-100 rounded-2xl p-3 px-4 border border-transparent focus-within:border-gray-300 transition">
+                <span className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                  Từ khóa
+                </span>
+                <div className="flex items-center gap-2 mt-1">
+                  <svg
+                    className="w-4 h-4 text-gray-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                    />
+                  </svg>
+                  <input
+                    className="w-full bg-transparent p-0 border-none font-semibold text-sm text-gray-900 placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-0"
+                    placeholder="Khách sạn, nhà hàng, tour..."
                     type="text"
                   />
                 </div>
@@ -123,45 +155,6 @@ export function HeroSection() {
                     18 Th06, 2026 – 25 Th06, 2026
                   </span>
                 </div>
-              </div>
-
-              <div className="bg-gray-100/80 hover:bg-gray-100 rounded-2xl p-3 px-4 border border-transparent focus-within:border-gray-300 transition flex items-center justify-between">
-                <div>
-                  <span className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                    Số khách
-                  </span>
-                  <div className="flex items-center gap-2 mt-1">
-                    <svg
-                      className="w-4 h-4 text-gray-500"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                      />
-                    </svg>
-                    <span className="text-sm font-semibold text-gray-900">
-                      2 người lớn
-                    </span>
-                  </div>
-                </div>
-                <svg
-                  className="w-4 h-4 text-gray-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    d="M19 9l-7 7-7-7"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                  />
-                </svg>
               </div>
 
               <button className="w-full mt-3 bg-[#111827] hover:bg-black text-white font-semibold py-3.5 rounded-full flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition">

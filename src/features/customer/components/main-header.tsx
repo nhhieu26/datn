@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import Image from "next/image";
 import Link from "next/link";
 import { HeaderAuthButton } from "./header-auth-button";
+import { HeaderSearchBar } from "./header-search-bar";
 
 const NAV_ITEMS = [
   { label: "Điểm đến", href: "#destinations" },
@@ -16,8 +17,9 @@ export async function MainHeader() {
   const session = await auth();
 
   return (
-    <header className="w-full flex items-center justify-between pb-1">
-      <Link
+    <header className="w-full pb-1">
+      <div className="flex items-center justify-between">
+        <Link
         className="flex items-center gap-2 group"
         data-purpose="site-brand"
         href="/"
@@ -92,6 +94,8 @@ export async function MainHeader() {
 
         <HeaderAuthButton isAuthenticated={!!session?.user} />
       </div>
+      </div>
+      <HeaderSearchBar />
     </header>
   );
 }
