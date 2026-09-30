@@ -18,7 +18,7 @@ function ExploreCardItem({ item }: { item: ExploreItem }) {
   }
 }
 
-export function ExploreResults({ onOpenMap }: { onOpenMap: () => void }) {
+export function ExploreResults() {
   return (
     <section className="lg:col-span-3 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4 pb-2">
@@ -47,7 +47,6 @@ export function ExploreResults({ onOpenMap }: { onOpenMap: () => void }) {
           </div>
           <button
             className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 hover:border-gray-300 transition-all cursor-pointer"
-            onClick={onOpenMap}
             type="button"
           >
             <svg
