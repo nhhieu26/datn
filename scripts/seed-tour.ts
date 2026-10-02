@@ -646,5 +646,10 @@ export async function seedTours() {
     }
   }
 
+  await prisma.tour.updateMany({
+    where: { providerProfileId: providerProfile.id },
+    data: { status: "published" },
+  });
+
   console.log(`\nSeeded ${TOURS.length} tours.`);
 }

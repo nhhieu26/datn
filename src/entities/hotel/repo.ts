@@ -65,3 +65,12 @@ export function create(input: {
 export function remove(id: string): Promise<Hotel> {
   return prisma.hotel.delete({ where: { id } });
 }
+
+export function findRecent(take: number) {
+  return prisma.hotel.findMany({
+    where: { status: "published" },
+    include: { province: true, rooms: true },
+    orderBy: { createdAt: "desc" },
+    take,
+  });
+}

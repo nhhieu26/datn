@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "prisma generate && next dev",
+    "dev": "prisma generate && next dev -p 2612",
     "build": "prisma generate && next build",
-    "start": "next start",
+    "start": "next start -p 2612",
     "lint": "eslint",
     "db:seed": "bun scripts/seed.ts",
     "db:clear": "bun scripts/clear.ts",

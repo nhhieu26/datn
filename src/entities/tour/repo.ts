@@ -50,3 +50,12 @@ export function create(
 export function remove(id: string): Promise<Tour> {
   return prisma.tour.delete({ where: { id } });
 }
+
+export function findRecent(take: number) {
+  return prisma.tour.findMany({
+    where: { status: "published" },
+    include: { province: true },
+    orderBy: { createdAt: "desc" },
+    take,
+  });
+}

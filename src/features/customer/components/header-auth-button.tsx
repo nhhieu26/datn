@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const buttonClass =
-  "bg-[#111827] hover:bg-black text-white text-xs md:text-sm font-semibold px-5 py-2.5 rounded-full transition shadow-sm";
+  "inline-flex items-center justify-center bg-new-coral hover:bg-new-coral-hover text-white px-5 py-2 rounded-lg font-semibold text-sm transition duration-150 shadow-sm";
 
 export function HeaderAuthButton({
   isAuthenticated,

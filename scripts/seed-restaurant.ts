@@ -647,4 +647,9 @@ export async function seedRestaurants() {
       );
     }
   }
+
+  await prisma.restaurant.updateMany({
+    where: { providerProfileId: providerProfile.id },
+    data: { status: "published" },
+  });
 }

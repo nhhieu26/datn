@@ -816,4 +816,9 @@ export async function seedHotels() {
 
     await createHotelFromLinksAction({ status: "idle" }, formData);
   }
+
+  await prisma.hotel.updateMany({
+    where: { providerProfileId: providerProfile.id },
+    data: { status: "published" },
+  });
 }

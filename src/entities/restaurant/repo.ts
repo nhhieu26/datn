@@ -52,3 +52,12 @@ export function create(
 export function remove(id: string): Promise<Restaurant> {
   return prisma.restaurant.delete({ where: { id } });
 }
+
+export function findRecent(take: number) {
+  return prisma.restaurant.findMany({
+    where: { status: "published" },
+    include: { province: true },
+    orderBy: { createdAt: "desc" },
+    take,
+  });
+}
