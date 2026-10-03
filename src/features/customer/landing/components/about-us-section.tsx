@@ -7,10 +7,10 @@ const BEACH_IMAGE =
 export function AboutUsSection() {
   return (
     <section
-      className="w-full relative z-20 py-16 px-8 lg:px-16 bg-new-about-bg"
+      className="w-full relative z-20 py-16 page-x bg-new-about-bg"
       data-purpose="about-us"
     >
-      <div className="max-w-[1440px] mx-auto">
+      <div>
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 mb-12">
           <div className="max-w-xl">
             <p className="font-handwriting text-3xl font-bold mb-2 text-new-coral">

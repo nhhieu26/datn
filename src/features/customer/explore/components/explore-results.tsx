@@ -1,9 +1,19 @@
-import { EXPLORE_ITEMS, TOTAL_RESULTS, type ExploreItem } from "../data";
+"use client";
+
+import { useState } from "react";
+import { EXPLORE_ITEMS, type ExploreItem } from "../data";
 import { DestinationCard } from "./destination-card";
 import { HotelCard } from "./hotel-card";
 import { Pagination } from "./pagination";
 import { RestaurantCard } from "./restaurant-card";
 import { TourCard } from "./tour-card";
+
+const SORTS = [
+  "Phổ biến nhất",
+  "Giá thấp đến cao",
+  "Giá cao đến thấp",
+  "Mới nhất",
+];
 
 function ExploreCardItem({ item }: { item: ExploreItem }) {
   switch (item.kind) {
@@ -19,55 +29,55 @@ function ExploreCardItem({ item }: { item: ExploreItem }) {
 }
 
 export function ExploreResults() {
+  const [sort, setSort] = useState(SORTS[0]);
+  const [open, setOpen] = useState(false);
+
   return (
-    <section className="lg:col-span-3 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-2">
-        <span className="text-sm font-bold text-gray-900">
-          {TOTAL_RESULTS} kết quả
-        </span>
-        <div className="flex items-center gap-3">
-          <div className="relative inline-block text-left">
-            <button
-              className="inline-flex justify-between items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-              type="button"
-            >
-              <span>Phổ biến nhất</span>
-              <svg
-                className="h-4 w-4 text-gray-400"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  clipRule="evenodd"
-                  d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                  fillRule="evenodd"
-                />
-              </svg>
-            </button>
-          </div>
+    <section className="xl:col-span-9">
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-5 border-b border-new-chip">
+        <h4 className="text-base font-bold leading-normal text-new-title">
+          Hiển thị {EXPLORE_ITEMS.length} / {EXPLORE_ITEMS.length} kết quả
+        </h4>
+        <div className="relative w-[189px]">
           <button
-            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 hover:border-gray-300 transition-all cursor-pointer"
+            className="w-full flex items-center justify-between px-4 py-3 border border-[#aaa] rounded text-base font-medium leading-normal text-new-title"
+            onClick={() => setOpen((o) => !o)}
             type="button"
           >
-            <svg
-              className="w-4 h-4 text-gray-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-              />
-            </svg>
-            <span>Xem bản đồ</span>
+            {sort}
+            <span
+              aria-hidden
+              className={`inline-block p-1 border-solid border-new-title border-r-2 border-b-2 -translate-y-0.5 ${
+                open ? "-rotate-[135deg] translate-y-0.5" : "rotate-45"
+              }`}
+            />
           </button>
+          {open && (
+            <ul className="absolute z-20 mt-1 w-full bg-white border border-[#aaa] rounded">
+              {SORTS.map((s) => (
+                <li key={s}>
+                  <button
+                    className={`w-full text-left px-4 py-2 text-base ${
+                      s === sort
+                        ? "bg-new-teal-cta text-white"
+                        : "text-new-title hover:bg-new-chip"
+                    }`}
+                    onClick={() => {
+                      setSort(s);
+                      setOpen(false);
+                    }}
+                    type="button"
+                  >
+                    {s}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
         {EXPLORE_ITEMS.map((item) => (
           <ExploreCardItem item={item} key={item.id} />
         ))}

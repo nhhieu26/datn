@@ -1,138 +1,157 @@
-import {
-  DURATION_FILTERS,
-  KIND_FILTERS,
-  RATING_FILTERS,
-  STYLE_FILTERS,
-} from "../data";
+"use client";
+
+import { useState } from "react";
+import { KIND_FILTERS, type ExploreKind } from "../data";
+
+const DESTINATIONS = [
+  "Đà Nẵng, Việt Nam",
+  "Quảng Ninh, Việt Nam",
+  "Hồ Chí Minh, Việt Nam",
+];
+
+function Icon({ name, className = "" }: { name: string; className?: string }) {
+  return (
+    <span aria-hidden className={`material-symbols-outlined ${className}`}>
+      {name}
+    </span>
+  );
+}
+
+function Heading({ icon, title }: { icon: string; title: string }) {
+  return (
+    <div className="flex items-center gap-3 pt-[30px] pb-4 border-b border-new-chip">
+      <Icon className="text-[26px] text-new-title" name={icon} />
+      <h4 className="text-lg xl:text-xl font-bold leading-[1.4] text-new-title">
+        {title}
+      </h4>
+    </div>
+  );
+}
 
 export function FilterSidebar() {
-  return (
-    <aside className="lg:col-span-1 space-y-6">
-      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-6">
-        <h2 className="text-xl font-bold text-gray-900">Bộ lọc</h2>
+  const [keyword, setKeyword] = useState("");
+  const [kind, setKind] = useState<ExploreKind>("tour");
+  const [dest, setDest] = useState(DESTINATIONS[0]);
+  const [stars, setStars] = useState<number[]>([4]);
 
-        <div className="space-y-2">
-          <label className="block text-sm font-semibold text-gray-800">
-            Điểm đến
-          </label>
-          <div className="relative">
-            <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg
-                className="h-4 w-4 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                />
-              </svg>
-            </span>
+  return (
+    <aside className="xl:col-span-3">
+      <div className="rounded-lg border border-new-chip px-5 pb-[30px]">
+        <Heading icon="tune" title="Bộ lọc tìm kiếm" />
+
+        <div className="mt-5">
+          <div className="mb-3 flex items-center gap-2.5 rounded-lg border border-new-chip px-4 py-3">
+            <Icon className="text-base text-new-title" name="search" />
             <input
-              className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm bg-gray-50 border border-gray-200 rounded-xl focus:ring-1 focus:ring-[#FF5436] focus:border-[#FF5436] focus:bg-white"
-              placeholder="Tìm theo địa điểm"
+              aria-label="Từ khóa"
+              className="w-full border-0 bg-transparent p-0 text-sm leading-[1.4] text-new-title placeholder:text-new-paragraph focus:ring-0"
+              onChange={(e) => setKeyword(e.target.value)}
+              placeholder="Tìm theo từ khóa"
               type="text"
+              value={keyword}
             />
           </div>
+
+          <div className="relative rounded-lg border border-new-chip px-4 pt-[13px] pb-3.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <Icon className="text-base text-new-title" name="location_on" />
+                <h4 className="text-sm font-bold leading-[1.2] text-new-title">
+                  Điểm đến
+                </h4>
+              </div>
+              <Icon
+                className="text-[28px] text-new-title"
+                name="keyboard_arrow_down"
+              />
+            </div>
+            <div className="pl-[26px] text-sm leading-[1.4]">{dest}</div>
+            <select
+              aria-label="Điểm đến"
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              onChange={(e) => setDest(e.target.value)}
+              value={dest}
+            >
+              {DESTINATIONS.map((o) => (
+                <option key={o}>{o}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        <div className="space-y-3 pt-2 border-t border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-800">Loại hình</h3>
-          <div className="space-y-2.5 text-sm text-gray-600">
+        <div>
+          <Heading icon="category" title="Loại dịch vụ" />
+          <div className="space-y-3 pt-5">
             {KIND_FILTERS.map((item) => (
               <label
-                key={item.label}
-                className="flex items-center gap-2.5 cursor-pointer"
+                key={item.kind}
+                className="flex cursor-pointer items-center gap-3"
               >
                 <input
-                  className="w-4 h-4 rounded text-[#FF5436] border-gray-300 focus:ring-[#FF5436]"
-                  type="checkbox"
+                  checked={kind === item.kind}
+                  className="size-5 border-[1.5px] border-new-checkbox-border text-new-teal-cta focus:ring-0 focus:ring-offset-0"
+                  name="service_kind"
+                  onChange={() => setKind(item.kind)}
+                  type="radio"
+                  value={item.kind}
                 />
-                <span>{item.label}</span>
+                <span className="text-base font-medium leading-normal">
+                  {item.label}
+                </span>
               </label>
             ))}
           </div>
         </div>
 
-        <div className="space-y-3 pt-2 border-t border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-800">Khoảng giá</h3>
-          <div className="px-1 pt-2">
-            <div className="relative flex items-center">
-              <div className="h-1 w-full rounded-full bg-[#FF5436]" />
-              <div className="absolute left-0 -ml-1 w-4 h-4 rounded-full bg-white border-[3px] border-[#FF5436] shadow" />
-              <div className="absolute right-0 -mr-1 w-4 h-4 rounded-full bg-white border-[3px] border-[#FF5436] shadow" />
+        <div>
+          <Heading icon="attach_money" title="Khoảng giá" />
+          <div className="pt-6">
+            <div className="relative ml-2 h-2 w-[96%] rounded-full bg-new-track">
+              <div className="absolute left-0 h-full w-[32.4324%] bg-new-teal-cta" />
+              <span className="absolute -top-1.5 left-0 -ml-2.5 size-5 rounded-full border-2 border-new-teal-cta bg-white" />
+              <span className="absolute -top-1.5 left-[32.4324%] -ml-2.5 size-5 rounded-full border-2 border-new-teal-cta bg-white" />
             </div>
-            <div className="flex justify-between items-center text-xs text-gray-500 font-medium mt-3">
-              <span>0đ</span>
-              <span>20.000.000đ+</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-3 pt-2 border-t border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-800">Đánh giá</h3>
-          <div className="space-y-2.5 text-sm text-gray-600">
-            {RATING_FILTERS.map((label) => (
-              <label
-                key={label}
-                className="flex items-center gap-2.5 cursor-pointer"
-              >
-                <input
-                  className="w-4 h-4 rounded text-[#FF5436] border-gray-300 focus:ring-[#FF5436]"
-                  type="checkbox"
-                />
-                <span>{label}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-3 pt-2 border-t border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-800">Thời lượng</h3>
-          <div className="grid grid-cols-2 gap-2 text-xs font-medium">
-            {DURATION_FILTERS.map((label) => (
+            <div className="mt-6 flex items-center gap-1">
+              <p className="text-base font-medium leading-normal">Giá:</p>
+              <span className="w-full text-base font-medium leading-normal">
+                $130 - $250
+              </span>
               <button
-                key={label}
-                className="py-2 px-3 text-center rounded-xl bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100"
+                className="rounded bg-new-chip px-2.5 py-1 whitespace-nowrap text-sm font-medium leading-[1.4]"
                 type="button"
               >
-                {label}
+                Áp dụng
               </button>
-            ))}
+            </div>
           </div>
         </div>
 
-        <div className="space-y-3 pt-2 border-t border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-800">Phong cách</h3>
-          <div className="grid grid-cols-2 gap-2 text-xs font-medium">
-            {STYLE_FILTERS.map((label) => (
-              <button
-                key={label}
-                className="py-2 px-3 text-center rounded-xl bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100"
-                type="button"
-              >
-                {label}
-              </button>
-            ))}
+        <div>
+          <Heading icon="star" title="Đánh giá" />
+          <div className="flex flex-wrap gap-2 pt-5">
+            {[1, 2, 3, 4, 5].map((n) => {
+              const on = stars.includes(n);
+              return (
+                <button
+                  key={n}
+                  className={`flex items-center gap-1.5 rounded border px-2.5 py-1 text-sm font-medium leading-[1.4] transition-colors ${
+                    on
+                      ? "border-new-teal-cta bg-new-teal-cta text-white"
+                      : "border-new-chip bg-white text-new-paragraph"
+                  }`}
+                  onClick={() =>
+                    setStars((s) =>
+                      s.includes(n) ? s.filter((x) => x !== n) : [...s, n],
+                    )
+                  }
+                  type="button"
+                >
+                  <Icon className="text-sm text-[#ffb400]" name="star" />
+                  {n}
+                </button>
+              );
+            })}
           </div>
-        </div>
-
-        <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
-          <button
-            className="text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
-            type="button"
-          >
-            Xóa bộ lọc
-          </button>
-          <button
-            className="px-5 py-2 text-sm font-semibold text-white bg-slate-900 rounded-full hover:bg-slate-800 shadow-sm"
-            type="button"
-          >
-            Áp dụng
-          </button>
         </div>
       </div>
     </aside>

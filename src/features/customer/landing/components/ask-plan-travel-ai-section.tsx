@@ -6,10 +6,10 @@ const ROBOT_IMAGE = "/AIbanner.png";
 export function AskPlanTravelAiSection() {
   return (
     <section
-      className="w-full relative z-20 py-16 lg:py-20 px-8 lg:px-16 bg-white"
+      className="w-full relative z-20 py-16 lg:py-20 page-x bg-white"
       data-purpose="roamly-ai-banner"
     >
-      <div className="max-w-[1440px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
         <div className="lg:col-span-7 flex items-center justify-center">
           <Image
             alt="Trợ lý du lịch Roamly AI"

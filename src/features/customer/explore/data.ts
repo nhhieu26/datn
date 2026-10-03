@@ -11,6 +11,29 @@ export type ExploreItem = {
   image: string;
   price?: string;
   priceUnit?: string;
+  /** tour */
+  duration?: string;
+  people?: string;
+  /** hotel: [hồ bơi, phòng tắm, giường, sức chứa] */
+  specs?: [string, string, string, string];
+  /** restaurant */
+  cuisine?: string;
+  hours?: string;
+  /** destination */
+  tourCount?: string;
+  hotelCount?: string;
+};
+
+const DETAILS: Record<string, Partial<ExploreItem>> = {
+  "tour-ha-long": { duration: "2 ngày 1 đêm", people: "2 người" },
+  "nusa-penida": { duration: "1 ngày", people: "2 người" },
+  "intercontinental-danang": { specs: ["2 hồ bơi", "2 phòng tắm", "3 giường", "4–6 người"] },
+  amanoi: { specs: ["3 hồ bơi", "3 phòng tắm", "4 giường", "6–8 người"] },
+  "nha-hang-nen": { cuisine: "Ẩm thực Việt", hours: "11:00 - 22:00" },
+  "pizza-4ps": { cuisine: "Pizza & Âu", hours: "10:00 - 22:00" },
+  bali: { tourCount: "24+ Tour", hotelCount: "150+ Khách sạn" },
+  ubud: { tourCount: "12+ Tour", hotelCount: "80+ Khách sạn" },
+  santorini: { tourCount: "18+ Tour", hotelCount: "95+ Khách sạn" },
 };
 
 const IMG = "https://lh3.googleusercontent.com/aida-public/";
@@ -33,18 +56,7 @@ export const KIND_FILTERS: { label: string; kind: ExploreKind }[] = [
 
 export const RATING_FILTERS = ["4.5 trở lên", "4.0 trở lên", "3.5 trở lên"];
 
-export const DURATION_FILTERS = ["1 ngày", "2–3 ngày", "4–7 ngày", "7+ ngày"];
-
-export const STYLE_FILTERS = [
-  "Biển",
-  "Thiên nhiên",
-  "Ẩm thực",
-  "Nghỉ dưỡng",
-  "Phiêu lưu",
-  "Gia đình",
-];
-
-export const EXPLORE_ITEMS: ExploreItem[] = [
+const RAW_ITEMS: ExploreItem[] = [
   {
     id: "bali",
     kind: "destination",
@@ -155,3 +167,8 @@ export const EXPLORE_ITEMS: ExploreItem[] = [
     image: `${IMG}AB6AXuBVHuszLCUMh7kXd3u56lmhZTonJFgylbE6NxzDf__T-hmyJDHHD8RrxZckItGgI_WyKzd6ViDIz4jR7exchW3dR3uAa02LlXAo1VZxeEeTOCTG3IHjYgD_3tivdJNWJ_zxXxlf1_bkt363csn16e9aKdXyJr4GRLlz5f3Nuwlmz2CKxiT6MsAb7qlPijzDMnq_wA5KoCvwAghKzrvtZSPqEvTO02c_d6I3bPu3NNY3_f2kQRTgCUYo`,
   },
 ];
+
+export const EXPLORE_ITEMS: ExploreItem[] = RAW_ITEMS.map((item) => ({
+  ...item,
+  ...DETAILS[item.id],
+}));

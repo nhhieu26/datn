@@ -1,36 +1,15 @@
-const PAGES = [1, 2, 3, 4];
-
 export function Pagination() {
   return (
-    <nav
-      aria-label="Pagination"
-      className="flex justify-center items-center gap-2 pt-10 pb-6"
-    >
+    <div className="flex justify-center pt-[50px]">
       <button
-        className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 text-sm"
+        className="inline-flex items-center gap-2 px-6 py-2.5 rounded bg-new-teal-cta hover:bg-new-teal-hover text-white text-sm font-medium transition-colors"
         type="button"
       >
-        ‹
+        <span aria-hidden className="material-symbols-outlined text-base">
+          progress_activity
+        </span>
+        Xem thêm
       </button>
-      {PAGES.map((page, index) => (
-        <button
-          key={page}
-          className={
-            index === 0
-              ? "w-9 h-9 flex items-center justify-center rounded-full bg-slate-900 text-white font-medium text-sm shadow-sm"
-              : "w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 text-sm font-medium"
-          }
-          type="button"
-        >
-          {page}
-        </button>
-      ))}
-      <button
-        className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 text-sm"
-        type="button"
-      >
-        ›
-      </button>
-    </nav>
+    </div>
   );
 }

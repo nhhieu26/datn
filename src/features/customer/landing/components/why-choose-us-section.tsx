@@ -19,10 +19,10 @@ const REASONS = [
 export function WhyChooseUsSection() {
   return (
     <section
-      className="w-full relative z-20 py-12 px-8 lg:px-16 bg-white"
+      className="w-full relative z-20 py-12 page-x bg-white"
       data-purpose="why-choose-us"
     >
-      <div className="max-w-[1440px] mx-auto">
+      <div>
         <div className="relative flex items-center justify-center my-6">
           <div className="w-full border-t border-gray-300/80" />
           <span className="absolute px-6 text-base md:text-lg font-bold text-gray-900 tracking-tight bg-white">

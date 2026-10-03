@@ -1,31 +1,42 @@
-import { TOTAL_RESULTS } from "../data";
+import Link from "next/link";
 import { ExploreResults } from "./explore-results";
 import { FilterSidebar } from "./filter-sidebar";
 
 export function ExplorePageContent() {
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-      <div className="flex flex-col md:flex-row md:items-center justify-between pb-8">
-        <div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
+    <div className="font-[family-name:var(--font-dm-sans)] text-new-paragraph">
+      <section className="bg-new-banner-bg py-10 page-x">
+        <div className="w-full">
+          <h1 className="text-[30px] leading-[1.1] font-bold capitalize mb-1.5 text-new-title">
             Khám phá
           </h1>
-          <p className="mt-2 text-sm sm:text-base text-gray-500">
-            Khám phá tour, khách sạn, nhà hàng và điểm đến phù hợp với phong cách
-            du lịch của bạn.
-          </p>
+          <nav aria-label="breadcrumb">
+            <ul className="flex items-center font-[family-name:var(--font-kaushan)] text-sm leading-[1.4]">
+              <li>
+                <Link className="text-new-title" href="/">
+                  Home
+                </Link>
+              </li>
+              <li className="flex items-center">
+                <span
+                  aria-hidden
+                  className="material-symbols-outlined text-base px-2 text-new-title"
+                >
+                  remove
+                </span>
+                <span className="text-new-coral">Khám phá</span>
+              </li>
+            </ul>
+          </nav>
         </div>
-        <div className="mt-4 md:mt-0">
-          <span className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
-            {TOTAL_RESULTS} kết quả
-          </span>
-        </div>
-      </div>
+      </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        <FilterSidebar />
-        <ExploreResults />
-      </div>
-    </main>
+      <section className="py-[70px] page-x">
+        <div className="w-full grid grid-cols-1 xl:grid-cols-12 gap-6">
+          <FilterSidebar />
+          <ExploreResults />
+        </div>
+      </section>
+    </div>
   );
 }

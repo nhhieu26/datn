@@ -7,7 +7,7 @@ type HeroSectionProps = { locations: string[] };
 export function HeroSection({ locations }: HeroSectionProps) {
   return (
     <section
-      className="w-full relative z-30 overflow-hidden hero-bg-sketch py-8 lg:py-16 px-8 lg:px-16"
+      className="w-full relative z-30 overflow-hidden hero-bg-sketch py-8 lg:py-16 page-x"
       data-purpose="hero-section"
     >
       <Image
@@ -27,7 +27,7 @@ export function HeroSection({ locations }: HeroSectionProps) {
         width={488}
       />
 
-      <div className="relative z-10 max-w-[1440px] mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
+      <div className="relative z-10 w-full grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
         <div className="lg:col-span-7 pr-0 lg:pr-8" data-purpose="hero-content">
           <p className="font-handwriting text-2xl lg:text-3xl text-new-coral font-bold tracking-wide mb-3">
             Khám phá thế giới

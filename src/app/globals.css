@@ -23,6 +23,12 @@
   --new-doodle: #7d7a6e;
   --new-footer-bg: #071515;
   --new-input-bg: #eaeef1;
+  --new-banner-bg: #efeedb;
+  --new-title: #071516;
+  --new-paragraph: #4b5051;
+  --new-track: #daedef;
+  --new-star: #fcac17;
+  --new-checkbox-border: #c7d2d8;
   --new-why-from: rgba(162, 189, 185, 0.85);
   --new-why-mid: rgba(184, 206, 203, 0.5);
   --new-why-to: rgba(255, 255, 255, 0);
@@ -65,6 +71,20 @@
   --color-new-doodle: var(--new-doodle);
   --color-new-footer-bg: var(--new-footer-bg);
   --color-new-input-bg: var(--new-input-bg);
+  --color-new-banner-bg: var(--new-banner-bg);
+  --color-new-title: var(--new-title);
+  --color-new-paragraph: var(--new-paragraph);
+  --color-new-track: var(--new-track);
+  --color-new-star: var(--new-star);
+  --color-new-checkbox-border: var(--new-checkbox-border);
+}
+
+/* Nền tràn toàn màn hình, nội dung giới hạn 1320px */
+@utility page-x {
+  padding-inline: max(2rem, calc((100% - 1320px) / 2));
+  @media (min-width: 1024px) {
+    padding-inline: max(4rem, calc((100% - 1320px) / 2));
+  }
 }
 
 @media (prefers-color-scheme: dark) {

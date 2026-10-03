@@ -3,7 +3,6 @@ export * from "./explore-page-content";
 export * from "./explore-results";
 export * from "./filter-sidebar";
 export * from "./hotel-card";
-export * from "./icons";
 export * from "./pagination";
 export * from "./restaurant-card";
 export * from "./tour-card";

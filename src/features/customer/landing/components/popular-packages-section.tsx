@@ -22,10 +22,10 @@ export function PopularPackagesSection({
 
   return (
     <section
-      className="w-full relative z-20 py-16 px-8 lg:px-16 bg-white"
+      className="w-full relative z-20 py-16 page-x bg-white"
       data-purpose="popular-packages"
     >
-      <div className="max-w-[1440px] mx-auto text-center">
+      <div className="text-center">
         <div className="mb-8">
           <p className="font-handwriting text-3xl font-bold tracking-wide mb-2 text-new-coral">
             {copy.script}

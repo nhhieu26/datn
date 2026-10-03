@@ -9,10 +9,10 @@ export async function MainHeader() {
 
   return (
     <header
-      className="w-full relative z-30 px-8 lg:px-16 bg-new-hero-bg"
+      className="w-full relative z-30 page-x bg-new-hero-bg"
       data-purpose="site-header"
     >
-      <div className="max-w-[1440px] mx-auto flex items-center justify-between h-20">
+      <div className="flex items-center justify-between h-20">
         <Link
           className="flex items-center"
           data-purpose="brand-logo"
