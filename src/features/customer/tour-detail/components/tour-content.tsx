@@ -101,6 +101,20 @@ export function TourContent({ tour }: { tour: TourDetail }) {
           ))}
         </ol>
       </section>
+
+      {tour.tags.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 border-t border-new-chip pt-5">
+          <span className="font-bold text-new-title">Thẻ:</span>
+          {tour.tags.map((t) => (
+            <span
+              key={t}
+              className="rounded bg-new-chip px-3 py-1 text-sm text-new-title"
+            >
+              {t}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

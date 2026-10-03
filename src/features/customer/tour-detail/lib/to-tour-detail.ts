@@ -16,6 +16,7 @@ export type TourDetail = {
   includeServices: string[];
   excludeServices: string[];
   itinerary: { title: string; description: string }[];
+  tags: string[];
   departures: {
     id: string;
     /** ISO yyyy-mm-dd */
@@ -46,6 +47,7 @@ export function toTourDetail(t: TourRow): TourDetail {
     includeServices: t.includeServices,
     excludeServices: t.excludeServices,
     itinerary: (t.itinerary as { title: string; description: string }[]) ?? [],
+    tags: t.tags.map((x) => x.tag.name),
     departures,
   };
 }

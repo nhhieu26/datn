@@ -42,6 +42,8 @@ export function TourDetailHeading({ tour }: { tour: TourDetail }) {
           </p>
         </div>
         <Rating />
+        {/* ponytail: chưa có module booking/đánh giá nên hardcode số lượt đặt */}
+        <p className="text-sm text-new-paragraph">128 lượt đặt</p>
       </div>
     </div>
   );
