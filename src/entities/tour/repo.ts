@@ -87,6 +87,7 @@ export async function findPaged(
   const where: Prisma.TourWhereInput = {
     status: "published",
     ...(filter.province && { province: { name: filter.province } }),
+    ...(filter.tag && { tags: { some: { tag: { name: filter.tag } } } }),
     ...(filter.q && {
       OR: [
         { title: { contains: filter.q, mode: "insensitive" } },

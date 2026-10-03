@@ -3,6 +3,7 @@ export type ListSort = "popular" | "price_asc" | "price_desc" | "newest";
 export type ListFilter = {
   q?: string;
   province?: string;
+  tag?: string;
   minPrice?: number;
   maxPrice?: number;
   sort: ListSort;

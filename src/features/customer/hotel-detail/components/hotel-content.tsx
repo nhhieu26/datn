@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { formatPrice } from "@/features/customer/components/cards/card-parts";
 import { amenityIcon } from "../lib/amenity-icon";
 import type { HotelDetail, HotelRoom } from "../lib/to-hotel-detail";
@@ -163,12 +164,13 @@ export function HotelContent({ hotel }: { hotel: HotelDetail }) {
         <div className="flex flex-wrap items-center gap-3 border-t border-new-chip pt-5">
           <span className="font-bold text-new-title">Thẻ:</span>
           {hotel.tags.map((t) => (
-            <span
+            <Link
+              href={`/explore?kind=hotel&tag=${encodeURIComponent(t)}`}
               key={t}
               className="rounded bg-new-chip px-3 py-1 text-sm text-new-title"
             >
               {t}
-            </span>
+            </Link>
           ))}
         </div>
       )}

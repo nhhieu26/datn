@@ -97,6 +97,7 @@ export async function findPaged(filter: ListFilter) {
   const where: Prisma.HotelWhereInput = {
     status: "published",
     ...(filter.province && { province: { name: filter.province } }),
+    ...(filter.tag && { tags: { some: { tag: { name: filter.tag } } } }),
     ...(filter.q && {
       OR: [
         { name: { contains: filter.q, mode: "insensitive" } },

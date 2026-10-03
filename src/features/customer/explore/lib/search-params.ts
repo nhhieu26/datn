@@ -8,6 +8,7 @@ import {
 export type ExploreQuery = {
   kind: ExploreKind | "all";
   q: string;
+  tag?: string;
   location: string;
   from: string;
   to: string;
@@ -39,6 +40,7 @@ export function parseExploreQuery(raw: RawParams): ExploreQuery {
   return {
     kind: kind ?? "tour",
     q: first(raw.q),
+    tag: first(raw.tag) || undefined,
     location: first(raw.location),
     from: DATE_RE.test(from) ? from : "",
     to: DATE_RE.test(to) ? to : "",
@@ -58,6 +60,7 @@ export function buildExploreUrl(
   const params = new URLSearchParams();
   params.set("kind", next.kind);
   if (next.q) params.set("q", next.q);
+  if (next.tag) params.set("tag", next.tag);
   if (next.location) params.set("location", next.location);
   // ngày chỉ lọc lịch khởi hành của tour
   if (next.kind === "tour" || next.kind === "all") {

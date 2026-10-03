@@ -22,6 +22,7 @@ async function loadKind(
   const filter = {
     q: query.q || undefined,
     province: query.location || undefined,
+    tag: query.tag,
     minPrice: query.minPrice,
     maxPrice: query.maxPrice,
     sort: query.sort,

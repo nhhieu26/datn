@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { TourDetail } from "../lib/to-tour-detail";
 
 // ponytail: chưa có trường chính sách trong DB nên dùng nội dung chung cho mọi tour
@@ -106,12 +107,13 @@ export function TourContent({ tour }: { tour: TourDetail }) {
         <div className="flex flex-wrap items-center gap-3 border-t border-new-chip pt-5">
           <span className="font-bold text-new-title">Thẻ:</span>
           {tour.tags.map((t) => (
-            <span
+            <Link
+              href={`/explore?kind=tour&tag=${encodeURIComponent(t)}`}
               key={t}
               className="rounded bg-new-chip px-3 py-1 text-sm text-new-title"
             >
               {t}
-            </span>
+            </Link>
           ))}
         </div>
       )}

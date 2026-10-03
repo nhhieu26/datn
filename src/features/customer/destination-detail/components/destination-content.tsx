@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { formatPrice } from "@/features/customer/components/cards/card-parts";
 import type { DestinationDetail } from "../lib/to-destination-detail";
 
@@ -68,13 +69,6 @@ export function DestinationContent({
             label="Tỉnh/Thành phố"
             value={destination.location}
           />
-          {destination.tags.length > 0 && (
-            <InfoItem
-              icon="sell"
-              label="Loại hình"
-              value={destination.tags.join(", ")}
-            />
-          )}
         </ul>
       </section>
 
@@ -110,12 +104,13 @@ export function DestinationContent({
         <div className="flex flex-wrap items-center gap-3 border-t border-new-chip pt-5">
           <span className="font-bold text-new-title">Thẻ:</span>
           {destination.tags.map((t) => (
-            <span
+            <Link
+              href={`/explore?kind=destination&tag=${encodeURIComponent(t)}`}
               key={t}
               className="rounded bg-new-chip px-3 py-1 text-sm text-new-title"
             >
               {t}
-            </span>
+            </Link>
           ))}
         </div>
       )}

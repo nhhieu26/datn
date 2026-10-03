@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { formatPrice } from "@/features/customer/components/cards/card-parts";
 import { groupTimeSlots, type RestaurantDetail } from "../lib/restaurant-detail";
 
@@ -119,12 +120,13 @@ export function RestaurantContent({
         <div className="flex flex-wrap items-center gap-3">
           <span className="font-bold text-new-title">Thẻ:</span>
           {restaurant.tags.map((t) => (
-            <span
+            <Link
+              href={`/explore?kind=restaurant&tag=${encodeURIComponent(t)}`}
               key={t}
               className="rounded bg-new-chip px-3 py-1 text-sm text-new-title"
             >
               {t}
-            </span>
+            </Link>
           ))}
         </div>
         <div className="flex items-center gap-3 text-new-title">
