@@ -1,4 +1,6 @@
+import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { type ListFilter, priceOrder, priceRange } from "../list-filter";
 import type {
   CreateDestinationInput,
   Destination,
@@ -49,4 +51,31 @@ export function create(
 
 export function remove(id: string): Promise<Destination> {
   return prisma.destination.delete({ where: { id } });
+}
+
+export async function findPaged(filter: ListFilter) {
+  const price = priceRange(filter);
+  const where: Prisma.DestinationWhereInput = {
+    isPublished: true,
+    ...(filter.province && { province: { name: filter.province } }),
+    ...(filter.q && {
+      OR: [
+        { name: { contains: filter.q, mode: "insensitive" } },
+        { description: { contains: filter.q, mode: "insensitive" } },
+      ],
+    }),
+    ...(price && { ticketPrice: price }),
+  };
+  const order = priceOrder(filter.sort);
+  const [items, total] = await prisma.$transaction([
+    prisma.destination.findMany({
+      where,
+      include: { province: true },
+      orderBy: order ? { ticketPrice: order } : { createdAt: "desc" },
+      skip: filter.skip,
+      take: filter.take,
+    }),
+    prisma.destination.count({ where }),
+  ]);
+  return { items, total };
 }

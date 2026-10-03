@@ -1,8 +1,22 @@
 import Link from "next/link";
+import type { ExploreItem } from "../data";
+import type { ExploreQuery } from "../lib/search-params";
 import { ExploreResults } from "./explore-results";
 import { FilterSidebar } from "./filter-sidebar";
 
-export function ExplorePageContent() {
+type ExplorePageContentProps = {
+  items: ExploreItem[];
+  total: number;
+  query: ExploreQuery;
+  locations: string[];
+};
+
+export function ExplorePageContent({
+  items,
+  total,
+  query,
+  locations,
+}: ExplorePageContentProps) {
   return (
     <div className="font-[family-name:var(--font-dm-sans)] text-new-paragraph">
       <section className="bg-new-banner-bg py-10 page-x">
@@ -33,8 +47,8 @@ export function ExplorePageContent() {
 
       <section className="py-[70px] page-x">
         <div className="w-full grid grid-cols-1 xl:grid-cols-12 gap-6">
-          <FilterSidebar />
-          <ExploreResults />
+          <FilterSidebar locations={locations} query={query} />
+          <ExploreResults items={items} query={query} total={total} />
         </div>
       </section>
     </div>

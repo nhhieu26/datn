@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  DestinationCard,
-  HotelCard,
-  RestaurantCard,
-  TourCard,
-} from "@/features/customer/components/cards";
+import { ExploreCard } from "@/features/customer/components/cards";
 import Link from "next/link";
 import { useState } from "react";
 import { PACKAGE_COPY, PACKAGE_TABS } from "../lib/package-copy";
@@ -55,20 +50,9 @@ export function PopularPackagesSection({
 
         {itemCount > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-left mb-12">
-            {activeKind === "tour" &&
-              packages.tour.map((tour) => <TourCard key={tour.id} tour={tour} />)}
-            {activeKind === "hotel" &&
-              packages.hotel.map((hotel) => (
-                <HotelCard key={hotel.id} hotel={hotel} />
-              ))}
-            {activeKind === "restaurant" &&
-              packages.restaurant.map((restaurant) => (
-                <RestaurantCard key={restaurant.id} restaurant={restaurant} />
-              ))}
-            {activeKind === "destination" &&
-              packages.destination.map((destination) => (
-                <DestinationCard key={destination.id} destination={destination} />
-              ))}
+            {packages[activeKind].map((item) => (
+              <ExploreCard item={item} key={item.id} />
+            ))}
           </div>
         ) : (
           <p className="text-sm text-gray-500 mb-12">Chưa có dữ liệu để hiển thị.</p>

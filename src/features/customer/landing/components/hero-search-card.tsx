@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { LocationPicker } from "../../components/location-picker";
 
 type HeroSearchCardProps = { locations: string[] };
 
@@ -14,19 +15,15 @@ function formatDate(value: string) {
 export function HeroSearchCard({ locations }: HeroSearchCardProps) {
   const router = useRouter();
   const [location, setLocation] = useState<string | null>(null);
-  const [locationOpen, setLocationOpen] = useState(false);
-  const [locationQuery, setLocationQuery] = useState("");
   const [dateOpen, setDateOpen] = useState(false);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [keyword, setKeyword] = useState("");
-  const locationRef = useRef<HTMLDivElement>(null);
   const dateRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function onClick(event: MouseEvent) {
       const target = event.target as Node;
-      if (!locationRef.current?.contains(target)) setLocationOpen(false);
       if (!dateRef.current?.contains(target)) setDateOpen(false);
     }
     document.addEventListener("click", onClick);
@@ -35,7 +32,8 @@ export function HeroSearchCard({ locations }: HeroSearchCardProps) {
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    const params = new URLSearchParams();
+    // ngày chỉ lọc lịch khởi hành của tour nên luôn chuyển sang tab tour
+    const params = new URLSearchParams({ kind: "tour" });
     if (keyword.trim()) params.set("q", keyword.trim());
     if (location) params.set("location", location);
     if (from) params.set("from", from);
@@ -46,11 +44,7 @@ export function HeroSearchCard({ locations }: HeroSearchCardProps) {
   const dateText =
     from || to
       ? `${formatDate(from) || "…"} - ${formatDate(to) || "…"}`
-      : "Chọn ngày";
-
-  const filteredLocations = locations.filter((name) =>
-    name.toLowerCase().includes(locationQuery.trim().toLowerCase()),
-  );
+      : "Chọn ngày khởi hành";
 
   return (
     <div
@@ -67,93 +61,36 @@ export function HeroSearchCard({ locations }: HeroSearchCardProps) {
       </div>
 
       <form className="space-y-4" onSubmit={handleSubmit}>
-        <div
-          ref={locationRef}
+        <LocationPicker
           className="border-b border-gray-200 pb-3 pt-1 relative z-20"
-        >
-          <button
-            className="w-full text-left flex items-center justify-between cursor-pointer"
-            onClick={() => setLocationOpen((open) => !open)}
-            type="button"
-          >
-            <div className="flex items-start space-x-3">
-              <div className="mt-0.5 text-gray-900">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+          locations={locations}
+          onChange={setLocation}
+          renderTrigger={({ open, value }) => (
+            <div className="flex items-center justify-between">
+              <div className="flex items-start space-x-3">
+                <div className="mt-0.5 text-gray-900">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <div>
+                  <span className="block text-sm font-bold text-gray-900">Địa điểm</span>
+                  <span className="block text-xs text-gray-600 mt-0.5 font-medium">
+                    {value ?? "Tất cả địa điểm"}
+                  </span>
+                </div>
               </div>
-              <div>
-                <span className="block text-sm font-bold text-gray-900">Địa điểm</span>
-                <span className="block text-xs text-gray-600 mt-0.5 font-medium">
-                  {location ?? "Tất cả địa điểm"}
-                </span>
-              </div>
-            </div>
-            <svg
-              className={`w-4 h-4 text-gray-800 transition-transform duration-200 ${locationOpen ? "rotate-180" : ""}`}
-              fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"
-            >
-              <path d="M19 9l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          {locationOpen && (
-            <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden text-left">
-              <div className="p-2 border-b border-gray-100">
-                <input
-                  autoFocus
-                  className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:border-new-teal focus:ring-0"
-                  onChange={(event) => setLocationQuery(event.target.value)}
-                  placeholder="Tìm địa điểm..."
-                  type="text"
-                  value={locationQuery}
-                />
-              </div>
-              <div className="max-h-56 overflow-y-auto">
-                {!locationQuery.trim() && (
-                  <button
-                    className={`block w-full text-left px-4 py-3 text-sm font-medium transition ${
-                      location === null
-                        ? "bg-new-teal text-white"
-                        : "text-gray-700 hover:bg-gray-50"
-                    }`}
-                    onClick={() => {
-                      setLocation(null);
-                      setLocationOpen(false);
-                      setLocationQuery("");
-                    }}
-                    type="button"
-                  >
-                    Tất cả địa điểm
-                  </button>
-                )}
-                {filteredLocations.map((name) => (
-                  <button
-                    key={name}
-                    className={`block w-full text-left px-4 py-3 text-sm font-medium transition ${
-                      name === location
-                        ? "bg-new-teal text-white"
-                        : "text-gray-700 hover:bg-gray-50"
-                    }`}
-                    onClick={() => {
-                      setLocation(name);
-                      setLocationOpen(false);
-                      setLocationQuery("");
-                    }}
-                    type="button"
-                  >
-                    {name}
-                  </button>
-                ))}
-                {filteredLocations.length === 0 && (
-                  <p className="px-4 py-3 text-sm text-gray-500">
-                    Không tìm thấy địa điểm
-                  </p>
-                )}
-              </div>
+              <svg
+                className={`w-4 h-4 text-gray-800 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+                fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"
+              >
+                <path d="M19 9l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </div>
           )}
-        </div>
+          value={location}
+        />
 
         <div
           ref={dateRef}
@@ -172,7 +109,7 @@ export function HeroSearchCard({ locations }: HeroSearchCardProps) {
                 </svg>
               </div>
               <div>
-                <span className="block text-sm font-bold text-gray-900">Ngày</span>
+                <span className="block text-sm font-bold text-gray-900">Ngày khởi hành</span>
                 <span className="block text-xs text-gray-600 mt-0.5 font-medium">{dateText}</span>
               </div>
             </div>

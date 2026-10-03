@@ -1,4 +1,11 @@
+import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import {
+  average,
+  needsPriceScan,
+  paginateByPrice,
+  type ListFilter,
+} from "../list-filter";
 import type {
   Hotel,
   HotelWithRelations,
@@ -73,4 +80,40 @@ export function findRecent(take: number) {
     orderBy: { createdAt: "desc" },
     take,
   });
+}
+
+export async function findPaged(filter: ListFilter) {
+  const where: Prisma.HotelWhereInput = {
+    status: "published",
+    ...(filter.province && { province: { name: filter.province } }),
+    ...(filter.q && {
+      OR: [
+        { name: { contains: filter.q, mode: "insensitive" } },
+        { description: { contains: filter.q, mode: "insensitive" } },
+      ],
+    }),
+  };
+  const include = { province: true, rooms: true } as const;
+  const orderBy = { createdAt: "desc" } as const;
+
+  // giá khách sạn = giá phòng trung bình
+  if (needsPriceScan(filter)) {
+    const all = await prisma.hotel.findMany({ where, include, orderBy });
+    return paginateByPrice(
+      all,
+      (h) => average(h.rooms.map((r) => Number(r.basePrice))),
+      filter,
+    );
+  }
+  const [items, total] = await prisma.$transaction([
+    prisma.hotel.findMany({
+      where,
+      include,
+      orderBy,
+      skip: filter.skip,
+      take: filter.take,
+    }),
+    prisma.hotel.count({ where }),
+  ]);
+  return { items, total };
 }
