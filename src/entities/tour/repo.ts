@@ -7,6 +7,20 @@ export function findBySlug(slug: string): Promise<Tour | null> {
   return prisma.tour.findUnique({ where: { slug } });
 }
 
+export function findPublishedDetailBySlug(slug: string) {
+  return prisma.tour.findFirst({
+    where: { slug, status: "published" },
+    include: {
+      province: true,
+      tags: { include: { tag: true } },
+      departures: {
+        where: { status: "scheduled" },
+        orderBy: { departureDate: "asc" },
+      },
+    },
+  });
+}
+
 export function findAllByProviderProfileId(
   providerProfileId: string
 ): Promise<TourWithRelations[]> {

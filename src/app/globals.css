@@ -29,6 +29,7 @@
   --new-track: #daedef;
   --new-star: #fcac17;
   --new-checkbox-border: #c7d2d8;
+  --new-itinerary-bg: #eaebed;
   --new-section-bg: #f5f7f9;
   --new-input-border: #c7d2d8;
   --new-tab-border: #dddddd70;
@@ -81,6 +82,7 @@
   --color-new-track: var(--new-track);
   --color-new-star: var(--new-star);
   --color-new-checkbox-border: var(--new-checkbox-border);
+  --color-new-itinerary-bg: var(--new-itinerary-bg);
   --color-new-section-bg: var(--new-section-bg);
   --color-new-input-border: var(--new-input-border);
   --color-new-tab-border: var(--new-tab-border);
