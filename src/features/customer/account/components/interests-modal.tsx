@@ -50,14 +50,14 @@ export function InterestsModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="interests-heading"
-        className="relative max-h-[90vh] w-full max-w-[510px] overflow-y-auto rounded-[28px] border border-slate-100 bg-white p-8 shadow-2xl"
+        className="relative max-h-[90vh] w-full max-w-[510px] overflow-y-auto rounded-2xl border border-new-checkbox-border bg-white p-8 shadow-2xl"
       >
         <button
           type="button"
           onClick={onClose}
           disabled={isPending}
           aria-label="Đóng"
-          className="absolute right-6 top-6 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+          className="absolute right-6 top-6 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-new-track hover:text-new-teal"
         >
           <svg
             className="h-4 w-4"
@@ -74,7 +74,7 @@ export function InterestsModal({
           </svg>
         </button>
 
-        <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-tr from-brand-100 to-orange-100/70 text-brand-500 shadow-inner">
+        <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-full bg-new-track text-new-teal-cta shadow-inner">
           <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
             <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" />
           </svg>
@@ -96,10 +96,10 @@ export function InterestsModal({
             return (
               <label
                 key={tag.id}
-                className={`inline-flex cursor-pointer items-center rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all focus-within:ring-2 focus-within:ring-brand-500 ${
+                className={`inline-flex cursor-pointer items-center rounded-lg border px-3.5 py-1.5 text-xs font-medium transition-all focus-within:ring-2 focus-within:ring-new-teal ${
                   active
-                    ? "border-brand-500 bg-brand-50 text-brand-600 shadow-sm"
-                    : "border-slate-200 bg-white text-slate-700"
+                    ? "border-new-teal-cta bg-new-track text-new-teal-cta"
+                    : "border-new-checkbox-border bg-white text-slate-700"
                 }`}
               >
                 <input
@@ -139,7 +139,7 @@ export function InterestsModal({
           <button
             type="submit"
             disabled={isPending}
-            className="flex items-center gap-2 rounded-full bg-gradient-to-r from-[#ff4d1d] to-[#ff6b3d] px-6 py-2.5 text-xs font-semibold text-white shadow-md shadow-orange-500/25 transition-all hover:opacity-95 active:scale-95"
+            className="flex items-center gap-2 rounded-lg bg-new-teal px-6 py-2.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-new-teal-hover disabled:opacity-60"
           >
             <span>{isPending ? "Đang lưu..." : "Lưu sở thích"}</span>
           </button>
