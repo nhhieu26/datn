@@ -39,7 +39,7 @@ export function DestinationInfoCard({
 
       <div className="flex flex-col gap-3">
         {mapUrl && (
-          <a
+          <Link
             className={`${cta} bg-new-teal text-white hover:bg-new-teal-hover`}
             href={mapUrl}
             rel="noreferrer"
@@ -49,7 +49,7 @@ export function DestinationInfoCard({
               map
             </span>
             Xem bản đồ
-          </a>
+          </Link>
         )}
         <Link
           className={`${cta} border border-new-teal text-new-teal hover:bg-white`}

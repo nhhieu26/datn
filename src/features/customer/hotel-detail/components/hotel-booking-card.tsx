@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { formatPrice } from "@/features/customer/components/cards/card-parts";
 import type { HotelDetail } from "../lib/to-hotel-detail";
@@ -171,7 +172,7 @@ export function HotelBookingCard({ hotel }: { hotel: HotelDetail }) {
       </div>
 
       {mapUrl && (
-        <a
+        <Link
           className="mt-4 flex w-full items-center justify-center gap-2 rounded px-7 py-3.5 font-bold transition-colors bg-new-teal text-white hover:bg-new-teal-hover"
           href={mapUrl}
           rel="noreferrer"
@@ -181,7 +182,7 @@ export function HotelBookingCard({ hotel }: { hotel: HotelDetail }) {
             map
           </span>
           Xem bản đồ
-        </a>
+        </Link>
       )}
 
       <button

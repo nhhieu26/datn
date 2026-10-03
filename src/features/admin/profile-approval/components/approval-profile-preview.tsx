@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import type { ApprovalProfile } from "../types";
 import { BusinessBadge } from "./approval-shared";
 import { formatDate, formatEntityCode, formatTime } from "@/lib/utils";
@@ -164,7 +165,7 @@ export function ApprovalProfilePreview({
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <a
+          <Link
             className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-[11px] font-bold transition ${
               profile.licenseUrl
                 ? "border-slate-200 text-slate-700 hover:bg-slate-50"
@@ -178,8 +179,8 @@ export function ApprovalProfilePreview({
               description
             </span>
             Mở hồ sơ
-          </a>
-          <a
+          </Link>
+          <Link
             className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-[11px] font-bold transition ${
               profile.website
                 ? "border-slate-200 text-slate-700 hover:bg-slate-50"
@@ -193,7 +194,7 @@ export function ApprovalProfilePreview({
               open_in_new
             </span>
             Website
-          </a>
+          </Link>
         </div>
 
         <div className="mt-4 border-t border-slate-100 pt-4">

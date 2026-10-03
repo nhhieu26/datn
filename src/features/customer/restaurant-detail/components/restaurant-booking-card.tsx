@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { formatPrice } from "@/features/customer/components/cards/card-parts";
 import { minMenuPrice, type RestaurantDetail } from "../lib/restaurant-detail";
@@ -141,7 +142,7 @@ export function RestaurantBookingCard({
       </div>
 
       {mapUrl && (
-        <a
+        <Link
           className="mb-4 flex w-full items-center justify-center gap-2 rounded bg-new-teal px-7 py-3.5 font-bold text-white transition-colors hover:bg-new-teal-hover"
           href={mapUrl}
           rel="noreferrer"
@@ -151,7 +152,7 @@ export function RestaurantBookingCard({
             map
           </span>
           Xem bản đồ
-        </a>
+        </Link>
       )}
 
       <button

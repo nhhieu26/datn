@@ -72,18 +72,18 @@ export function MainFooter() {
               <p className="leading-relaxed">
                 70/A Tầng Divo Tower, Hà Nội, Việt Nam
               </p>
-              <a
+              <Link
                 className="block hover:text-white transition duration-150"
                 href="tel:+84123456789"
               >
                 (+84) 123 456 789
-              </a>
-              <a
+              </Link>
+              <Link
                 className="block hover:text-white transition duration-150"
                 href="mailto:hello@roamly.vn"
               >
                 hello@roamly.vn
-              </a>
+              </Link>
             </div>
           </div>
         </div>
