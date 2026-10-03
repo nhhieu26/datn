@@ -30,6 +30,10 @@
   --new-star: #fcac17;
   --new-checkbox-border: #c7d2d8;
   --new-itinerary-bg: #eaebed;
+  --new-section-bg: #f5f7f9;
+  --new-input-border: #c7d2d8;
+  --new-tab-border: #dddddd70;
+  --new-placeholder: #999999;
   --new-why-from: rgba(162, 189, 185, 0.85);
   --new-why-mid: rgba(184, 206, 203, 0.5);
   --new-why-to: rgba(255, 255, 255, 0);
@@ -79,6 +83,10 @@
   --color-new-star: var(--new-star);
   --color-new-checkbox-border: var(--new-checkbox-border);
   --color-new-itinerary-bg: var(--new-itinerary-bg);
+  --color-new-section-bg: var(--new-section-bg);
+  --color-new-input-border: var(--new-input-border);
+  --color-new-tab-border: var(--new-tab-border);
+  --color-new-placeholder: var(--new-placeholder);
 }
 
 /* Nền tràn toàn màn hình, nội dung giới hạn 1320px */
