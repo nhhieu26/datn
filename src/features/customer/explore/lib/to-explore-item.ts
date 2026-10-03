@@ -62,6 +62,7 @@ export function toRestaurantItem(r: RestaurantRow): ExploreItem {
     id: r.id,
     createdAt: r.createdAt.getTime(),
     kind: "restaurant",
+    href: `/restaurants/${r.slug}`,
     title: r.name,
     location: r.province.name,
     image: firstImage(r.images),

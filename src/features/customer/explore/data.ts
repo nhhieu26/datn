@@ -11,7 +11,7 @@ export type ExploreItem = {
   image: string;
   /** VND: tour (giá gốc), khách sạn (phòng TB), nhà hàng (món TB), điểm đến (vé) */
   price?: number;
-  /** trang chi tiết (hiện chỉ tour có) */
+  /** trang chi tiết */
   href?: string;
   /** hai chip thông tin, icon do từng card quyết định */
   meta: [string, string];

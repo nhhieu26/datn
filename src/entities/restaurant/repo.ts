@@ -16,6 +16,17 @@ export function findBySlug(slug: string): Promise<Restaurant | null> {
   return prisma.restaurant.findUnique({ where: { slug } });
 }
 
+export function findPublishedDetailBySlug(slug: string) {
+  return prisma.restaurant.findFirst({
+    where: { slug, status: "published" },
+    include: {
+      province: true,
+      tags: { include: { tag: true } },
+      timeSlots: true,
+    },
+  });
+}
+
 export function findAllByProviderProfileId(
   providerProfileId: string
 ): Promise<RestaurantWithRelations[]> {

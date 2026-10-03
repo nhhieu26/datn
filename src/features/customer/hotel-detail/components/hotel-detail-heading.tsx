@@ -14,7 +14,7 @@ export function HotelDetailHeading({ hotel }: { hotel: HotelDetail }) {
               location_on
             </span>
             <div className="text-base font-bold lg:text-lg">
-              {hotel.address}, {hotel.location}
+              {hotel.location}
             </div>
           </div>
           <div className="hidden h-5 w-px bg-new-paragraph/30 sm:block" />
@@ -43,6 +43,8 @@ export function HotelDetailHeading({ hotel }: { hotel: HotelDetail }) {
           <p>/đêm</p>
         </div>
         <Rating />
+        {/* ponytail: chưa có module booking/đánh giá nên hardcode số lượt đặt */}
+        <p className="text-sm text-new-paragraph">128 lượt đặt</p>
       </div>
     </div>
   );

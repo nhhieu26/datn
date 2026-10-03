@@ -821,4 +821,9 @@ export async function seedHotels() {
     where: { providerProfileId: providerProfile.id },
     data: { status: "published" },
   });
+
+  await prisma.room.updateMany({
+    where: { hotel: { providerProfileId: providerProfile.id } },
+    data: { status: "published" },
+  });
 }

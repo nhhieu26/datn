@@ -1,24 +1,33 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { restaurantRepo } from "@/entities/restaurant";
 import { PageBanner } from "@/features/customer/components/page-banner";
 import {
   RestaurantBookingCard,
   RestaurantContent,
   RestaurantDetailHeading,
-  RestaurantFeatures,
 } from "@/features/customer/restaurant-detail";
-import { MOCK_RESTAURANT } from "@/features/customer/restaurant-detail/lib/restaurant-detail.mock";
+import { toRestaurantDetail } from "@/features/customer/restaurant-detail/lib/to-restaurant-detail";
 import {
   TourComments,
   TourGallerySlider,
 } from "@/features/customer/tour-detail";
 
-// ponytail: UI-only, dùng dữ liệu mock cho mọi slug cho tới khi nối backend.
-export const metadata: Metadata = {
-  title: `${MOCK_RESTAURANT.name} — Roamly`,
-};
+type Props = { params: Promise<{ slug: string }> };
 
-export default function RestaurantDetailPage() {
-  const restaurant = MOCK_RESTAURANT;
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const row = await restaurantRepo.findPublishedDetailBySlug(slug);
+  return {
+    title: row ? `${row.name} — Roamly` : "Không tìm thấy nhà hàng",
+  };
+}
+
+export default async function RestaurantDetailPage({ params }: Props) {
+  const { slug } = await params;
+  const row = await restaurantRepo.findPublishedDetailBySlug(slug);
+  if (!row) notFound();
+  const restaurant = toRestaurantDetail(row);
 
   return (
     <main>
@@ -33,7 +42,6 @@ export default function RestaurantDetailPage() {
       <section className="py-12">
         <div className="page-x">
           <RestaurantDetailHeading restaurant={restaurant} />
-          <RestaurantFeatures restaurant={restaurant} />
         </div>
         <div className="mt-8">
           <TourGallerySlider images={restaurant.images} title={restaurant.name} />
