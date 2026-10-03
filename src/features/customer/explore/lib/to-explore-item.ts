@@ -79,6 +79,7 @@ export function toDestinationItem(d: DestinationRow): ExploreItem {
     id: d.id,
     createdAt: d.createdAt.getTime(),
     kind: "destination",
+    href: `/destinations/${d.slug}`,
     title: d.name,
     location: d.province.name,
     image: firstImage(d.images),

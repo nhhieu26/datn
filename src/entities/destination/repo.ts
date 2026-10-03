@@ -11,6 +11,13 @@ export function findBySlug(slug: string): Promise<Destination | null> {
   return prisma.destination.findUnique({ where: { slug } });
 }
 
+export function findPublishedDetailBySlug(slug: string) {
+  return prisma.destination.findFirst({
+    where: { slug, isPublished: true },
+    include: { province: true, tags: { include: { tag: true } } },
+  });
+}
+
 export function findAll(): Promise<DestinationWithRelations[]> {
   return prisma.destination.findMany({
     include: {
