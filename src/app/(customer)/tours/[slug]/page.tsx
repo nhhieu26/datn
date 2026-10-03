@@ -4,6 +4,7 @@ import { tourRepo } from "@/entities/tour";
 import { PageBanner } from "@/features/customer/components/page-banner";
 import {
   TourBookingCard,
+  TourComments,
   TourContent,
   TourDetailHeading,
   TourGallerySlider,
@@ -41,6 +42,9 @@ export default async function TourDetailPage({ params }: Props) {
           <div className="mt-8 grid gap-8 lg:grid-cols-3 xl:grid-cols-[2fr_1fr]">
             <div className="lg:col-span-2 xl:col-span-1">
               <TourContent tour={tour} />
+              <div className="mt-8">
+                <TourComments />
+              </div>
             </div>
             <aside>
               <TourBookingCard tour={tour} />
