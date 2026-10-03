@@ -21,6 +21,10 @@ export function RestaurantBookingCard({
   const [guests, setGuests] = useState(2);
   const [open, setOpen] = useState(false);
   const max = Math.max(1, restaurant.capacity);
+  const mapUrl =
+    restaurant.latitude != null && restaurant.longitude != null
+      ? `https://www.google.com/maps?q=${restaurant.latitude},${restaurant.longitude}`
+      : null;
 
   return (
     <div className="sticky top-4 rounded-lg bg-new-chip p-6">
@@ -135,6 +139,20 @@ export function RestaurantBookingCard({
           </div>
         )}
       </div>
+
+      {mapUrl && (
+        <a
+          className="mb-4 flex w-full items-center justify-center gap-2 rounded bg-new-teal px-7 py-3.5 font-bold text-white transition-colors hover:bg-new-teal-hover"
+          href={mapUrl}
+          rel="noreferrer"
+          target="_blank"
+        >
+          <span aria-hidden className="material-symbols-outlined">
+            map
+          </span>
+          Xem bản đồ
+        </a>
+      )}
 
       <button
         className="mt-6 w-full cursor-pointer rounded bg-new-teal px-7 py-3.5 font-bold text-white transition-colors hover:bg-new-teal-hover disabled:cursor-not-allowed disabled:opacity-50"

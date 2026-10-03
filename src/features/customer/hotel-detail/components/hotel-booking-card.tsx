@@ -25,6 +25,10 @@ export function HotelBookingCard({ hotel }: { hotel: HotelDetail }) {
 
   const room = hotel.rooms.find((r) => r.id === roomId);
   const max = Math.max(1, room?.capacity ?? 1);
+  const mapUrl =
+    hotel.latitude != null && hotel.longitude != null
+      ? `https://www.google.com/maps?q=${hotel.latitude},${hotel.longitude}`
+      : null;
   const nights =
     checkIn && checkOut
       ? Math.max(0, Math.round((toTime(checkOut) - toTime(checkIn)) / DAY))
@@ -165,6 +169,20 @@ export function HotelBookingCard({ hotel }: { hotel: HotelDetail }) {
           {nights > 0 ? formatPrice(price * nights) : "—"}
         </span>
       </div>
+
+      {mapUrl && (
+        <a
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded px-7 py-3.5 font-bold transition-colors bg-new-teal text-white hover:bg-new-teal-hover"
+          href={mapUrl}
+          rel="noreferrer"
+          target="_blank"
+        >
+          <span aria-hidden className="material-symbols-outlined">
+            map
+          </span>
+          Xem bản đồ
+        </a>
+      )}
 
       <button
         className="mt-4 w-full cursor-pointer rounded bg-new-teal px-7 py-3.5 font-bold text-white transition-colors hover:bg-new-teal-hover disabled:cursor-not-allowed disabled:opacity-50"
