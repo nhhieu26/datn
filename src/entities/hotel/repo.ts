@@ -18,6 +18,17 @@ export function findBySlug(slug: string): Promise<Hotel | null> {
   return prisma.hotel.findUnique({ where: { slug } });
 }
 
+export function findPublishedDetailBySlug(slug: string) {
+  return prisma.hotel.findFirst({
+    where: { slug, status: "published" },
+    include: {
+      province: true,
+      tags: { include: { tag: true } },
+      rooms: { where: { status: "published" }, orderBy: { basePrice: "asc" } },
+    },
+  });
+}
+
 export function findAllByProviderProfileId(
   providerProfileId: string
 ): Promise<HotelWithRelations[]> {

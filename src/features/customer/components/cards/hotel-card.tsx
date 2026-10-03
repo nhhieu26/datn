@@ -1,9 +1,10 @@
 import Image from "next/image";
+import Link from "next/link";
 import type { ExploreItem } from "@/features/customer/explore/data";
 import { Rating, formatPrice } from "./card-parts";
 
 export function HotelCard({ item }: { item: ExploreItem }) {
-  return (
+  const card = (
     <article className="group rounded-lg border border-new-chip overflow-hidden">
       <div className="relative h-[200px] overflow-hidden">
         <Image
@@ -50,4 +51,5 @@ export function HotelCard({ item }: { item: ExploreItem }) {
       </div>
     </article>
   );
+  return item.href ? <Link href={item.href}>{card}</Link> : card;
 }
