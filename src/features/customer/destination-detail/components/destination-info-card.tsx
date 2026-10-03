@@ -40,7 +40,7 @@ export function DestinationInfoCard({
       <div className="flex flex-col gap-3">
         {mapUrl && (
           <Link
-            className={`${cta} bg-new-teal text-white hover:bg-new-teal-hover`}
+            className={`${cta} border border-new-teal bg-transparent text-new-teal hover:bg-new-teal hover:text-white`}
             href={mapUrl}
             rel="noreferrer"
             target="_blank"
@@ -52,13 +52,13 @@ export function DestinationInfoCard({
           </Link>
         )}
         <Link
-          className={`${cta} border border-new-teal text-new-teal hover:bg-white`}
+          className={`${cta} bg-new-teal text-white hover:bg-new-teal-hover`}
           href={`/explore?kind=tour&province=${q}`}
         >
           Khám phá tour tại {location}
         </Link>
         <Link
-          className={`${cta} border border-new-teal text-new-teal hover:bg-white`}
+          className={`${cta} bg-new-teal text-white hover:bg-new-teal-hover`}
           href={`/explore?kind=hotel&province=${q}`}
         >
           Tìm khách sạn tại {location}

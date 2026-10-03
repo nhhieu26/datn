@@ -143,7 +143,7 @@ export function RestaurantBookingCard({
 
       {mapUrl && (
         <Link
-          className="mb-4 flex w-full items-center justify-center gap-2 rounded bg-new-teal px-7 py-3.5 font-bold text-white transition-colors hover:bg-new-teal-hover"
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded border border-new-teal bg-transparent px-7 py-3.5 font-bold text-new-teal transition-colors hover:bg-new-teal hover:text-white"
           href={mapUrl}
           rel="noreferrer"
           target="_blank"
@@ -156,11 +156,11 @@ export function RestaurantBookingCard({
       )}
 
       <button
-        className="mt-6 w-full cursor-pointer rounded bg-new-teal px-7 py-3.5 font-bold text-white transition-colors hover:bg-new-teal-hover disabled:cursor-not-allowed disabled:opacity-50"
+        className="mt-4 w-full cursor-pointer rounded bg-new-teal px-7 py-3.5 font-bold text-white transition-colors hover:bg-new-teal-hover disabled:cursor-not-allowed disabled:opacity-50"
         disabled={restaurant.timeSlots.length === 0 || !date}
         type="button"
       >
-        Kiểm tra bàn trống
+        Đặt ngay
       </button>
 
       <div className="pt-6">

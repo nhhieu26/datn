@@ -173,7 +173,7 @@ export function HotelBookingCard({ hotel }: { hotel: HotelDetail }) {
 
       {mapUrl && (
         <Link
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded px-7 py-3.5 font-bold transition-colors bg-new-teal text-white hover:bg-new-teal-hover"
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded border border-new-teal bg-transparent px-7 py-3.5 font-bold text-new-teal transition-colors hover:bg-new-teal hover:text-white"
           href={mapUrl}
           rel="noreferrer"
           target="_blank"
@@ -190,7 +190,7 @@ export function HotelBookingCard({ hotel }: { hotel: HotelDetail }) {
         disabled={!room}
         type="button"
       >
-        Kiểm tra phòng trống
+        Đặt ngay
       </button>
 
       <div className="pt-6">

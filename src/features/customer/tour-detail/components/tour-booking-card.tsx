@@ -140,7 +140,7 @@ export function TourBookingCard({ tour }: { tour: TourDetail }) {
         disabled={!departure}
         type="button"
       >
-        Kiểm tra chỗ trống
+        Đặt ngay
       </button>
 
       <div className="pt-6">
