@@ -25,6 +25,7 @@ export function toTourItem(t: TourRow): ExploreItem {
     id: t.id,
     createdAt: t.createdAt.getTime(),
     kind: "tour",
+    href: `/tours/${t.slug}`,
     title: t.title,
     location: t.province.name,
     image: firstImage(t.images),

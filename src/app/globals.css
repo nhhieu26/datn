@@ -29,6 +29,7 @@
   --new-track: #daedef;
   --new-star: #fcac17;
   --new-checkbox-border: #c7d2d8;
+  --new-itinerary-bg: #eaebed;
   --new-why-from: rgba(162, 189, 185, 0.85);
   --new-why-mid: rgba(184, 206, 203, 0.5);
   --new-why-to: rgba(255, 255, 255, 0);
@@ -77,6 +78,7 @@
   --color-new-track: var(--new-track);
   --color-new-star: var(--new-star);
   --color-new-checkbox-border: var(--new-checkbox-border);
+  --color-new-itinerary-bg: var(--new-itinerary-bg);
 }
 
 /* Nền tràn toàn màn hình, nội dung giới hạn 1320px */
