@@ -43,6 +43,7 @@ export function toHotelItem(h: HotelRow): ExploreItem {
     id: h.id,
     createdAt: h.createdAt.getTime(),
     kind: "hotel",
+    href: `/hotels/${h.slug}`,
     title: h.name,
     location: h.province.name,
     image: firstImage(h.images),
