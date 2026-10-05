@@ -353,8 +353,7 @@ model TourBooking {
   tourDeparture     TourDeparture?  @relation(fields: [tourDepartureId], references: [id], onDelete: SetNull)
   tourTitle         String
   departureDate     DateTime
-  adults            Int
-  children          Int             @default(0)
+  guests            Int
   status            BookingStatus   @default(pending_payment)
 
   contactName  String
