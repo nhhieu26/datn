@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { formatPrice } from "@/features/customer/components/cards/card-parts";
 import type { TourDetail } from "../lib/to-tour-detail";
@@ -135,13 +136,16 @@ export function TourBookingCard({ tour }: { tour: TourDetail }) {
         <span className="text-lg font-bold">{formatPrice(total)}</span>
       </div>
 
-      <button
-        className="mt-4 w-full cursor-pointer rounded bg-new-teal px-7 py-3.5 font-bold text-white transition-colors hover:bg-new-teal-hover disabled:cursor-not-allowed disabled:opacity-50"
-        disabled={!departure}
-        type="button"
+      <Link
+        aria-disabled={!departure}
+        className="mt-4 block w-full rounded bg-new-teal px-7 py-3.5 text-center font-bold text-white transition-colors hover:bg-new-teal-hover aria-disabled:pointer-events-none aria-disabled:opacity-50"
+        href={`/booking/tour/${tour.slug}?${new URLSearchParams({
+          departureId,
+          guests: String(guests),
+        })}`}
       >
         Đặt ngay
-      </button>
+      </Link>
 
       <div className="pt-6">
         <h4 className="pb-1.5 font-bold text-new-title lg:text-lg">

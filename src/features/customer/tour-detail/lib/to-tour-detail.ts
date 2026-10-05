@@ -5,6 +5,7 @@ type TourRow = NonNullable<
 >;
 
 export type TourDetail = {
+  slug: string;
   title: string;
   location: string;
   description: string;
@@ -36,6 +37,7 @@ export function toTourDetail(t: TourRow): TourDetail {
   }));
   const images = (t.images as { url: string }[] | null) ?? [];
   return {
+    slug: t.slug,
     title: t.title,
     location: t.province.name,
     description: t.description ?? "",

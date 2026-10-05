@@ -18,6 +18,7 @@ export type HotelRoom = {
 };
 
 export type HotelDetail = {
+  slug: string;
   name: string;
   location: string;
   address: string;
@@ -51,6 +52,7 @@ export function toHotelDetail(h: HotelRow): HotelDetail {
   });
   const images = (h.images as Img[] | null) ?? [];
   return {
+    slug: h.slug,
     name: h.name,
     location: h.province.name,
     address: h.address,

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 export type BreadcrumbItem = { label: string; href?: string };
 
@@ -6,9 +7,11 @@ export type BreadcrumbItem = { label: string; href?: string };
 export function PageBanner({
   title,
   items,
+  children,
 }: {
   title: string;
   items: BreadcrumbItem[];
+  children?: ReactNode;
 }) {
   return (
     <section className="bg-new-banner-bg py-10 page-x">
@@ -50,6 +53,7 @@ export function PageBanner({
             })}
           </ul>
         </nav>
+        {children}
       </div>
     </section>
   );

@@ -155,13 +155,17 @@ export function RestaurantBookingCard({
         </Link>
       )}
 
-      <button
-        className="mt-4 w-full cursor-pointer rounded bg-new-teal px-7 py-3.5 font-bold text-white transition-colors hover:bg-new-teal-hover disabled:cursor-not-allowed disabled:opacity-50"
-        disabled={restaurant.timeSlots.length === 0 || !date}
-        type="button"
+      <Link
+        aria-disabled={restaurant.timeSlots.length === 0 || !date}
+        className="mt-4 block w-full rounded bg-new-teal px-7 py-3.5 text-center font-bold text-white transition-colors hover:bg-new-teal-hover aria-disabled:pointer-events-none aria-disabled:opacity-50"
+        href={`/booking/restaurant/${restaurant.slug}?${new URLSearchParams({
+          date,
+          slot,
+          guests: String(guests),
+        })}`}
       >
         Đặt ngay
-      </button>
+      </Link>
 
       <div className="pt-6">
         <h4 className="pb-1.5 font-bold text-new-title lg:text-lg">
