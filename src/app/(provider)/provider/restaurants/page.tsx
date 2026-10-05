@@ -7,6 +7,10 @@ import {
   getRestaurantsSummary,
   mapRestaurantToListItem,
 } from "@/features/provider/restaurants";
+import {
+  PayPalRequiredBanner,
+  isPayPalLinked,
+} from "@/features/provider/payments";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -24,6 +28,8 @@ export default async function ProviderRestaurantsPage() {
       session.user.id,
       "restaurant"
     );
+  const needsPayPal = Boolean(providerProfile) && !isPayPalLinked(providerProfile!);
+
   const restaurants = providerProfile
     ? await restaurantRepo.findAllByProviderProfileId(providerProfile.id)
     : [];
@@ -45,6 +51,17 @@ export default async function ProviderRestaurantsPage() {
             </p>
           </div>
           <div className="shrink-0">
+            {needsPayPal ? (
+            <span
+              aria-disabled
+              className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl bg-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-500"
+            >
+              <span className="material-symbols-outlined text-[20px]">
+                add_circle
+              </span>
+              <span>Tạo Nhà hàng mới</span>
+            </span>
+            ) : (
             <Link
               className="inline-flex transform items-center gap-2 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 hover:shadow-brand-500/30 active:scale-95"
               href="/provider/restaurants/create"
@@ -54,9 +71,11 @@ export default async function ProviderRestaurantsPage() {
               </span>
               <span>Tạo Nhà hàng mới</span>
             </Link>
+            )}
           </div>
         </div>
 
+        {needsPayPal && <PayPalRequiredBanner />}
         <RestaurantsSummaryCards summary={summary} />
 
         <RestaurantsManager restaurants={restaurantListItems} />

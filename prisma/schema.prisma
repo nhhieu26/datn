@@ -107,6 +107,8 @@ model ProviderProfile {
   approvalStatus  ApprovalStatus @default(not_submitted)
   rejectionReason String?
   payoutEmail     String?
+  paypalPayerId   String?
+  paypalLinkedAt  DateTime?
 
   tours              Tour[]
   hotels             Hotel[]
