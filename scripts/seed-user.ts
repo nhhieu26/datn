@@ -18,6 +18,9 @@ type ProfileSeed = {
   description?: string;
   photoUrl?: string;
   approvalStatus?: ApprovalStatus;
+  paypalPayerId?: string;
+  payoutEmail?: string;
+  paypalLinkedAt?: Date | string;
 };
 
 type UserSeed = {
@@ -61,12 +64,18 @@ const USERS: UserSeed[] = [
         address: "12 Trần Phú, Đà Nẵng",
         description: "Tour biển đảo Đà Nẵng - Hội An.",
         approvalStatus: "approved",
+        paypalPayerId: "H2XD7V5XQKFA2",
+        payoutEmail: "sb-1vtys53189905@personal.example.com",
+        paypalLinkedAt: "2026-10-05 12:13:44.18",
       },
       {
         businessName: "Khách sạn Biển Xanh",
         businessType: "hotel",
         address: "34 Võ Nguyên Giáp, Đà Nẵng",
         approvalStatus: "pending",
+        paypalPayerId: "W9X69Z7QL46YJ",
+        payoutEmail: "sb-lb3mz53189898@personal.example.com",
+        paypalLinkedAt: "2026-10-05 12:13:44.18",
       },
     ],
   },
@@ -82,18 +91,27 @@ const USERS: UserSeed[] = [
         address: "56 Nguyễn Huệ, Huế",
         description: "Đặc sản miền Trung.",
         approvalStatus: "approved",
+        paypalPayerId: "SLH4RFFUF2ULL",
+        payoutEmail: "sb-b6f0m53189887@personal.example.com",
+        paypalLinkedAt: "2026-10-05 12:13:44.18",
       },
       {
         businessName: "Tour Cố Đô",
         businessType: "tour",
         address: "78 Lê Lợi, Huế",
         approvalStatus: "pending",
+        paypalPayerId: "2VRLAHRXJ7FK6",
+        payoutEmail: "sb-435pyh53189952@personal.example.com",
+        paypalLinkedAt: "2026-10-05 12:13:44.18",
       },
       {
         businessName: "Homestay Cố Đô",
         businessType: "hotel",
         address: "90 Bến Nghé, Huế",
         approvalStatus: "rejected",
+        paypalPayerId: "JPNUTJ3SRFSRQ",
+        payoutEmail: "sb-ew6zm53189958@personal.example.com",
+        paypalLinkedAt: "2026-10-05 12:13:44.18",
       },
     ],
   },
@@ -109,6 +127,9 @@ const USERS: UserSeed[] = [
         address: "1 Đồi Thông, Đà Lạt",
         description: "Nghỉ dưỡng giữa rừng thông.",
         approvalStatus: "approved",
+        paypalPayerId: "XKNEJVY7KNDLG",
+        payoutEmail: "sb-rtnun53189959@personal.example.com",
+        paypalLinkedAt: "2026-10-05 12:13:44.18",
       },
     ],
   },
@@ -194,6 +215,9 @@ export async function seedUsers() {
           description: p.description,
           photoUrl: p.photoUrl,
           approvalStatus: p.approvalStatus ?? "not_submitted",
+          paypalPayerId: p.paypalPayerId,
+          payoutEmail: p.payoutEmail,
+          paypalLinkedAt: p.paypalLinkedAt ? new Date(p.paypalLinkedAt) : undefined,
         },
         update: {
           businessName: p.businessName,
@@ -204,6 +228,9 @@ export async function seedUsers() {
           description: p.description,
           photoUrl: p.photoUrl,
           approvalStatus: p.approvalStatus ?? "not_submitted",
+          paypalPayerId: p.paypalPayerId,
+          payoutEmail: p.payoutEmail,
+          paypalLinkedAt: p.paypalLinkedAt ? new Date(p.paypalLinkedAt) : undefined,
         },
       });
     }
