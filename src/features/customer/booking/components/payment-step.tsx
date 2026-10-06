@@ -2,22 +2,29 @@ import {
   formatVnd,
 } from "@/features/customer/components/cards/card-parts";
 import Link from "next/link";
-import { MOCK_USD_RATE } from "../lib/booking-labels";
+import type { ReactNode } from "react";
 
 export function PaymentStep({
   totalAmount,
+  usdRate,
+  notice,
   agreed,
   error,
   onAgreeChange,
 }: {
   totalAmount: number;
+  /** Tỉ giá VND/USD dùng khi tạo PayPal order */
+  usdRate: number;
+  /** Hiển thị phía trên (vd. đồng hồ giữ chỗ) */
+  notice?: ReactNode;
   agreed: boolean;
   error?: string;
   onAgreeChange: (v: boolean) => void;
 }) {
-  const usd = totalAmount / MOCK_USD_RATE;
+  const usd = totalAmount / usdRate;
   return (
     <div className="flex flex-col gap-6">
+      {notice}
       <div>
         <h3 className="mb-4 text-xl font-bold text-new-title">
           Phương thức thanh toán
@@ -49,7 +56,7 @@ export function PaymentStep({
         <div className="flex justify-between py-1.5 text-new-paragraph">
           <dt>Tỉ giá quy đổi</dt>
           <dd className="font-medium text-new-title">
-            1 USD = {formatVnd(MOCK_USD_RATE)}
+            1 USD = {formatVnd(usdRate)}
           </dd>
         </div>
         <div className="mt-2 flex justify-between border-t border-new-input-border pt-3 font-bold text-new-teal">

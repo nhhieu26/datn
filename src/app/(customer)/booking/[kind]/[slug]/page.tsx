@@ -1,6 +1,7 @@
 import { hotelRepo } from "@/entities/hotel";
 import { restaurantRepo } from "@/entities/restaurant";
 import { tourRepo } from "@/entities/tour";
+import { tourBookingRepo } from "@/entities/tour-booking";
 import { userRepo } from "@/entities/user";
 import {
   BookingFlow,
@@ -12,6 +13,7 @@ import {
 } from "@/features/customer/booking";
 import { toHotelDetail } from "@/features/customer/hotel-detail/lib/to-hotel-detail";
 import { toRestaurantDetail } from "@/features/customer/restaurant-detail/lib/to-restaurant-detail";
+import { USD_RATE } from "@/features/customer/booking/lib/exchange-rate";
 import { toTourDetail } from "@/features/customer/tour-detail/lib/to-tour-detail";
 import { auth } from "@/lib/auth";
 import type { Metadata } from "next";
@@ -31,6 +33,7 @@ async function loadSummary(
 ): Promise<{ summary: BookingSummary | null; backHref: string }> {
   switch (kind) {
     case "tour": {
+      await tourBookingRepo.releaseExpired();
       const row = await tourRepo.findPublishedDetailBySlug(slug);
       if (!row) notFound();
       return {
@@ -82,6 +85,7 @@ export default async function BookingPage({ params, searchParams }: Props) {
           note: "",
         }}
         summary={summary}
+        usdRate={USD_RATE}
       />
     </main>
   );

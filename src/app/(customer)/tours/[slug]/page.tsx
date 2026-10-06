@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { tourRepo } from "@/entities/tour";
+import { tourBookingRepo } from "@/entities/tour-booking";
 import { PageBanner } from "@/features/customer/components/page-banner";
 import {
   TourBookingCard,
@@ -21,6 +22,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function TourDetailPage({ params }: Props) {
   const { slug } = await params;
+  // Nhả chỗ của các đơn hết hạn giữ chỗ để số chỗ trống hiển thị đúng
+  await tourBookingRepo.releaseExpired();
   const row = await tourRepo.findPublishedDetailBySlug(slug);
   if (!row) notFound();
   const tour = toTourDetail(row);

@@ -23,7 +23,7 @@ export function buildAuthorizeUrl(state: string): string {
   return `${CONNECT_URL}?${params}`;
 }
 
-async function exchangeCode(code: string): Promise<string> {
+async function requestToken(body: Record<string, string>): Promise<string> {
   const basic = Buffer.from(
     `${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`
   ).toString("base64");
@@ -33,12 +33,16 @@ async function exchangeCode(code: string): Promise<string> {
       Authorization: `Basic ${basic}`,
       "Content-Type": "application/x-www-form-urlencoded",
     },
-    body: new URLSearchParams({ grant_type: "authorization_code", code }),
+    body: new URLSearchParams(body),
   });
   if (!res.ok) throw new Error(`PayPal token request failed (${res.status})`);
   const json = (await res.json()) as { access_token?: string };
   if (!json.access_token) throw new Error("PayPal token response missing access_token");
   return json.access_token;
+}
+
+function exchangeCode(code: string): Promise<string> {
+  return requestToken({ grant_type: "authorization_code", code });
 }
 
 /**
@@ -75,4 +79,94 @@ export async function fetchPayPalIdentity(
 
   if (!payerId || !email || unverified) return null;
   return { email, payerId };
+}
+
+// --- Orders v2: customer thanh toán cho platform ---
+
+type PayPalLink = { href: string; rel: string };
+
+async function ordersRequest(
+  path: string,
+  init: { body?: unknown; requestId?: string } = {}
+): Promise<{ ok: boolean; status: number; json: Record<string, unknown> }> {
+  const token = await requestToken({ grant_type: "client_credentials" });
+  const res = await fetch(`${API_URL}/v2/checkout/orders${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      ...(init.requestId && { "PayPal-Request-Id": init.requestId }),
+    },
+    body: init.body === undefined ? undefined : JSON.stringify(init.body),
+  });
+  const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  return { ok: res.ok, status: res.status, json };
+}
+
+export async function createOrder(input: {
+  amountUsd: string;
+  referenceId: string;
+  description: string;
+  returnUrl: string;
+  cancelUrl: string;
+}): Promise<{ id: string; approveUrl: string }> {
+  const { ok, status, json } = await ordersRequest("", {
+    requestId: `create-${input.referenceId}-${Date.now()}`,
+    body: {
+      intent: "CAPTURE",
+      purchase_units: [
+        {
+          custom_id: input.referenceId,
+          description: input.description.slice(0, 127),
+          amount: { currency_code: "USD", value: input.amountUsd },
+        },
+      ],
+      payment_source: {
+        paypal: {
+          experience_context: {
+            brand_name: "Roamly",
+            shipping_preference: "NO_SHIPPING",
+            user_action: "PAY_NOW",
+            return_url: input.returnUrl,
+            cancel_url: input.cancelUrl,
+          },
+        },
+      },
+    },
+  });
+  if (!ok) throw new Error(`PayPal create order failed (${status})`);
+  const links = (json.links ?? []) as PayPalLink[];
+  const approveUrl = links.find(
+    (l) => l.rel === "payer-action" || l.rel === "approve"
+  )?.href;
+  if (typeof json.id !== "string" || !approveUrl) {
+    throw new Error("PayPal create order response missing id/approve link");
+  }
+  return { id: json.id, approveUrl };
+}
+
+export type CaptureResult = {
+  completed: boolean;
+  captureId: string | null;
+  raw: Record<string, unknown>;
+};
+
+/** Capture order đã được customer approve. PayPal-Request-Id giúp gọi lại an toàn. */
+export async function captureOrder(orderId: string): Promise<CaptureResult> {
+  const { ok, status, json } = await ordersRequest(`/${orderId}/capture`, {
+    requestId: `capture-${orderId}`,
+  });
+  // 5xx/429: chưa rõ kết quả → để caller thử lại, không coi là bị từ chối
+  if (status >= 500 || status === 429) {
+    throw new Error(`PayPal capture order failed (${status})`);
+  }
+  const units = (json.purchase_units ?? []) as {
+    payments?: { captures?: { id: string; status: string }[] };
+  }[];
+  const capture = units[0]?.payments?.captures?.[0];
+  return {
+    completed: ok && json.status === "COMPLETED" && capture?.status === "COMPLETED",
+    captureId: capture?.id ?? null,
+    raw: json,
+  };
 }

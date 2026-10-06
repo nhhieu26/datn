@@ -25,7 +25,7 @@ export function CompleteStep({
     ...(contact.note.trim() ? [{ label: "Ghi chú", value: contact.note }] : []),
     {
       label: "Trạng thái",
-      value: paid ? "Đã thanh toán – Đã xác nhận" : "Đã xác nhận",
+      value: paid ? "Đã thanh toán" : "Đã xác nhận",
     },
     ...(paid ? [{ label: "Thanh toán", value: "PayPal" }] : []),
   ];

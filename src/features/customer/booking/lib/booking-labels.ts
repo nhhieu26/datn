@@ -13,9 +13,6 @@ export const CODE_PREFIX: Record<BookingKind, string> = {
   restaurant: "RB",
 };
 
-// ponytail: tỉ giá giả để demo, thay bằng tỉ giá thật khi có backend PayPal
-export const MOCK_USD_RATE = 25_000;
-
 export function stepLabels(kind: BookingKind) {
   return kind === "restaurant"
     ? ["Thông tin đặt bàn", "Hoàn tất"]

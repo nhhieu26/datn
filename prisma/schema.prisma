@@ -53,6 +53,7 @@ enum TourDepartureStatus {
 
 enum BookingStatus {
   pending_payment
+  paid
   confirmed
   completed
   cancelled

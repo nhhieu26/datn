@@ -1,6 +1,7 @@
 import type { HotelDetail } from "@/features/customer/hotel-detail/lib/to-hotel-detail";
 import type { RestaurantDetail } from "@/features/customer/restaurant-detail/lib/restaurant-detail";
 import type { TourDetail } from "@/features/customer/tour-detail/lib/to-tour-detail";
+import type { TourBookingDetail } from "@/entities/tour-booking";
 import { formatDate } from "@/lib/utils";
 import { formatVnd } from "@/features/customer/components/cards/card-parts";
 import type { BookingSummary } from "../types";
@@ -40,6 +41,25 @@ export function tourSummary(
       { label: "Đơn giá / khách", value: formatVnd(departure.price) },
     ],
     totalAmount: departure.price * guests,
+    cancellation: "Trước giờ khởi hành 24 giờ",
+    tour: { departureId: departure.id, guests },
+  };
+}
+
+/** Tóm tắt từ booking đã lưu (snapshot), dùng cho trang /bookings/[code] */
+export function tourBookingSummary(b: TourBookingDetail): BookingSummary {
+  const slug = b.tourDeparture?.tour.slug;
+  return {
+    kind: "tour",
+    backHref: slug ? `/tours/${slug}` : "/explore?kind=tour",
+    name: b.tourTitle,
+    location: b.tourDeparture?.tour.province.name ?? "",
+    highlight: { label: "Ngày khởi hành", value: formatDate(b.departureDate) },
+    rows: [
+      { label: "Số khách", value: String(b.guests) },
+      { label: "Đơn giá / khách", value: formatVnd(Number(b.unitPrice)) },
+    ],
+    totalAmount: Number(b.totalAmount),
     cancellation: "Trước giờ khởi hành 24 giờ",
   };
 }

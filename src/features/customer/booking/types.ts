@@ -20,6 +20,8 @@ export type BookingSummary = {
   totalAmount: number | null;
   /** Nhãn hủy miễn phí lấy từ booking card */
   cancellation: string;
+  /** Lựa chọn gửi lên server khi tạo booking tour */
+  tour?: { departureId: string; guests: number };
 };
 
 export type ContactValues = {
