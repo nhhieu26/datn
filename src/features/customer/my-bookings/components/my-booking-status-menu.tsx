@@ -6,16 +6,32 @@ import {
   getBookingStatusMeta,
   StatusBadge,
 } from "@/features/provider/tour-bookings";
-import { CUSTOMER_CANCEL_CUTOFF_HOURS } from "@/lib/utils";
-import type { CancellableBooking } from "../types";
+import {
+  CUSTOMER_CANCEL_CUTOFF_HOURS,
+  RESTAURANT_CANCEL_CUTOFF_HOURS,
+} from "@/lib/utils";
+import type { BookingKind, CancellableBooking } from "../types";
 import { CancelMyBookingDialog } from "./cancel-my-booking-dialog";
 
 const MENU_WIDTH = 240;
 
-const CUTOFF_LABEL = {
-  tour: "khởi hành",
-  hotel: "nhận phòng",
-} as const;
+const CUTOFF: Record<BookingKind, { label: string; hours: number; hint: string }> = {
+  tour: {
+    label: "khởi hành",
+    hours: CUSTOMER_CANCEL_CUTOFF_HOURS,
+    hint: "Hoàn tiền 100% qua PayPal",
+  },
+  hotel: {
+    label: "nhận phòng",
+    hours: CUSTOMER_CANCEL_CUTOFF_HOURS,
+    hint: "Hoàn tiền 100% qua PayPal",
+  },
+  restaurant: {
+    label: "giờ đặt bàn",
+    hours: RESTAURANT_CANCEL_CUTOFF_HOURS,
+    hint: "Hủy miễn phí",
+  },
+};
 
 export function MyBookingStatusMenu({ item }: { item: CancellableBooking }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -143,8 +159,8 @@ export function MyBookingStatusMenu({ item }: { item: CancellableBooking }) {
                   </span>
                   <span className="text-xs text-new-paragraph">
                     {disabled
-                      ? `Chỉ hủy trước ${CUTOFF_LABEL[item.kind]} ${CUSTOMER_CANCEL_CUTOFF_HOURS} giờ`
-                      : "Hoàn tiền 100% qua PayPal"}
+                      ? `Chỉ hủy trước ${CUTOFF[item.kind].label} ${CUTOFF[item.kind].hours} giờ`
+                      : CUTOFF[item.kind].hint}
                   </span>
                 </span>
               </button>

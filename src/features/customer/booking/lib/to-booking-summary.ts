@@ -2,8 +2,13 @@ import type { HotelDetail } from "@/features/customer/hotel-detail/lib/to-hotel-
 import type { RestaurantDetail } from "@/features/customer/restaurant-detail/lib/restaurant-detail";
 import type { TourDetail } from "@/features/customer/tour-detail/lib/to-tour-detail";
 import type { HotelBookingDetail } from "@/entities/hotel-booking";
+import type { RestaurantBookingDetail } from "@/entities/restaurant-booking";
 import type { TourBookingDetail } from "@/entities/tour-booking";
-import { formatDate, todayIsoDate } from "@/lib/utils";
+import {
+  formatDate,
+  RESTAURANT_CANCEL_CUTOFF_HOURS,
+  todayIsoDate,
+} from "@/lib/utils";
 import { formatVnd } from "@/features/customer/components/cards/card-parts";
 import type { BookingSummary } from "../types";
 
@@ -130,8 +135,11 @@ export function restaurantSummary(
 ): BookingSummary | null {
   const date = str(q, "date");
   const slot = restaurant.timeSlots.find((s) => s.startTime === str(q, "slot"));
-  if (!date || !slot) return null;
-  const guests = Math.min(int(q, "guests", 1, 2), restaurant.capacity);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < todayIsoDate() || !slot) {
+    return null;
+  }
+  const guests = int(q, "guests", 1, 2);
+  if (guests > restaurant.capacity) return null;
   return {
     kind: "restaurant",
     backHref: `/restaurants/${restaurant.slug}`,
@@ -144,6 +152,34 @@ export function restaurantSummary(
       { label: "Địa chỉ", value: restaurant.address },
     ],
     totalAmount: null,
-    cancellation: "Trước giờ đặt bàn 2 giờ",
+    cancellation: `Trước giờ đặt bàn ${RESTAURANT_CANCEL_CUTOFF_HOURS} giờ`,
+    restaurant: {
+      restaurantSlug: restaurant.slug,
+      date,
+      slot: slot.startTime,
+      guests,
+    },
+  };
+}
+
+/** Tóm tắt từ booking nhà hàng đã lưu (snapshot), dùng cho trang /bookings/[code] */
+export function restaurantBookingSummary(
+  b: RestaurantBookingDetail,
+): BookingSummary {
+  const slug = b.restaurant?.slug;
+  const endTime = b.restaurantTimeSlot?.endTime;
+  return {
+    kind: "restaurant",
+    backHref: slug ? `/restaurants/${slug}` : "/explore?kind=restaurant",
+    name: b.restaurantName,
+    location: b.restaurant?.province.name ?? "",
+    highlight: { label: "Ngày đặt bàn", value: formatDate(b.reservationDate) },
+    rows: [
+      { label: "Giờ", value: endTime ? `${b.startTime} - ${endTime}` : b.startTime },
+      { label: "Số khách", value: String(b.guests) },
+      ...(b.restaurant ? [{ label: "Địa chỉ", value: b.restaurant.address }] : []),
+    ],
+    totalAmount: null,
+    cancellation: `Trước giờ đặt bàn ${RESTAURANT_CANCEL_CUTOFF_HOURS} giờ`,
   };
 }

@@ -105,14 +105,24 @@ export function hasCheckedOut(checkOutDate: Date | string, now = new Date()): bo
 /** Customer chỉ được tự hủy đơn trước giờ khởi hành ít nhất số giờ này. */
 export const CUSTOMER_CANCEL_CUTOFF_HOURS = 24;
 
+/** Customer chỉ được tự hủy đơn đặt bàn trước giờ đặt ít nhất số giờ này. */
+export const RESTAURANT_CANCEL_CUTOFF_HOURS = 2;
+
 export function canCustomerCancelBefore(
   departureDate: Date | string,
   now = new Date(),
+  cutoffHours = CUSTOMER_CANCEL_CUTOFF_HOURS,
 ): boolean {
   return (
-    new Date(departureDate).getTime() - CUSTOMER_CANCEL_CUTOFF_HOURS * 60 * 60 * 1000 >
+    new Date(departureDate).getTime() - cutoffHours * 60 * 60 * 1000 >
     now.getTime()
   );
+}
+
+/** Thời điểm đặt bàn: ngày (lưu 00:00 UTC hoặc YYYY-MM-DD) + giờ HH:mm theo giờ Việt Nam. */
+export function reservationInstant(date: Date | string, startTime: string): Date {
+  const day = date instanceof Date ? date.toISOString().slice(0, 10) : date;
+  return new Date(`${day}T${startTime}:00+07:00`);
 }
 
 /** Ngày hôm nay theo giờ Việt Nam, dạng YYYY-MM-DD (so sánh được với <input type="date">). */

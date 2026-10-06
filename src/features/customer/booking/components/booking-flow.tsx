@@ -1,17 +1,16 @@
 "use client";
 
 import { PageBanner } from "@/features/customer/components/page-banner";
-import { formatEntityCode } from "@/lib/utils";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import {
   createHotelBookingAction,
+  createRestaurantBookingAction,
   createTourBookingAction,
   startHotelPaymentAction,
   startTourPaymentAction,
 } from "../actions";
 import {
-  CODE_PREFIX,
   KIND_LABEL,
   REBOOK_LABEL,
   stepLabels,
@@ -59,11 +58,51 @@ export function BookingFlow({
   const remaining = useHoldRemaining(hold?.expiresAt ?? new Date(0).toISOString());
   const holdExpired = hold != null && remaining === 0;
 
-  function finish() {
-    // ponytail: UI-only cho nhà hàng — mã giả sinh ở client
-    setCode(formatEntityCode(CODE_PREFIX[summary.kind], crypto.randomUUID()));
-    setStep(lastStep);
-    window.scrollTo({ top: 0 });
+  function showFieldErrors(result: {
+    fieldErrors?: Record<string, string[]>;
+    formError?: string;
+  }) {
+    const fieldErrors = result.fieldErrors ?? {};
+    setErrors(
+      Object.fromEntries(
+        Object.entries(fieldErrors).map(([k, v]) => [k, v[0]]),
+      ) as ContactErrors,
+    );
+    const invalidChoice = [
+      "departureId",
+      "roomId",
+      "checkIn",
+      "checkOut",
+      "rooms",
+      "restaurantSlug",
+      "date",
+      "slot",
+      "guests",
+    ].find((key) => fieldErrors[key]);
+    setFormError(
+      result.formError ??
+        (invalidChoice
+          ? `${fieldErrors[invalidChoice][0]}. Vui lòng chọn lại.`
+          : undefined),
+    );
+  }
+
+  /** Nhà hàng không thanh toán online: tạo đơn confirmed rồi sang bước hoàn tất. */
+  function reserveTable() {
+    setFormError(undefined);
+    startTransition(async () => {
+      const result = await createRestaurantBookingAction({
+        ...contact,
+        ...summary.restaurant,
+      });
+      if (result.status === "success" && result.data) {
+        setCode(result.data.code);
+        setStep(lastStep);
+        window.scrollTo({ top: 0 });
+        return;
+      }
+      showFieldErrors(result);
+    });
   }
 
   function createHold() {
@@ -79,26 +118,7 @@ export function BookingFlow({
         window.scrollTo({ top: 0 });
         return;
       }
-      const fieldErrors = result.fieldErrors ?? {};
-      setErrors(
-        Object.fromEntries(
-          Object.entries(fieldErrors).map(([k, v]) => [k, v[0]]),
-        ) as ContactErrors,
-      );
-      const invalidChoice = [
-        "departureId",
-        "roomId",
-        "checkIn",
-        "checkOut",
-        "rooms",
-        "guests",
-      ].find((key) => fieldErrors[key]);
-      setFormError(
-        result.formError ??
-          (invalidChoice
-            ? `${fieldErrors[invalidChoice][0]}. Vui lòng chọn lại.`
-            : undefined),
-      );
+      showFieldErrors(result);
     });
   }
 
@@ -121,16 +141,14 @@ export function BookingFlow({
       const found = validateContact(contact);
       setErrors(found);
       if (Object.keys(found).length) return;
-      if (summary.kind === "tour" || summary.kind === "hotel") createHold();
-      else if (needsPayment) setStep(1);
-      else finish();
+      if (summary.kind === "restaurant") reserveTable();
+      else createHold();
     } else if (step === 1) {
       if (!agreed) {
         setAgreeError("Vui lòng đồng ý điều khoản để tiếp tục");
         return;
       }
       if (hold) pay(hold.code);
-      else finish();
     }
   }
 
@@ -151,7 +169,9 @@ export function BookingFlow({
           type="button"
         >
           {pending
-            ? "Đang giữ chỗ..."
+            ? needsPayment
+              ? "Đang giữ chỗ..."
+              : "Đang đặt bàn..."
             : needsPayment
               ? "Tiếp tục"
               : "Xác nhận đặt bàn"}

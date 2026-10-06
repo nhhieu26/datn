@@ -21,6 +21,12 @@ export const MY_BOOKINGS_TABS = [
 
 export type MyBookingsTab = (typeof MY_BOOKINGS_TABS)[number]["key"];
 
+type MyBookingsTabDef = (typeof MY_BOOKINGS_TABS)[number];
+
+// Đơn đặt bàn không thanh toán nên bỏ các tab chờ thanh toán / đã thanh toán
+export const MY_RESTAURANT_BOOKINGS_TABS: readonly MyBookingsTabDef[] =
+  MY_BOOKINGS_TABS.filter((t) => t.key !== "pending" && t.key !== "paid");
+
 export type MyBookingsQuery = { tab: MyBookingsTab; page: number };
 
 type RawParams = Record<string, string | string[] | undefined>;
@@ -29,10 +35,13 @@ function first(value: string | string[] | undefined) {
   return (Array.isArray(value) ? value[0] : value) ?? "";
 }
 
-export function parseMyBookingsQuery(params: RawParams): MyBookingsQuery {
+export function parseMyBookingsQuery(
+  params: RawParams,
+  tabs: readonly MyBookingsTabDef[] = MY_BOOKINGS_TABS,
+): MyBookingsQuery {
   const tab = first(params.tab);
   return {
-    tab: MY_BOOKINGS_TABS.some((t) => t.key === tab)
+    tab: tabs.some((t) => t.key === tab)
       ? (tab as MyBookingsTab)
       : "all",
     page: Math.max(1, Math.floor(Number(first(params.page))) || 1),

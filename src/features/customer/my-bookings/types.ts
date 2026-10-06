@@ -39,7 +39,23 @@ export type MyHotelBookingItem = {
   createdAt: string;
 };
 
-export type BookingKind = "tour" | "hotel";
+export type MyRestaurantBookingItem = {
+  code: string;
+  restaurantName: string;
+  imageUrl: string;
+  reservationDate: string;
+  startTime: string;
+  endTime: string | null;
+  guests: number;
+  status: BookingStatus;
+  cancelReason: string | null;
+  /** Đơn confirmed — customer được hủy (nếu còn trong hạn). */
+  canCancel: boolean;
+  cancelDeadlinePassed: boolean;
+  createdAt: string;
+};
+
+export type BookingKind = "tour" | "hotel" | "restaurant";
 
 /** Dữ liệu tối thiểu để menu/dialog hủy dùng chung cho đơn tour và khách sạn. */
 export type CancellableBooking = {
@@ -56,4 +72,10 @@ export type MyBookingsSummary = {
   total: number;
   awaitingPayment: number;
   totalPaid: number;
+};
+
+export type MyRestaurantBookingsSummary = {
+  total: number;
+  upcoming: number;
+  cancelled: number;
 };

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { hotelBookingRepo } from "@/entities/hotel-booking";
+import { restaurantBookingRepo } from "@/entities/restaurant-booking";
 import { tourBookingRepo } from "@/entities/tour-booking";
 import { auth } from "@/lib/auth";
 import {
@@ -70,6 +71,25 @@ export async function cancelMyTourBookingAction(input: unknown) {
     revalidatePath("/my-bookings");
     revalidatePath("/provider/bookings/tours");
     revalidatePath(`/provider/bookings/tours/${code}`);
+  });
+}
+
+/** Customer hủy đơn đặt bàn confirmed; không có thanh toán nên không hoàn tiền. */
+export async function cancelMyRestaurantBookingAction(input: unknown) {
+  return runAction<{ moneyStatus: TransferStatus | null }>(async () => {
+    const session = await auth();
+    if (!session?.user || session.user.role !== "customer") {
+      throw new UnauthenticatedError("Vui lòng đăng nhập tài khoản khách hàng.");
+    }
+    const parsed = cancelSchema.safeParse(input);
+    if (!parsed.success) throw new ValidationError(fromZodError(parsed.error));
+    const { code, reason } = parsed.data;
+
+    await restaurantBookingRepo.cancelForCustomer(code, session.user.id, reason);
+
+    revalidatePath(`/bookings/${code}`);
+    revalidatePath("/my-restaurant-bookings");
+    return { moneyStatus: null };
   });
 }
 

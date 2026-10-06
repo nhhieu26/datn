@@ -30,6 +30,13 @@ export type BookingSummary = {
     rooms: number;
     guests: number;
   };
+  /** Lựa chọn gửi lên server khi tạo booking nhà hàng */
+  restaurant?: {
+    restaurantSlug: string;
+    date: string;
+    slot: string;
+    guests: number;
+  };
 };
 
 export type ContactValues = {

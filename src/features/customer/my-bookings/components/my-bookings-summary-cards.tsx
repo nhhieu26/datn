@@ -1,13 +1,37 @@
 import { formatCurrency } from "@/lib/utils";
-import type { MyBookingsSummary } from "../types";
+import type { MyBookingsSummary, MyRestaurantBookingsSummary } from "../types";
+
+type SummaryCard = { label: string; value: string; icon: string };
 
 export function MyBookingsSummaryCards({ summary }: { summary: MyBookingsSummary }) {
-  const cards = [
-    { label: "Tổng thanh toán", value: formatCurrency(summary.totalPaid), icon: "payments" },
-    { label: "Chờ thanh toán", value: String(summary.awaitingPayment), icon: "schedule" },
-    { label: "Tổng đơn đặt", value: String(summary.total), icon: "confirmation_number" },
-  ];
+  return (
+    <SummaryCardsGrid
+      cards={[
+        { label: "Tổng thanh toán", value: formatCurrency(summary.totalPaid), icon: "payments" },
+        { label: "Chờ thanh toán", value: String(summary.awaitingPayment), icon: "schedule" },
+        { label: "Tổng đơn đặt", value: String(summary.total), icon: "confirmation_number" },
+      ]}
+    />
+  );
+}
 
+export function MyRestaurantBookingsSummaryCards({
+  summary,
+}: {
+  summary: MyRestaurantBookingsSummary;
+}) {
+  return (
+    <SummaryCardsGrid
+      cards={[
+        { label: "Sắp tới", value: String(summary.upcoming), icon: "event_upcoming" },
+        { label: "Đã hủy", value: String(summary.cancelled), icon: "event_busy" },
+        { label: "Tổng đơn đặt", value: String(summary.total), icon: "confirmation_number" },
+      ]}
+    />
+  );
+}
+
+function SummaryCardsGrid({ cards }: { cards: SummaryCard[] }) {
   return (
     <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
       {cards.map((card) => (

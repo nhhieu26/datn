@@ -6,14 +6,26 @@ import { getBookingStatusMeta } from "@/features/provider/tour-bookings";
 import { formatCurrency } from "@/lib/utils";
 import {
   cancelMyHotelBookingAction,
+  cancelMyRestaurantBookingAction,
   cancelMyTourBookingAction,
 } from "../actions";
 import type { BookingKind, CancellableBooking } from "../types";
 
 const COPY: Record<
   BookingKind,
-  { action: typeof cancelMyTourBookingAction; heading: string; provider: string }
+  {
+    action:
+      | typeof cancelMyTourBookingAction
+      | typeof cancelMyRestaurantBookingAction;
+    heading: string;
+    provider: string;
+  }
 > = {
+  restaurant: {
+    action: cancelMyRestaurantBookingAction,
+    heading: "Hủy đơn đặt bàn?",
+    provider: "nhà hàng",
+  },
   tour: {
     action: cancelMyTourBookingAction,
     heading: "Hủy đơn đặt tour?",
@@ -133,8 +145,10 @@ export function CancelMyBookingDialog({
         ) : (
           <>
             <p className="mt-3 text-sm leading-relaxed text-new-paragraph">
-              Sàn sẽ hoàn {formatCurrency(item.totalAmount)} về tài khoản PayPal
-              bạn đã dùng để thanh toán. Thao tác không thể hoàn tác.
+              {item.kind === "restaurant"
+                ? "Bàn đã đặt sẽ được hủy miễn phí."
+                : `Sàn sẽ hoàn ${formatCurrency(item.totalAmount)} về tài khoản PayPal bạn đã dùng để thanh toán.`}{" "}
+              Thao tác không thể hoàn tác.
             </p>
 
             <label className="mt-4 block">

@@ -6,6 +6,10 @@ import {
   hotelBookingRepo,
 } from "@/entities/hotel-booking";
 import {
+  createRestaurantBookingSchema,
+  restaurantBookingRepo,
+} from "@/entities/restaurant-booking";
+import {
   createTourBookingSchema,
   tourBookingRepo,
 } from "@/entities/tour-booking";
@@ -95,6 +99,17 @@ export async function createHotelBookingAction(input: unknown) {
     if (!parsed.success) throw new ValidationError(fromZodError(parsed.error));
     const booking = await hotelBookingRepo.createHeld(customerId, parsed.data);
     return { code: booking.code, expiresAt: booking.expiresAt!.toISOString() };
+  });
+}
+
+/** Bước "Xác nhận đặt bàn": nhà hàng không thanh toán online nên tạo thẳng đơn confirmed. */
+export async function createRestaurantBookingAction(input: unknown) {
+  return runAction(async () => {
+    const customerId = await requireCustomerId();
+    const parsed = createRestaurantBookingSchema.safeParse(input);
+    if (!parsed.success) throw new ValidationError(fromZodError(parsed.error));
+    const booking = await restaurantBookingRepo.createConfirmed(customerId, parsed.data);
+    return { code: booking.code };
   });
 }
 

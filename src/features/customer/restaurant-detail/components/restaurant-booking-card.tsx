@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { formatPrice } from "@/features/customer/components/cards/card-parts";
+import { RESTAURANT_CANCEL_CUTOFF_HOURS, todayIsoDate } from "@/lib/utils";
 import { minMenuPrice, type RestaurantDetail } from "../lib/restaurant-detail";
 
 const fieldBox =
@@ -50,6 +51,7 @@ export function RestaurantBookingCard({
         <span className="sr-only">Ngày</span>
         <input
           className={dateInput}
+          min={todayIsoDate()}
           onChange={(e) => setDate(e.target.value)}
           type="date"
           value={date}
@@ -171,7 +173,9 @@ export function RestaurantBookingCard({
         <h4 className="pb-1.5 font-bold text-new-title lg:text-lg">
           Hủy miễn phí
         </h4>
-        <p className="text-new-paragraph">Trước giờ đặt bàn 2 giờ</p>
+        <p className="text-new-paragraph">
+          Trước giờ đặt bàn {RESTAURANT_CANCEL_CUTOFF_HOURS} giờ
+        </p>
       </div>
     </div>
   );

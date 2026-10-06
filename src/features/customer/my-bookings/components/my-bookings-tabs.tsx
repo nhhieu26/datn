@@ -5,13 +5,19 @@ import {
   type MyBookingsQuery,
 } from "../search-params";
 
-export function MyBookingsTabs({ query }: { query: MyBookingsQuery }) {
+export function MyBookingsTabs({
+  query,
+  tabs = MY_BOOKINGS_TABS,
+}: {
+  query: MyBookingsQuery;
+  tabs?: readonly (typeof MY_BOOKINGS_TABS)[number][];
+}) {
   return (
     <nav
       aria-label="Lọc theo trạng thái"
       className="hide-scrollbar mb-8 flex gap-1 overflow-x-auto border-b border-new-tab-border"
     >
-      {MY_BOOKINGS_TABS.map((tab) => {
+      {tabs.map((tab) => {
         const active = tab.key === query.tab;
         return (
           <Link
