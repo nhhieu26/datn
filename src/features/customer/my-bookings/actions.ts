@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { hotelBookingRepo } from "@/entities/hotel-booking";
 import { tourBookingRepo } from "@/entities/tour-booking";
 import { auth } from "@/lib/auth";
 import {
@@ -21,8 +22,16 @@ const cancelSchema = z.object({
     .max(500, "Lý do hủy tối đa 500 ký tự."),
 });
 
+type CancelForCustomer =
+  | typeof tourBookingRepo.cancelForCustomer
+  | typeof hotelBookingRepo.cancelForCustomer;
+
 /** Customer hủy đơn paid/confirmed; sàn hoàn toàn bộ tiền qua PayPal. */
-export async function cancelMyTourBookingAction(input: unknown) {
+function cancelMyBooking(
+  input: unknown,
+  cancelForCustomer: CancelForCustomer,
+  revalidate: (code: string) => void,
+) {
   return runAction<{ moneyStatus: TransferStatus }>(async () => {
     const session = await auth();
     if (!session?.user || session.user.role !== "customer") {
@@ -32,8 +41,12 @@ export async function cancelMyTourBookingAction(input: unknown) {
     if (!parsed.success) throw new ValidationError(fromZodError(parsed.error));
     const { code, reason } = parsed.data;
 
-    const { booking, refund, captureId } =
-      await tourBookingRepo.cancelForCustomer(code, session.user.id, reason);
+    const { booking, refund, captureId } = await cancelForCustomer(
+      code,
+      session.user.id,
+      reason,
+    );
+    // Refund cập nhật theo id, dùng chung cho tour và khách sạn
     const moneyStatus = await settleTransfer(
       `refund ${booking.code}`,
       () =>
@@ -46,10 +59,24 @@ export async function cancelMyTourBookingAction(input: unknown) {
       (result) => tourBookingRepo.markRefundResult(refund.id, result),
     );
 
-    revalidatePath("/my-bookings");
     revalidatePath(`/bookings/${code}`);
+    revalidate(code);
+    return { moneyStatus };
+  });
+}
+
+export async function cancelMyTourBookingAction(input: unknown) {
+  return cancelMyBooking(input, tourBookingRepo.cancelForCustomer, (code) => {
+    revalidatePath("/my-bookings");
     revalidatePath("/provider/bookings/tours");
     revalidatePath(`/provider/bookings/tours/${code}`);
-    return { moneyStatus };
+  });
+}
+
+export async function cancelMyHotelBookingAction(input: unknown) {
+  return cancelMyBooking(input, hotelBookingRepo.cancelForCustomer, (code) => {
+    revalidatePath("/my-hotel-bookings");
+    revalidatePath("/provider/bookings/hotels");
+    revalidatePath(`/provider/bookings/hotels/${code}`);
   });
 }

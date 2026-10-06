@@ -1,13 +1,43 @@
+import type { HotelBookingWithPayment } from "@/entities/hotel-booking";
 import type { TourBookingWithPayment } from "@/entities/tour-booking";
 import type { BookingStatus } from "@/generated/prisma/enums";
+import { extractRoomImageUrl } from "@/features/provider/hotel-bookings/utils";
 import {
   extractTourImageUrl,
   getPaymentState,
 } from "@/features/provider/tour-bookings";
 import { canCustomerCancelBefore } from "@/lib/utils";
-import type { MyBookingItem, MyBookingsSummary } from "./types";
+import type {
+  MyBookingItem,
+  MyBookingsSummary,
+  MyHotelBookingItem,
+} from "./types";
 
 const CANCELLABLE_STATUSES: BookingStatus[] = ["paid", "confirmed"];
+
+export function mapToMyHotelBookingItem(
+  booking: HotelBookingWithPayment,
+): MyHotelBookingItem {
+  return {
+    code: booking.code,
+    hotelName: booking.hotelName,
+    roomName: booking.roomName,
+    imageUrl: extractRoomImageUrl(booking.room),
+    checkInDate: booking.checkInDate.toISOString(),
+    checkOutDate: booking.checkOutDate.toISOString(),
+    nights: booking.nights,
+    roomQuantity: booking.roomQuantity,
+    guests: booking.guests,
+    totalAmount: Number(booking.totalAmount),
+    status: booking.status,
+    paymentState: getPaymentState(booking),
+    expiresAt: booking.expiresAt?.toISOString() ?? null,
+    cancelReason: booking.cancelReason,
+    canCancel: CANCELLABLE_STATUSES.includes(booking.status),
+    cancelDeadlinePassed: !canCustomerCancelBefore(booking.checkInDate),
+    createdAt: booking.createdAt.toISOString(),
+  };
+}
 
 export function mapToMyBookingItem(booking: TourBookingWithPayment): MyBookingItem {
   return {

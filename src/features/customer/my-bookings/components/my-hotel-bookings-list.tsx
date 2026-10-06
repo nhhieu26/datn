@@ -5,20 +5,20 @@ import {
   MY_BOOKINGS_PAGE_SIZE,
   type MyBookingsQuery,
 } from "../search-params";
-import type { MyBookingItem } from "../types";
+import type { MyHotelBookingItem } from "../types";
 import { MyBookingStatusMenu } from "./my-booking-status-menu";
 import { MyBookingsPagination } from "./my-bookings-pagination";
 
 const th = "border-b border-r border-new-input-border px-4 py-3 text-left text-base font-medium text-new-title whitespace-nowrap last:border-r-0";
 const td = "border-r border-new-input-border px-4 py-3 text-sm text-new-paragraph last:border-r-0";
 
-export function MyBookingsList({
+export function MyHotelBookingsList({
   items,
   total,
   query,
   hasAnyBooking,
 }: {
-  items: MyBookingItem[];
+  items: MyHotelBookingItem[];
   total: number;
   query: MyBookingsQuery;
   hasAnyBooking: boolean;
@@ -30,14 +30,14 @@ export function MyBookingsList({
           event_busy
         </span>
         <p className="text-base font-medium text-new-title">
-          {hasAnyBooking ? "Không có đơn nào ở trạng thái này" : "Bạn chưa có đơn đặt tour nào"}
+          {hasAnyBooking ? "Không có đơn nào ở trạng thái này" : "Bạn chưa có đơn đặt phòng nào"}
         </p>
         {!hasAnyBooking && (
           <Link
-            href="/tours"
+            href="/hotels"
             className="rounded bg-new-teal-cta px-5 py-2.5 text-sm font-semibold text-white hover:bg-new-teal-hover"
           >
-            Khám phá tour
+            Khám phá khách sạn
           </Link>
         )}
       </div>
@@ -49,13 +49,13 @@ export function MyBookingsList({
   return (
     <>
       <div className="overflow-x-auto rounded border border-new-input-border">
-        <table className="w-full min-w-[820px] border-collapse">
+        <table className="w-full min-w-[900px] border-collapse">
           <thead>
             <tr className="bg-new-section-bg">
               <th className={th}>STT</th>
-              <th className={th}>Tour</th>
-              <th className={th}>Khởi hành</th>
-              <th className={th}>Số khách</th>
+              <th className={th}>Khách sạn</th>
+              <th className={th}>Nhận – trả phòng</th>
+              <th className={th}>Phòng / khách</th>
               <th className={th}>Trạng thái</th>
               <th className={th}>Thanh toán</th>
               <th className={th}>Tổng tiền</th>
@@ -69,22 +69,31 @@ export function MyBookingsList({
                 <td className={td}>
                   <Link href={`/bookings/${encodeURIComponent(item.code)}`} className="flex items-center gap-3">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={item.tourImageUrl} alt="" className="size-12 shrink-0 rounded object-cover" />
+                    <img src={item.imageUrl} alt="" className="size-12 shrink-0 rounded object-cover" />
                     <span className="min-w-0">
                       <span className="line-clamp-1 font-medium text-new-teal-cta hover:underline">
-                        {item.tourTitle}
+                        {item.hotelName}
                       </span>
-                      <span className="block text-xs text-new-paragraph">{item.code}</span>
+                      <span className="line-clamp-1 text-xs text-new-paragraph">
+                        {item.roomName} · {item.code}
+                      </span>
                     </span>
                   </Link>
                 </td>
-                <td className={`${td} whitespace-nowrap`}>{formatDate(item.departureDate)}</td>
-                <td className={td}>{item.guests}</td>
+                <td className={`${td} whitespace-nowrap`}>
+                  {formatDate(item.checkInDate)} – {formatDate(item.checkOutDate)}
+                  <span className="block text-xs">{item.nights} đêm</span>
+                </td>
+                <td className={`${td} whitespace-nowrap`}>
+                  {item.roomQuantity} phòng · {item.guests} khách
+                </td>
                 <td className={td}>
-                  <MyBookingStatusMenu item={{ ...item, kind: "tour", title: item.tourTitle }} />
+                  <MyBookingStatusMenu
+                    item={{ ...item, kind: "hotel", title: `${item.hotelName} · ${item.roomName}` }}
+                  />
                   {item.status === "pending_payment" && item.expiresAt && (
                     <span className="mt-1 block text-xs text-new-paragraph">
-                      Giữ chỗ đến {formatDate(item.expiresAt)}
+                      Giữ phòng đến {formatDate(item.expiresAt)}
                     </span>
                   )}
                   {item.cancelReason && (

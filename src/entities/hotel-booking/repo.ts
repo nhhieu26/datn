@@ -1,7 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { Prisma, type BookingStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { formatEntityCode, hasCheckedOut } from "@/lib/utils";
+import {
+  canCustomerCancelBefore,
+  CUSTOMER_CANCEL_CUTOFF_HOURS,
+  formatEntityCode,
+  hasCheckedOut,
+} from "@/lib/utils";
 import { ConflictError, NotFoundError } from "@/shared/lib/errors";
 import type {
   CreateHotelBookingInput,
@@ -274,6 +279,46 @@ export function summarizeByStatus(providerProfileId: string) {
   });
 }
 
+// --- Customer xem danh sách đơn ---
+
+export async function findPageByCustomerId(
+  customerId: string,
+  statuses: BookingStatus[] | undefined,
+  page: { skip: number; take: number }
+) {
+  const where: Prisma.HotelBookingWhereInput = {
+    customerId,
+    ...(statuses && { status: { in: statuses } }),
+  };
+  const [total, items] = await prisma.$transaction([
+    prisma.hotelBooking.count({ where }),
+    prisma.hotelBooking.findMany({
+      where,
+      skip: page.skip,
+      take: page.take,
+      include: {
+        payments: { select: { status: true }, orderBy: { createdAt: "desc" } },
+        refunds: { select: { status: true } },
+        room: {
+          select: { images: true, hotel: { select: { images: true } } },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+  return { items, total };
+}
+
+/** Số đơn và tổng tiền theo từng trạng thái của customer, không phụ thuộc tab đang chọn. */
+export function summarizeByCustomerId(customerId: string) {
+  return prisma.hotelBooking.groupBy({
+    by: ["status"],
+    where: { customerId },
+    _count: { _all: true },
+    _sum: { totalAmount: true },
+  });
+}
+
 export async function findHotelNames(providerProfileId: string) {
   const rows = await prisma.hotelBooking.findMany({
     where: { providerProfileId },
@@ -343,9 +388,36 @@ export function confirmForProvider(code: string, providerProfileId: string) {
 }
 
 /**
- * Provider hủy đơn đã thanh toán: tạo Refund (processing) hoàn toàn bộ tiền.
+ * Hủy đơn đã khóa: tạo Refund (processing) hoàn toàn bộ tiền.
  * Tồn phòng tính động từ các booking còn hiệu lực nên hủy là tự nhả phòng.
  */
+async function cancelAndCreateRefund(tx: Tx, id: string, reason: string) {
+  const payment = await tx.payment.findFirst({
+    where: { hotelBookingId: id, status: "succeeded", gatewayCaptureId: { not: null } },
+  });
+  if (!payment?.gatewayCaptureId) {
+    throw new ConflictError("Không tìm thấy giao dịch thanh toán để hoàn tiền.");
+  }
+
+  const booking = await tx.hotelBooking.update({
+    where: { id },
+    data: { status: "cancelled", cancelledAt: new Date(), cancelReason: reason },
+  });
+  const refund = await tx.refund.create({
+    data: {
+      hotelBookingId: id,
+      paymentId: payment.id,
+      status: "processing",
+      amount: booking.totalAmount,
+      chargedAmount: payment.chargedAmount,
+      chargedCurrency: payment.chargedCurrency,
+      reason,
+    },
+  });
+  return { booking, refund, captureId: payment.gatewayCaptureId };
+}
+
+/** Provider hủy đơn đã thanh toán. */
 export function cancelForProvider(
   code: string,
   providerProfileId: string,
@@ -353,29 +425,26 @@ export function cancelForProvider(
 ) {
   return prisma.$transaction(async (tx) => {
     const id = await lockForProvider(tx, code, providerProfileId, "paid");
-    const payment = await tx.payment.findFirst({
-      where: { hotelBookingId: id, status: "succeeded", gatewayCaptureId: { not: null } },
-    });
-    if (!payment?.gatewayCaptureId) {
-      throw new ConflictError("Không tìm thấy giao dịch thanh toán để hoàn tiền.");
-    }
+    return cancelAndCreateRefund(tx, id, reason);
+  });
+}
 
-    const booking = await tx.hotelBooking.update({
-      where: { id },
-      data: { status: "cancelled", cancelledAt: new Date(), cancelReason: reason },
-    });
-    const refund = await tx.refund.create({
-      data: {
-        hotelBookingId: id,
-        paymentId: payment.id,
-        status: "processing",
-        amount: booking.totalAmount,
-        chargedAmount: payment.chargedAmount,
-        chargedCurrency: payment.chargedCurrency,
-        reason,
-      },
-    });
-    return { booking, refund, captureId: payment.gatewayCaptureId };
+/** Customer tự hủy đơn paid/confirmed, chỉ khi còn trước ngày nhận phòng đủ hạn hủy. */
+export function cancelForCustomer(code: string, customerId: string, reason: string) {
+  return prisma.$transaction(async (tx) => {
+    const rows = await tx.$queryRaw<{ id: string; checkInDate: Date }[]>`
+      SELECT "id", "checkInDate" FROM "HotelBooking"
+      WHERE "code" = ${code}
+        AND "customerId" = ${customerId}
+        AND "status" IN ('paid'::"BookingStatus", 'confirmed'::"BookingStatus")
+      FOR UPDATE`;
+    if (rows.length === 0) throw new ConflictError(STALE_STATUS_MESSAGE);
+    if (!canCustomerCancelBefore(rows[0].checkInDate)) {
+      throw new ConflictError(
+        `Chỉ có thể hủy đơn trước ngày nhận phòng ${CUSTOMER_CANCEL_CUTOFF_HOURS} giờ.`
+      );
+    }
+    return cancelAndCreateRefund(tx, rows[0].id, reason);
   });
 }
 

@@ -8,7 +8,7 @@ import {
 } from "@/features/provider/tour-bookings/utils";
 import type { HotelBookingDetailView, HotelBookingListItem } from "./types";
 
-function extractRoomImageUrl(
+export function extractRoomImageUrl(
   room: { images: unknown; hotel: { images: unknown } } | null,
 ): string {
   const roomImages = room?.images;

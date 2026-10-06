@@ -4,16 +4,36 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { getBookingStatusMeta } from "@/features/provider/tour-bookings";
 import { formatCurrency } from "@/lib/utils";
-import { cancelMyTourBookingAction } from "../actions";
-import type { MyBookingItem } from "../types";
+import {
+  cancelMyHotelBookingAction,
+  cancelMyTourBookingAction,
+} from "../actions";
+import type { BookingKind, CancellableBooking } from "../types";
+
+const COPY: Record<
+  BookingKind,
+  { action: typeof cancelMyTourBookingAction; heading: string; provider: string }
+> = {
+  tour: {
+    action: cancelMyTourBookingAction,
+    heading: "Hủy đơn đặt tour?",
+    provider: "nhà cung cấp tour",
+  },
+  hotel: {
+    action: cancelMyHotelBookingAction,
+    heading: "Hủy đơn đặt phòng?",
+    provider: "khách sạn",
+  },
+};
 
 export function CancelMyBookingDialog({
   item,
   onClose,
 }: {
-  item: MyBookingItem;
+  item: CancellableBooking;
   onClose: () => void;
 }) {
+  const copy = COPY[item.kind];
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [reason, setReason] = useState("");
@@ -39,7 +59,7 @@ export function CancelMyBookingDialog({
     setError("");
     setReasonError("");
     startTransition(async () => {
-      const result = await cancelMyTourBookingAction({
+      const result = await copy.action({
         code: item.code,
         reason,
       });
@@ -89,10 +109,10 @@ export function CancelMyBookingDialog({
           className="text-lg font-semibold text-new-title"
           id="cancel-booking-heading"
         >
-          Hủy đơn đặt tour?
+          {copy.heading}
         </h2>
         <p className="mt-1 text-xs font-semibold text-new-teal-cta">
-          {item.code} · {item.tourTitle}
+          {item.code} · {item.title}
         </p>
 
         {notice ? (
@@ -129,7 +149,7 @@ export function CancelMyBookingDialog({
                   setReason(event.target.value);
                   setReasonError("");
                 }}
-                placeholder="Lý do sẽ được gửi cho nhà cung cấp tour"
+                placeholder={`Lý do sẽ được gửi cho ${copy.provider}`}
                 rows={3}
                 value={reason}
               />

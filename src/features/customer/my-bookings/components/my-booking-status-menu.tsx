@@ -7,12 +7,17 @@ import {
   StatusBadge,
 } from "@/features/provider/tour-bookings";
 import { CUSTOMER_CANCEL_CUTOFF_HOURS } from "@/lib/utils";
-import type { MyBookingItem } from "../types";
+import type { CancellableBooking } from "../types";
 import { CancelMyBookingDialog } from "./cancel-my-booking-dialog";
 
 const MENU_WIDTH = 240;
 
-export function MyBookingStatusMenu({ item }: { item: MyBookingItem }) {
+const CUTOFF_LABEL = {
+  tour: "khởi hành",
+  hotel: "nhận phòng",
+} as const;
+
+export function MyBookingStatusMenu({ item }: { item: CancellableBooking }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{
@@ -138,7 +143,7 @@ export function MyBookingStatusMenu({ item }: { item: MyBookingItem }) {
                   </span>
                   <span className="text-xs text-new-paragraph">
                     {disabled
-                      ? `Chỉ hủy trước khởi hành ${CUSTOMER_CANCEL_CUTOFF_HOURS} giờ`
+                      ? `Chỉ hủy trước ${CUTOFF_LABEL[item.kind]} ${CUSTOMER_CANCEL_CUTOFF_HOURS} giờ`
                       : "Hoàn tiền 100% qua PayPal"}
                   </span>
                 </span>

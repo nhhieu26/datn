@@ -1,13 +1,13 @@
-import { tourBookingRepo } from "@/entities/tour-booking";
+import { hotelBookingRepo } from "@/entities/hotel-booking";
 import {
   buildMyBookingsUrl,
   getMyBookingsSummary,
   getTabStatuses,
-  mapToMyBookingItem,
+  mapToMyHotelBookingItem,
   MY_BOOKINGS_PAGE_SIZE,
-  MyBookingsList,
   MyBookingsSummaryCards,
   MyBookingsTabs,
+  MyHotelBookingsList,
   parseMyBookingsQuery,
 } from "@/features/customer/my-bookings";
 import { auth } from "@/lib/auth";
@@ -15,10 +15,10 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: "Roamly - Đơn đặt tour của tôi",
+  title: "Roamly - Đơn đặt phòng của tôi",
 };
 
-export default async function MyBookingsPage({
+export default async function MyHotelBookingsPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -28,9 +28,9 @@ export default async function MyBookingsPage({
 
   const query = parseMyBookingsQuery(await searchParams);
 
-  await tourBookingRepo.releaseExpired();
+  await hotelBookingRepo.releaseExpired();
   const [{ items: bookings, total }, statusRows] = await Promise.all([
-    tourBookingRepo.findPageByCustomerId(
+    hotelBookingRepo.findPageByCustomerId(
       session.user.id,
       getTabStatuses(query.tab),
       {
@@ -38,7 +38,7 @@ export default async function MyBookingsPage({
         take: MY_BOOKINGS_PAGE_SIZE,
       },
     ),
-    tourBookingRepo.summarizeByCustomerId(session.user.id),
+    hotelBookingRepo.summarizeByCustomerId(session.user.id),
   ]);
 
   const totalPages = Math.max(1, Math.ceil(total / MY_BOOKINGS_PAGE_SIZE));
@@ -50,12 +50,12 @@ export default async function MyBookingsPage({
 
   return (
     <div className="rounded-md bg-new-section-bg p-6">
-      <h1 className="mb-6 text-2xl font-semibold text-new-title">Đơn đặt tour</h1>
+      <h1 className="mb-6 text-2xl font-semibold text-new-title">Đơn đặt phòng</h1>
       <MyBookingsSummaryCards summary={summary} />
       <div className="rounded-md bg-white p-6">
         <MyBookingsTabs query={query} />
-        <MyBookingsList
-          items={bookings.map(mapToMyBookingItem)}
+        <MyHotelBookingsList
+          items={bookings.map(mapToMyHotelBookingItem)}
           total={total}
           query={query}
           hasAnyBooking={summary.total > 0}

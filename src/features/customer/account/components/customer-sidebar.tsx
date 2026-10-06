@@ -8,7 +8,8 @@ import { InterestsModal } from "./interests-modal";
 
 const navigation = [
   { label: "Hồ sơ của tôi", icon: "person", href: "/profile" },
-  { label: "Đơn đặt chỗ", icon: "event", href: "/my-bookings" },
+  { label: "Đơn đặt tour", icon: "tour", href: "/my-bookings" },
+  { label: "Đơn đặt phòng", icon: "hotel", href: "/my-hotel-bookings" },
 ];
 
 export function CustomerSidebar({
