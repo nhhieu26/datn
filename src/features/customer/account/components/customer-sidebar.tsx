@@ -8,14 +8,7 @@ import { InterestsModal } from "./interests-modal";
 
 const navigation = [
   { label: "Hồ sơ của tôi", icon: "person", href: "/profile" },
-  { label: "Chuyến đi của tôi", icon: "luggage", href: "#" },
-  { label: "Đã lưu", icon: "bookmark", href: "#" },
-  { label: "Lịch trình của tôi", icon: "map", href: "#" },
-  { label: "Đơn đặt chỗ", icon: "event", href: "#" },
-  { label: "Đánh giá", icon: "star", href: "#" },
-  { label: "Phương thức thanh toán", icon: "credit_card", href: "#" },
-  { label: "Thông báo", icon: "notifications", href: "#" },
-  { label: "Cài đặt", icon: "settings", href: "#" },
+  { label: "Đơn đặt chỗ", icon: "event", href: "/my-bookings" },
 ];
 
 export function CustomerSidebar({
@@ -55,8 +48,7 @@ export function CustomerSidebar({
       <nav aria-label="Menu tài khoản" className="text-base font-medium">
         {navigation.map((item) => {
           const active =
-            item.href !== "#" &&
-            (pathname === item.href || pathname.startsWith(`${item.href}/`));
+            pathname === item.href || pathname.startsWith(`${item.href}/`);
 
           return (
             <Link

@@ -294,6 +294,47 @@ export function summarizeByStatus(providerProfileId: string) {
   });
 }
 
+export async function findPageByCustomerId(
+  customerId: string,
+  statuses: BookingStatus[] | undefined,
+  page: { skip: number; take: number }
+) {
+  const where: Prisma.TourBookingWhereInput = {
+    customerId,
+    ...(statuses && { status: { in: statuses } }),
+  };
+  const [total, items] = await prisma.$transaction([
+    prisma.tourBooking.count({ where }),
+    prisma.tourBooking.findMany({
+      where,
+      skip: page.skip,
+      take: page.take,
+      include: {
+        payments: { select: { status: true }, orderBy: { createdAt: "desc" } },
+        refunds: { select: { status: true } },
+        tourDeparture: {
+          select: {
+            returnDate: true,
+            tour: { select: { images: true, durationDays: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+  return { items, total };
+}
+
+/** Số đơn và tổng tiền theo từng trạng thái của customer, không phụ thuộc tab đang chọn. */
+export function summarizeByCustomerId(customerId: string) {
+  return prisma.tourBooking.groupBy({
+    by: ["status"],
+    where: { customerId },
+    _count: { _all: true },
+    _sum: { totalAmount: true },
+  });
+}
+
 export async function findTourTitles(providerProfileId: string) {
   const rows = await prisma.tourBooking.findMany({
     where: { providerProfileId },

@@ -109,7 +109,7 @@ export function getPaymentMeta(state: PaymentState): StatusMeta {
   return paymentMeta[state];
 }
 
-function getPaymentState(
+export function getPaymentState(
   booking: Pick<TourBookingWithPayment, "payments" | "refunds">,
 ): PaymentState {
   const { payments, refunds } = booking;
@@ -124,7 +124,7 @@ function getPaymentState(
 
 const FALLBACK_IMAGE = "/image-notfound.png";
 
-function extractTourImageUrl(images: unknown): string {
+export function extractTourImageUrl(images: unknown): string {
   if (Array.isArray(images) && images.length > 0) {
     const first = images[0] as { url?: unknown };
     if (typeof first?.url === "string") return first.url;
