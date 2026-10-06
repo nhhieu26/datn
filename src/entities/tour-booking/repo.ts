@@ -2,7 +2,13 @@ import { randomUUID } from "node:crypto";
 import { Prisma, type BookingStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { TransferResult, TransferStatus } from "@/lib/paypal";
-import { formatEntityCode, getTourEndDate, hasTourEnded } from "@/lib/utils";
+import {
+  CUSTOMER_CANCEL_CUTOFF_HOURS,
+  canCustomerCancelBefore,
+  formatEntityCode,
+  getTourEndDate,
+  hasTourEnded,
+} from "@/lib/utils";
 import { ConflictError, NotFoundError } from "@/shared/lib/errors";
 import type {
   CreateTourBookingInput,
@@ -345,7 +351,7 @@ export async function findTourTitles(providerProfileId: string) {
   return rows.map((row) => row.tourTitle);
 }
 
-// --- Provider chuyển trạng thái đơn ---
+// --- Provider / customer chuyển trạng thái đơn ---
 
 const STALE_STATUS_MESSAGE = "Trạng thái đơn đã thay đổi, vui lòng tải lại.";
 
@@ -376,7 +382,41 @@ export function confirmForProvider(code: string, providerProfileId: string) {
   });
 }
 
-/** Hủy đơn đã thanh toán: tạo Refund (processing) và trả chỗ cho departure. */
+/** Hủy đơn đã khóa: tạo Refund (processing) hoàn toàn bộ tiền và trả chỗ cho departure. */
+async function cancelAndCreateRefund(tx: Tx, id: string, reason: string) {
+  const payment = await tx.payment.findFirst({
+    where: { tourBookingId: id, status: "succeeded", gatewayCaptureId: { not: null } },
+  });
+  if (!payment?.gatewayCaptureId) {
+    throw new ConflictError("Không tìm thấy giao dịch thanh toán để hoàn tiền.");
+  }
+
+  const now = new Date();
+  const booking = await tx.tourBooking.update({
+    where: { id },
+    data: { status: "cancelled", cancelledAt: now, cancelReason: reason },
+  });
+  if (booking.tourDepartureId) {
+    await tx.$executeRaw`
+      UPDATE "TourDeparture"
+      SET "bookedSlots" = GREATEST(0, "bookedSlots" - ${booking.guests}), "updatedAt" = ${now}
+      WHERE "id" = ${booking.tourDepartureId}`;
+  }
+  const refund = await tx.refund.create({
+    data: {
+      tourBookingId: id,
+      paymentId: payment.id,
+      status: "processing",
+      amount: booking.totalAmount,
+      chargedAmount: payment.chargedAmount,
+      chargedCurrency: payment.chargedCurrency,
+      reason,
+    },
+  });
+  return { booking, refund, captureId: payment.gatewayCaptureId };
+}
+
+/** Provider hủy đơn đã thanh toán. */
 export function cancelForProvider(
   code: string,
   providerProfileId: string,
@@ -384,36 +424,26 @@ export function cancelForProvider(
 ) {
   return prisma.$transaction(async (tx) => {
     const id = await lockForProvider(tx, code, providerProfileId, "paid");
-    const payment = await tx.payment.findFirst({
-      where: { tourBookingId: id, status: "succeeded", gatewayCaptureId: { not: null } },
-    });
-    if (!payment?.gatewayCaptureId) {
-      throw new ConflictError("Không tìm thấy giao dịch thanh toán để hoàn tiền.");
-    }
+    return cancelAndCreateRefund(tx, id, reason);
+  });
+}
 
-    const now = new Date();
-    const booking = await tx.tourBooking.update({
-      where: { id },
-      data: { status: "cancelled", cancelledAt: now, cancelReason: reason },
-    });
-    if (booking.tourDepartureId) {
-      await tx.$executeRaw`
-        UPDATE "TourDeparture"
-        SET "bookedSlots" = GREATEST(0, "bookedSlots" - ${booking.guests}), "updatedAt" = ${now}
-        WHERE "id" = ${booking.tourDepartureId}`;
+/** Customer tự hủy đơn paid/confirmed, chỉ khi còn trước giờ khởi hành đủ hạn hủy. */
+export function cancelForCustomer(code: string, customerId: string, reason: string) {
+  return prisma.$transaction(async (tx) => {
+    const rows = await tx.$queryRaw<{ id: string; departureDate: Date }[]>`
+      SELECT "id", "departureDate" FROM "TourBooking"
+      WHERE "code" = ${code}
+        AND "customerId" = ${customerId}
+        AND "status" IN ('paid'::"BookingStatus", 'confirmed'::"BookingStatus")
+      FOR UPDATE`;
+    if (rows.length === 0) throw new ConflictError(STALE_STATUS_MESSAGE);
+    if (!canCustomerCancelBefore(rows[0].departureDate)) {
+      throw new ConflictError(
+        `Chỉ có thể hủy đơn trước giờ khởi hành ${CUSTOMER_CANCEL_CUTOFF_HOURS} giờ.`
+      );
     }
-    const refund = await tx.refund.create({
-      data: {
-        tourBookingId: id,
-        paymentId: payment.id,
-        status: "processing",
-        amount: booking.totalAmount,
-        chargedAmount: payment.chargedAmount,
-        chargedCurrency: payment.chargedCurrency,
-        reason,
-      },
-    });
-    return { booking, refund, captureId: payment.gatewayCaptureId };
+    return cancelAndCreateRefund(tx, rows[0].id, reason);
   });
 }
 

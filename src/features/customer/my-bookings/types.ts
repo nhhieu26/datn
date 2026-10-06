@@ -11,6 +11,10 @@ export type MyBookingItem = {
   status: BookingStatus;
   paymentState: PaymentState;
   expiresAt: string | null;
+  cancelReason: string | null;
+  /** Đơn paid/confirmed — customer được hủy (nếu còn trong hạn). */
+  canCancel: boolean;
+  cancelDeadlinePassed: boolean;
   createdAt: string;
 };
 

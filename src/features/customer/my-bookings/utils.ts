@@ -4,7 +4,10 @@ import {
   extractTourImageUrl,
   getPaymentState,
 } from "@/features/provider/tour-bookings";
+import { canCustomerCancelBefore } from "@/lib/utils";
 import type { MyBookingItem, MyBookingsSummary } from "./types";
+
+const CANCELLABLE_STATUSES: BookingStatus[] = ["paid", "confirmed"];
 
 export function mapToMyBookingItem(booking: TourBookingWithPayment): MyBookingItem {
   return {
@@ -17,6 +20,9 @@ export function mapToMyBookingItem(booking: TourBookingWithPayment): MyBookingIt
     status: booking.status,
     paymentState: getPaymentState(booking),
     expiresAt: booking.expiresAt?.toISOString() ?? null,
+    cancelReason: booking.cancelReason,
+    canCancel: CANCELLABLE_STATUSES.includes(booking.status),
+    cancelDeadlinePassed: !canCustomerCancelBefore(booking.departureDate),
     createdAt: booking.createdAt.toISOString(),
   };
 }

@@ -8,7 +8,7 @@ import { auth } from "@/lib/auth";
 import {
   createPayout,
   refundCapture,
-  type TransferResult,
+  settleTransfer,
   type TransferStatus,
 } from "@/lib/paypal";
 import { fromZodError, runAction } from "@/shared/lib/action-state";
@@ -43,25 +43,6 @@ async function requireTourProviderId() {
   return profile.id;
 }
 
-/**
- * Gọi PayPal sau khi DB đã commit. Lỗi chưa rõ kết quả (mạng, 5xx) giữ `processing`;
- * kết quả cuối được cập nhật qua webhook.
- */
-async function settle(
-  label: string,
-  transfer: () => Promise<TransferResult>,
-  save: (result: TransferResult) => Promise<unknown>,
-): Promise<TransferStatus> {
-  try {
-    const result = await transfer();
-    await save(result);
-    return result.status;
-  } catch (error) {
-    console.error(`[paypal] ${label} failed`, error);
-    return "processing";
-  }
-}
-
 export async function updateTourBookingStatusAction(input: unknown) {
   return runAction<{ moneyStatus?: TransferStatus }>(async () => {
     const providerProfileId = await requireTourProviderId();
@@ -79,7 +60,7 @@ export async function updateTourBookingStatusAction(input: unknown) {
           providerProfileId,
           data.reason,
         );
-      moneyStatus = await settle(
+      moneyStatus = await settleTransfer(
         `refund ${booking.code}`,
         () =>
           refundCapture({
@@ -93,7 +74,7 @@ export async function updateTourBookingStatusAction(input: unknown) {
     } else {
       const { booking, payout, recipientType } =
         await tourBookingRepo.completeForProvider(data.code, providerProfileId);
-      moneyStatus = await settle(
+      moneyStatus = await settleTransfer(
         `payout ${booking.code}`,
         () =>
           createPayout({

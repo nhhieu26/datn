@@ -96,3 +96,16 @@ export function getTourEndDate(
 export function hasTourEnded(endDate: Date | string, now = new Date()): boolean {
   return now.getTime() >= new Date(endDate).getTime() + DAY_MS;
 }
+
+/** Customer chỉ được tự hủy đơn trước giờ khởi hành ít nhất số giờ này. */
+export const CUSTOMER_CANCEL_CUTOFF_HOURS = 24;
+
+export function canCustomerCancelBefore(
+  departureDate: Date | string,
+  now = new Date(),
+): boolean {
+  return (
+    new Date(departureDate).getTime() - CUSTOMER_CANCEL_CUTOFF_HOURS * 60 * 60 * 1000 >
+    now.getTime()
+  );
+}

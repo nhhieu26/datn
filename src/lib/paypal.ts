@@ -189,6 +189,25 @@ export type TransferResult = {
   raw: Record<string, unknown>;
 };
 
+/**
+ * Gọi PayPal sau khi DB đã commit. Lỗi chưa rõ kết quả (mạng, 5xx) giữ `processing`;
+ * kết quả cuối được cập nhật qua webhook.
+ */
+export async function settleTransfer(
+  label: string,
+  transfer: () => Promise<TransferResult>,
+  save: (result: TransferResult) => Promise<unknown>,
+): Promise<TransferStatus> {
+  try {
+    const result = await transfer();
+    await save(result);
+    return result.status;
+  } catch (error) {
+    console.error(`[paypal] ${label} failed`, error);
+    return "processing";
+  }
+}
+
 // 5xx/429: chưa rõ kết quả → throw để giữ processing; gọi lại an toàn nhờ request id
 function assertSettled(status: number, label: string) {
   if (status >= 500 || status === 429) {

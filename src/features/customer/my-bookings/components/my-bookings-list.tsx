@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PaymentBadge, StatusBadge } from "@/features/provider/tour-bookings";
+import { PaymentBadge } from "@/features/provider/tour-bookings";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import {
   buildMyBookingsUrl,
@@ -7,6 +7,7 @@ import {
   type MyBookingsQuery,
 } from "../search-params";
 import type { MyBookingItem } from "../types";
+import { MyBookingStatusMenu } from "./my-booking-status-menu";
 
 const th = "border-b border-r border-new-input-border px-4 py-3 text-left text-base font-medium text-new-title whitespace-nowrap last:border-r-0";
 const td = "border-r border-new-input-border px-4 py-3 text-sm text-new-paragraph last:border-r-0";
@@ -99,10 +100,18 @@ export function MyBookingsList({
                 <td className={`${td} whitespace-nowrap`}>{formatDate(item.departureDate)}</td>
                 <td className={td}>{item.guests}</td>
                 <td className={td}>
-                  <StatusBadge status={item.status} />
+                  <MyBookingStatusMenu item={item} />
                   {item.status === "pending_payment" && item.expiresAt && (
                     <span className="mt-1 block text-xs text-new-paragraph">
                       Giữ chỗ đến {formatDate(item.expiresAt)}
+                    </span>
+                  )}
+                  {item.cancelReason && (
+                    <span
+                      title={item.cancelReason}
+                      className="mt-1 line-clamp-2 block max-w-[220px] text-xs text-rose-700"
+                    >
+                      Lý do: {item.cancelReason}
                     </span>
                   )}
                 </td>
