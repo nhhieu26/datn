@@ -3,14 +3,9 @@ import type { TourBookingDetailView } from "../types";
 
 type TimelineInfo = Pick<
   TourBookingDetailView,
-  | "status"
-  | "createdAt"
-  | "paidAt"
-  | "expiresAt"
-  | "confirmedAt"
-  | "completedAt"
-  | "cancelledAt"
->;
+  "status" | "createdAt" | "confirmedAt" | "completedAt" | "cancelledAt"
+> &
+  Partial<Pick<TourBookingDetailView, "paidAt" | "expiresAt">>;
 
 type Step = {
   label: string;
@@ -18,7 +13,7 @@ type Step = {
   state: "done" | "pending" | "failed";
 };
 
-function buildSteps(b: TimelineInfo): Step[] {
+function buildSteps(b: TimelineInfo, withPayment: boolean): Step[] {
   const steps: Step[] = [
     { label: "Tạo đơn", hint: formatDateTime(b.createdAt), state: "done" },
   ];
@@ -27,9 +22,10 @@ function buildSteps(b: TimelineInfo): Step[] {
     b.status === "expired" ||
     b.status === "no_show";
 
-  if (b.paidAt) {
+  // Đơn không thanh toán (đặt bàn) bỏ qua bước thanh toán
+  if (withPayment && b.paidAt) {
     steps.push({ label: "Đã thanh toán", hint: formatDateTime(b.paidAt), state: "done" });
-  } else if (!terminal || b.status === "expired") {
+  } else if (withPayment && (!terminal || b.status === "expired")) {
     steps.push({
       label: "Thanh toán",
       hint:
@@ -70,8 +66,14 @@ const dot = {
   failed: { icon: "cancel", cls: "text-rose-500" },
 } as const;
 
-export function BookingTimeline({ booking }: { booking: TimelineInfo }) {
-  const steps = buildSteps(booking);
+export function BookingTimeline({
+  booking,
+  withPayment = true,
+}: {
+  booking: TimelineInfo;
+  withPayment?: boolean;
+}) {
+  const steps = buildSteps(booking, withPayment);
   return (
     <ol className="flex flex-col gap-4 sm:flex-row sm:gap-0">
       {steps.map((step) => (

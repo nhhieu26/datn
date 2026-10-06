@@ -12,7 +12,11 @@ import { ConflictError, NotFoundError } from "@/shared/lib/errors";
 import type {
   CreateRestaurantBookingInput,
   RestaurantBookingDetail,
+  RestaurantBookingFilter,
+  RestaurantBookingProviderDetail,
 } from "./type";
+
+type Tx = Prisma.TransactionClient;
 
 const STALE_STATUS_MESSAGE = "Trạng thái đơn đã thay đổi, vui lòng tải lại.";
 
@@ -172,6 +176,161 @@ export function cancelForCustomer(code: string, customerId: string, reason: stri
         `Chỉ có thể hủy đơn trước giờ đặt bàn ${RESTAURANT_CANCEL_CUTOFF_HOURS} giờ.`
       );
     }
+    return tx.restaurantBooking.update({
+      where: { id },
+      data: { status: "cancelled", cancelledAt: new Date(), cancelReason: reason },
+    });
+  });
+}
+
+// --- Provider xem danh sách đơn ---
+
+function providerWhere(
+  providerProfileId: string,
+  filter: RestaurantBookingFilter = {}
+): Prisma.RestaurantBookingWhereInput {
+  const q = filter.q?.trim();
+  return {
+    providerProfileId,
+    ...(filter.status && { status: filter.status }),
+    ...(filter.restaurantName && { restaurantName: filter.restaurantName }),
+    ...((filter.createdFrom || filter.createdTo) && {
+      createdAt: { gte: filter.createdFrom, lte: filter.createdTo },
+    }),
+    ...(q && {
+      OR: [
+        { restaurantName: { contains: q, mode: "insensitive" } },
+        { contactName: { contains: q, mode: "insensitive" } },
+        { contactEmail: { contains: q, mode: "insensitive" } },
+        { contactPhone: { contains: q } },
+      ],
+    }),
+  };
+}
+
+export async function findPageByProviderProfileId(
+  providerProfileId: string,
+  filter: RestaurantBookingFilter,
+  page: { skip: number; take: number }
+) {
+  const where = providerWhere(providerProfileId, filter);
+  const [total, items] = await prisma.$transaction([
+    prisma.restaurantBooking.count({ where }),
+    prisma.restaurantBooking.findMany({
+      where,
+      skip: page.skip,
+      take: page.take,
+      include: {
+        restaurant: { select: { images: true } },
+        restaurantTimeSlot: { select: { endTime: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+  return { items, total };
+}
+
+/** Số đơn theo từng trạng thái và số đơn sắp tới của provider, không phụ thuộc bộ lọc. */
+export async function summarizeByStatus(providerProfileId: string) {
+  const [rows, upcoming] = await Promise.all([
+    prisma.restaurantBooking.groupBy({
+      by: ["status"],
+      where: { providerProfileId },
+      _count: { _all: true },
+    }),
+    prisma.restaurantBooking.count({
+      where: {
+        providerProfileId,
+        status: { in: ACTIVE_STATUSES },
+        reservationDate: { gte: new Date(`${todayIsoDate()}T00:00:00Z`) },
+      },
+    }),
+  ]);
+  return { rows, upcoming };
+}
+
+export async function findRestaurantNames(providerProfileId: string) {
+  const rows = await prisma.restaurantBooking.findMany({
+    where: { providerProfileId },
+    select: { restaurantName: true },
+    distinct: ["restaurantName"],
+    orderBy: { restaurantName: "asc" },
+  });
+  return rows.map((row) => row.restaurantName);
+}
+
+export function findByCodeForProvider(
+  code: string,
+  providerProfileId: string
+): Promise<RestaurantBookingProviderDetail | null> {
+  return prisma.restaurantBooking.findFirst({
+    where: { code, providerProfileId },
+    include: {
+      restaurant: {
+        select: {
+          images: true,
+          address: true,
+          province: { select: { name: true } },
+        },
+      },
+      restaurantTimeSlot: { select: { endTime: true } },
+      customer: { select: { fullname: true } },
+    },
+  });
+}
+
+// --- Provider chuyển trạng thái đơn ---
+
+/** Khóa đơn của provider đang ở một trong các trạng thái `from`; không khớp → ConflictError. */
+async function lockForProvider(
+  tx: Tx,
+  code: string,
+  providerProfileId: string,
+  from: BookingStatus[]
+) {
+  const rows = await tx.$queryRaw<
+    { id: string; reservationDate: Date; startTime: string }[]
+  >`
+    SELECT "id", "reservationDate", "startTime" FROM "RestaurantBooking"
+    WHERE "code" = ${code}
+      AND "providerProfileId" = ${providerProfileId}
+      AND "status"::text = ANY(${from})
+    FOR UPDATE`;
+  if (rows.length === 0) throw new ConflictError(STALE_STATUS_MESSAGE);
+  return rows[0];
+}
+
+export function confirmForProvider(code: string, providerProfileId: string) {
+  return prisma.$transaction(async (tx) => {
+    const { id, reservationDate, startTime } = await lockForProvider(
+      tx,
+      code,
+      providerProfileId,
+      ["pending_confirmation"]
+    );
+    if (reservationInstant(reservationDate, startTime) <= new Date()) {
+      throw new ConflictError("Đã qua giờ đặt bàn, không thể xác nhận.");
+    }
+    return tx.restaurantBooking.update({
+      where: { id },
+      data: { status: "confirmed", confirmedAt: new Date() },
+    });
+  });
+}
+
+/** Provider hủy đơn chờ xác nhận / đã xác nhận. Sức chứa tính động nên hủy là tự nhả chỗ. */
+export function cancelForProvider(
+  code: string,
+  providerProfileId: string,
+  reason: string
+) {
+  return prisma.$transaction(async (tx) => {
+    const { id } = await lockForProvider(
+      tx,
+      code,
+      providerProfileId,
+      ACTIVE_STATUSES
+    );
     return tx.restaurantBooking.update({
       where: { id },
       data: { status: "cancelled", cancelledAt: new Date(), cancelReason: reason },

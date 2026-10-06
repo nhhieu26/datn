@@ -11,8 +11,9 @@ import { getBookingStatusMeta } from "../utils";
 export type StatusTargetBooking = {
   code: string;
   status: BookingStatus;
-  totalAmount: number;
-  providerAmount: number;
+  /** Chỉ dùng trong mô tả mặc định của đơn có thanh toán (tour / khách sạn) */
+  totalAmount?: number;
+  providerAmount?: number;
 };
 
 /** Phần khác nhau giữa đơn tour / đơn khách sạn khi đổi trạng thái. */
@@ -23,7 +24,11 @@ export type BookingStatusConfig = {
   /** Hệ quả trả lại chỗ/phòng khi hủy, vd "trả lại 2 chỗ cho lịch khởi hành" */
   cancelEffect: string;
   /** null = được hoàn thành; ngược lại là lý do chưa được hoàn thành */
-  completeBlockedHint: string | null;
+  completeBlockedHint?: string | null;
+  /** Mặc định PROVIDER_BOOKING_TRANSITIONS (đơn có thanh toán) */
+  transitions?: Partial<Record<BookingStatus, ProviderBookingTransition[]>>;
+  /** Ghi đè mô tả hệ quả của từng trạng thái đích */
+  descriptions?: Partial<Record<ProviderBookingTransition, string>>;
   onSubmit: typeof updateTourBookingStatusAction;
 };
 
@@ -46,13 +51,15 @@ function describe(
   booking: StatusTargetBooking,
   config: BookingStatusConfig,
 ) {
+  const override = config.descriptions?.[target];
+  if (override) return override;
   switch (target) {
     case "confirmed":
       return "Khách hàng sẽ thấy đơn đã được xác nhận. Sau khi xác nhận, đơn không thể hủy từ trang này.";
     case "completed":
-      return `Sàn sẽ chuyển ${formatCurrency(booking.providerAmount)} (thực nhận) vào tài khoản PayPal đã liên kết của bạn. Thao tác không thể hoàn tác.`;
+      return `Sàn sẽ chuyển ${formatCurrency(booking.providerAmount ?? 0)} (thực nhận) vào tài khoản PayPal đã liên kết của bạn. Thao tác không thể hoàn tác.`;
     case "cancelled":
-      return `Sàn sẽ hoàn ${formatCurrency(booking.totalAmount)} cho khách qua PayPal và ${config.cancelEffect}. Thao tác không thể hoàn tác.`;
+      return `Sàn sẽ hoàn ${formatCurrency(booking.totalAmount ?? 0)} cho khách qua PayPal và ${config.cancelEffect}. Thao tác không thể hoàn tác.`;
   }
 }
 

@@ -89,6 +89,8 @@ export async function cancelMyRestaurantBookingAction(input: unknown) {
 
     revalidatePath(`/bookings/${code}`);
     revalidatePath("/my-restaurant-bookings");
+    revalidatePath("/provider/bookings/restaurants");
+    revalidatePath(`/provider/bookings/restaurants/${code}`);
     return { moneyStatus: null };
   });
 }

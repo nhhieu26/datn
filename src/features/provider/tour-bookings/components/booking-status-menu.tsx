@@ -27,7 +27,8 @@ export function BookingStatusMenu({
     left: number;
   } | null>(null);
   const [target, setTarget] = useState<ProviderBookingTransition | null>(null);
-  const transitions = PROVIDER_BOOKING_TRANSITIONS[booking.status] ?? [];
+  const transitions =
+    (config.transitions ?? PROVIDER_BOOKING_TRANSITIONS)[booking.status] ?? [];
   const open = position !== null;
 
   useEffect(() => {
@@ -121,7 +122,7 @@ export function BookingStatusMenu({
               {transitions.map((status) => {
                 const option = getBookingStatusMeta(status);
                 const disabled =
-                  status === "completed" && config.completeBlockedHint !== null;
+                  status === "completed" && config.completeBlockedHint != null;
                 return (
                   <button
                     className="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
