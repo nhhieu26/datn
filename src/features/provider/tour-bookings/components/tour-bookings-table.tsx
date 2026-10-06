@@ -11,7 +11,8 @@ import {
 } from "../search-params";
 import type { TourBookingListItem } from "../types";
 import { BOOKING_STATUS_OPTIONS } from "../utils";
-import { PaymentBadge, StatusBadge } from "./booking-badges";
+import { PaymentBadge } from "./booking-badges";
+import { BookingStatusMenu } from "./booking-status-menu";
 
 function BookingRow({ booking }: { booking: TourBookingListItem }) {
   return (
@@ -59,7 +60,7 @@ function BookingRow({ booking }: { booking: TourBookingListItem }) {
         <PaymentBadge state={booking.paymentState} />
       </td>
       <td className="px-6 py-5 align-middle">
-        <StatusBadge status={booking.status} />
+        <BookingStatusMenu booking={booking} />
       </td>
       <td className="px-6 py-5 align-middle whitespace-nowrap">
         <div className="flex flex-col">

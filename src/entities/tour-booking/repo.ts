@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { Prisma } from "@/generated/prisma/client";
+import { Prisma, type BookingStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { formatEntityCode } from "@/lib/utils";
+import type { TransferResult, TransferStatus } from "@/lib/paypal";
+import { formatEntityCode, getTourEndDate, hasTourEnded } from "@/lib/utils";
 import { ConflictError, NotFoundError } from "@/shared/lib/errors";
 import type {
   CreateTourBookingInput,
@@ -270,7 +271,12 @@ export async function findPageByProviderProfileId(
       include: {
         payments: { select: { status: true }, orderBy: { createdAt: "desc" } },
         refunds: { select: { status: true } },
-        tourDeparture: { select: { tour: { select: { images: true } } } },
+        tourDeparture: {
+          select: {
+            returnDate: true,
+            tour: { select: { images: true, durationDays: true } },
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
     }),
@@ -296,4 +302,235 @@ export async function findTourTitles(providerProfileId: string) {
     orderBy: { tourTitle: "asc" },
   });
   return rows.map((row) => row.tourTitle);
+}
+
+// --- Provider chuyển trạng thái đơn ---
+
+const STALE_STATUS_MESSAGE = "Trạng thái đơn đã thay đổi, vui lòng tải lại.";
+
+/** Khóa booking của provider đang ở trạng thái `from`; không khớp → ConflictError. */
+async function lockForProvider(
+  tx: Tx,
+  code: string,
+  providerProfileId: string,
+  from: BookingStatus
+) {
+  const rows = await tx.$queryRaw<{ id: string }[]>`
+    SELECT "id" FROM "TourBooking"
+    WHERE "code" = ${code}
+      AND "providerProfileId" = ${providerProfileId}
+      AND "status" = ${from}::"BookingStatus"
+    FOR UPDATE`;
+  if (rows.length === 0) throw new ConflictError(STALE_STATUS_MESSAGE);
+  return rows[0].id;
+}
+
+export function confirmForProvider(code: string, providerProfileId: string) {
+  return prisma.$transaction(async (tx) => {
+    const id = await lockForProvider(tx, code, providerProfileId, "paid");
+    return tx.tourBooking.update({
+      where: { id },
+      data: { status: "confirmed", confirmedAt: new Date() },
+    });
+  });
+}
+
+/** Hủy đơn đã thanh toán: tạo Refund (processing) và trả chỗ cho departure. */
+export function cancelForProvider(
+  code: string,
+  providerProfileId: string,
+  reason: string
+) {
+  return prisma.$transaction(async (tx) => {
+    const id = await lockForProvider(tx, code, providerProfileId, "paid");
+    const payment = await tx.payment.findFirst({
+      where: { tourBookingId: id, status: "succeeded", gatewayCaptureId: { not: null } },
+    });
+    if (!payment?.gatewayCaptureId) {
+      throw new ConflictError("Không tìm thấy giao dịch thanh toán để hoàn tiền.");
+    }
+
+    const now = new Date();
+    const booking = await tx.tourBooking.update({
+      where: { id },
+      data: { status: "cancelled", cancelledAt: now, cancelReason: reason },
+    });
+    if (booking.tourDepartureId) {
+      await tx.$executeRaw`
+        UPDATE "TourDeparture"
+        SET "bookedSlots" = GREATEST(0, "bookedSlots" - ${booking.guests}), "updatedAt" = ${now}
+        WHERE "id" = ${booking.tourDepartureId}`;
+    }
+    const refund = await tx.refund.create({
+      data: {
+        tourBookingId: id,
+        paymentId: payment.id,
+        status: "processing",
+        amount: booking.totalAmount,
+        chargedAmount: payment.chargedAmount,
+        chargedCurrency: payment.chargedCurrency,
+        reason,
+      },
+    });
+    return { booking, refund, captureId: payment.gatewayCaptureId };
+  });
+}
+
+/** Hoàn thành đơn sau khi tour kết thúc: tạo Payout (processing) cho provider. */
+export function completeForProvider(code: string, providerProfileId: string) {
+  return prisma.$transaction(async (tx) => {
+    const id = await lockForProvider(tx, code, providerProfileId, "confirmed");
+    const booking = await tx.tourBooking.findUniqueOrThrow({
+      where: { id },
+      include: {
+        tourDeparture: {
+          select: { returnDate: true, tour: { select: { durationDays: true } } },
+        },
+        providerProfile: { select: { paypalPayerId: true, payoutEmail: true } },
+        payments: { where: { status: "succeeded" }, take: 1 },
+      },
+    });
+
+    const endDate = getTourEndDate(
+      booking.departureDate,
+      booking.tourDeparture?.returnDate ?? null,
+      booking.tourDeparture?.tour.durationDays ?? null
+    );
+    if (!hasTourEnded(endDate)) {
+      throw new ConflictError("Chỉ có thể hoàn thành đơn sau khi tour đã kết thúc.");
+    }
+
+    const { paypalPayerId, payoutEmail } = booking.providerProfile;
+    const receiver = paypalPayerId ?? payoutEmail;
+    if (!receiver) {
+      throw new ConflictError(
+        "Vui lòng liên kết tài khoản PayPal ở mục Thanh toán / PayPal để nhận tiền."
+      );
+    }
+
+    const exchangeRate =
+      booking.payments[0]?.exchangeRate ??
+      new Prisma.Decimal(process.env.PAYPAL_USD_RATE ?? 25_000);
+
+    const updated = await tx.tourBooking.update({
+      where: { id },
+      data: { status: "completed", completedAt: new Date() },
+    });
+    const payout = await tx.payout.create({
+      data: {
+        tourBookingId: id,
+        providerProfileId,
+        gateway: "paypal",
+        status: "processing",
+        amount: booking.providerAmount,
+        chargedAmount: booking.providerAmount.div(exchangeRate).toDecimalPlaces(2),
+        chargedCurrency: "USD",
+        exchangeRate,
+        receiver,
+      },
+    });
+    return {
+      booking: updated,
+      payout,
+      // payer ID là "encrypted PayPal account number" → recipient_type PAYPAL_ID
+      recipientType: paypalPayerId ? ("PAYPAL_ID" as const) : ("EMAIL" as const),
+    };
+  });
+}
+
+// --- Kết quả chuyển tiền (từ response API hoặc webhook) ---
+
+type TransferUpdate = {
+  status: TransferStatus;
+  failureReason: string | null;
+  raw: Prisma.InputJsonValue;
+};
+
+/**
+ * Webhook có thể đến trễ / sai thứ tự: kết quả "processing" chỉ ghi lên bản ghi
+ * chưa có kết quả cuối, kết quả cuối (succeeded/failed) luôn được ghi.
+ */
+function statusGuard(status: TransferStatus) {
+  return status === "processing"
+    ? { status: { in: ["pending" as const, "processing" as const] } }
+    : {};
+}
+
+function transferData(update: TransferUpdate) {
+  return {
+    status: update.status,
+    failureReason: update.failureReason,
+    rawResponse: update.raw,
+  };
+}
+
+export function markRefundResult(refundId: string, result: TransferResult) {
+  return prisma.refund.updateMany({
+    where: { id: refundId, ...statusGuard(result.status) },
+    data: {
+      ...transferData({ ...result, raw: result.raw as Prisma.InputJsonValue }),
+      gatewayRefundId: result.gatewayId,
+      processedAt: result.status === "succeeded" ? new Date() : null,
+    },
+  });
+}
+
+export function markPayoutResult(payoutId: string, result: TransferResult) {
+  return prisma.payout.updateMany({
+    where: { id: payoutId, ...statusGuard(result.status) },
+    data: {
+      ...transferData({ ...result, raw: result.raw as Prisma.InputJsonValue }),
+      gatewayBatchId: result.gatewayId,
+      paidAt: result.status === "succeeded" ? new Date() : null,
+    },
+  });
+}
+
+/** Webhook PAYMENT.CAPTURE.REFUNDED / PAYMENT.REFUND.*: khớp theo custom_id hoặc refund id của PayPal. */
+export function applyRefundWebhook(
+  match: { refundId: string | null; gatewayRefundId: string | null },
+  update: TransferUpdate
+) {
+  const or = [
+    ...(match.refundId ? [{ id: match.refundId }] : []),
+    ...(match.gatewayRefundId ? [{ gatewayRefundId: match.gatewayRefundId }] : []),
+  ];
+  if (or.length === 0) return Promise.resolve({ count: 0 });
+  return prisma.refund.updateMany({
+    where: { OR: or, ...statusGuard(update.status) },
+    data: {
+      ...transferData(update),
+      ...(match.gatewayRefundId && { gatewayRefundId: match.gatewayRefundId }),
+      processedAt: update.status === "succeeded" ? new Date() : null,
+    },
+  });
+}
+
+/** Webhook PAYMENT.PAYOUTS-ITEM.*: khớp theo sender_item_id (= Payout.id) hoặc batch id. */
+export function applyPayoutItemWebhook(
+  match: { payoutId: string | null; batchId: string | null; itemId: string | null },
+  update: TransferUpdate
+) {
+  const or = [
+    ...(match.payoutId ? [{ id: match.payoutId }] : []),
+    ...(match.batchId ? [{ gatewayBatchId: match.batchId }] : []),
+  ];
+  if (or.length === 0) return Promise.resolve({ count: 0 });
+  return prisma.payout.updateMany({
+    where: { OR: or, ...statusGuard(update.status) },
+    data: {
+      ...transferData(update),
+      ...(match.batchId && { gatewayBatchId: match.batchId }),
+      ...(match.itemId && { gatewayItemId: match.itemId }),
+      paidAt: update.status === "succeeded" ? new Date() : null,
+    },
+  });
+}
+
+/** Webhook PAYMENT.PAYOUTSBATCH.DENIED: cả batch bị từ chối. */
+export function applyPayoutBatchDenied(batchId: string, raw: Prisma.InputJsonValue) {
+  return prisma.payout.updateMany({
+    where: { gatewayBatchId: batchId, status: { in: ["pending", "processing"] } },
+    data: { status: "failed", failureReason: "Payout batch DENIED", rawResponse: raw },
+  });
 }

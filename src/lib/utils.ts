@@ -77,3 +77,22 @@ export function formatTime(value: string) {
     minute: "2-digit",
   }).format(new Date(value));
 }
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Ngày cuối của tour: returnDate nếu có, ngược lại departureDate + (durationDays − 1) ngày. */
+export function getTourEndDate(
+  departureDate: Date,
+  returnDate: Date | null,
+  durationDays: number | null,
+): Date {
+  if (returnDate) return returnDate;
+  return new Date(
+    departureDate.getTime() + Math.max((durationDays ?? 1) - 1, 0) * DAY_MS,
+  );
+}
+
+/** Tour coi là đã kết thúc khi đã qua hết ngày cuối. */
+export function hasTourEnded(endDate: Date | string, now = new Date()): boolean {
+  return now.getTime() >= new Date(endDate).getTime() + DAY_MS;
+}

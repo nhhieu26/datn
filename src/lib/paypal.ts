@@ -85,22 +85,28 @@ export async function fetchPayPalIdentity(
 
 type PayPalLink = { href: string; rel: string };
 
-async function ordersRequest(
-  path: string,
-  init: { body?: unknown; requestId?: string } = {}
-): Promise<{ ok: boolean; status: number; json: Record<string, unknown> }> {
+type ApiInit = { body?: unknown; rawBody?: string; requestId?: string };
+type ApiResult = { ok: boolean; status: number; json: Record<string, unknown> };
+
+async function apiRequest(path: string, init: ApiInit = {}): Promise<ApiResult> {
   const token = await requestToken({ grant_type: "client_credentials" });
-  const res = await fetch(`${API_URL}/v2/checkout/orders${path}`, {
+  const res = await fetch(`${API_URL}${path}`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
       ...(init.requestId && { "PayPal-Request-Id": init.requestId }),
     },
-    body: init.body === undefined ? undefined : JSON.stringify(init.body),
+    body:
+      init.rawBody ??
+      (init.body === undefined ? undefined : JSON.stringify(init.body)),
   });
   const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   return { ok: res.ok, status: res.status, json };
+}
+
+function ordersRequest(path: string, init: ApiInit = {}) {
+  return apiRequest(`/v2/checkout/orders${path}`, init);
 }
 
 export async function createOrder(input: {
@@ -169,4 +175,152 @@ export async function captureOrder(orderId: string): Promise<CaptureResult> {
     captureId: capture?.id ?? null,
     raw: json,
   };
+}
+
+// --- Platform chuyển tiền: refund cho customer, payout cho provider ---
+// Kết quả cuối của cả hai đến qua webhook (src/app/api/paypal/webhooks/route.ts).
+
+export type TransferStatus = "succeeded" | "processing" | "failed";
+
+export type TransferResult = {
+  status: TransferStatus;
+  gatewayId: string | null;
+  failureReason: string | null;
+  raw: Record<string, unknown>;
+};
+
+// 5xx/429: chưa rõ kết quả → throw để giữ processing; gọi lại an toàn nhờ request id
+function assertSettled(status: number, label: string) {
+  if (status >= 500 || status === 429) {
+    throw new Error(`PayPal ${label} failed (${status})`);
+  }
+}
+
+function errorMessage(json: Record<string, unknown>, status: number) {
+  const message = json.message ?? json.name;
+  return typeof message === "string" ? message : `HTTP ${status}`;
+}
+
+/** Refund status (payments v2): COMPLETED | PENDING | FAILED | CANCELLED. */
+export function mapRefundStatus(status: unknown): TransferStatus {
+  if (status === "COMPLETED") return "succeeded";
+  if (status === "PENDING") return "processing";
+  return "failed";
+}
+
+/**
+ * Hoàn tiền một capture về PayPal của customer.
+ * custom_id = refundId để webhook PAYMENT.REFUND.* / PAYMENT.CAPTURE.REFUNDED khớp lại bản ghi.
+ */
+export async function refundCapture(input: {
+  captureId: string;
+  amountUsd: string;
+  refundId: string;
+  note: string;
+}): Promise<TransferResult> {
+  const { ok, status, json } = await apiRequest(
+    `/v2/payments/captures/${input.captureId}/refund`,
+    {
+      requestId: `refund-${input.refundId}`,
+      body: {
+        amount: { currency_code: "USD", value: input.amountUsd },
+        custom_id: input.refundId,
+        note_to_payer: input.note.slice(0, 255),
+      },
+    }
+  );
+  assertSettled(status, "refund capture");
+  if (!ok) {
+    return { status: "failed", gatewayId: null, failureReason: errorMessage(json, status), raw: json };
+  }
+  const result = mapRefundStatus(json.status);
+  return {
+    status: result,
+    gatewayId: typeof json.id === "string" ? json.id : null,
+    failureReason: result === "failed" ? `Refund ${String(json.status)}` : null,
+    raw: json,
+  };
+}
+
+/**
+ * Payout item transaction_status: SUCCESS | FAILED | PENDING | UNCLAIMED | RETURNED |
+ * ONHOLD | BLOCKED | REFUNDED | REVERSED.
+ */
+export function mapPayoutItemStatus(status: unknown): TransferStatus {
+  if (status === "SUCCESS") return "succeeded";
+  if (status === "PENDING" || status === "UNCLAIMED" || status === "ONHOLD") {
+    return "processing";
+  }
+  return "failed";
+}
+
+/**
+ * Tạo batch payout cho provider. API bất đồng bộ: response thành công luôn là batch
+ * `PENDING`, kết quả cuối đến qua webhook PAYMENT.PAYOUTS-ITEM.*.
+ * sender_batch_id = sender_item_id = payoutId nên PayPal không chi trùng và webhook khớp lại được.
+ */
+export async function createPayout(input: {
+  payoutId: string;
+  amountUsd: string;
+  receiver: string;
+  recipientType: "PAYPAL_ID" | "EMAIL";
+  note: string;
+}): Promise<TransferResult> {
+  const { ok, status, json } = await apiRequest("/v1/payments/payouts", {
+    body: {
+      sender_batch_header: {
+        sender_batch_id: input.payoutId,
+        email_subject: "Roamly đã chuyển tiền cho bạn",
+      },
+      items: [
+        {
+          recipient_type: input.recipientType,
+          receiver: input.receiver,
+          amount: { currency: "USD", value: input.amountUsd },
+          sender_item_id: input.payoutId,
+          note: input.note.slice(0, 1000),
+        },
+      ],
+    },
+  });
+  assertSettled(status, "create payout");
+  if (!ok) {
+    return { status: "failed", gatewayId: null, failureReason: errorMessage(json, status), raw: json };
+  }
+  const header = (json.batch_header ?? {}) as {
+    payout_batch_id?: string;
+    batch_status?: string;
+  };
+  const denied = header.batch_status === "DENIED";
+  return {
+    status: denied ? "failed" : "processing",
+    gatewayId: header.payout_batch_id ?? null,
+    failureReason: denied ? "Payout DENIED" : null,
+    raw: json,
+  };
+}
+
+/**
+ * Xác thực webhook qua POST /v1/notifications/verify-webhook-signature.
+ * webhook_event được ghép nguyên văn từ raw body để chữ ký không lệch do serialize lại.
+ */
+export async function verifyWebhookSignature(
+  headers: Headers,
+  rawBody: string
+): Promise<boolean> {
+  const signature = {
+    auth_algo: headers.get("paypal-auth-algo"),
+    cert_url: headers.get("paypal-cert-url"),
+    transmission_id: headers.get("paypal-transmission-id"),
+    transmission_sig: headers.get("paypal-transmission-sig"),
+    transmission_time: headers.get("paypal-transmission-time"),
+  };
+  if (Object.values(signature).some((value) => !value)) return false;
+  const webhookId = process.env.PAYPAL_WEBHOOK_ID;
+  if (!webhookId) throw new Error("PAYPAL_WEBHOOK_ID is not set");
+  const fields = { ...signature, webhook_id: webhookId };
+  const { ok, json } = await apiRequest("/v1/notifications/verify-webhook-signature", {
+    rawBody: `${JSON.stringify(fields).slice(0, -1)},"webhook_event":${rawBody}}`,
+  });
+  return ok && json.verification_status === "SUCCESS";
 }

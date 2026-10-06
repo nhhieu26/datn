@@ -20,8 +20,11 @@ export type TourBookingListItem = {
   providerAmount: number;
   paymentState: PaymentState;
   status: BookingStatus;
+  tourEndsAt: string;
   createdAt: string;
 };
+
+export type ProviderBookingTransition = "confirmed" | "completed" | "cancelled";
 
 export type TourBookingsSummary = {
   total: number;

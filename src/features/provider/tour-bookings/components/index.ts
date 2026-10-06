@@ -2,6 +2,8 @@ export { BookingCustomerCard } from "./booking-customer-card";
 export { BookingDetailHeader } from "./booking-detail-header";
 export { BookingFinancialCard } from "./booking-financial-card";
 export { BookingGuestsCard } from "./booking-guests-card";
+export { BookingStatusDialog } from "./booking-status-dialog";
+export { BookingStatusMenu } from "./booking-status-menu";
 export { BookingTimeline } from "./booking-timeline";
 export { PaymentBadge, StatusBadge } from "./booking-badges";
 export { TourBookingsSummaryCards } from "./tour-bookings-summary-cards";

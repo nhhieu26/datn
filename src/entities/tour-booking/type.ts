@@ -40,7 +40,12 @@ export type TourBookingWithPayment = Prisma.TourBookingGetPayload<{
   include: {
     payments: { select: { status: true } };
     refunds: { select: { status: true } };
-    tourDeparture: { select: { tour: { select: { images: true } } } };
+    tourDeparture: {
+      select: {
+        returnDate: true;
+        tour: { select: { images: true; durationDays: true } };
+      };
+    };
   };
 }>;
 

@@ -3,8 +3,10 @@ import type {
   TourBookingWithPayment,
 } from "@/entities/tour-booking";
 import type { BookingStatus } from "@/generated/prisma/enums";
+import { getTourEndDate } from "@/lib/utils";
 import type {
   PaymentState,
+  ProviderBookingTransition,
   TourBookingDetailView,
   TourBookingListItem,
   TourBookingsSummary,
@@ -65,6 +67,14 @@ export function getBookingStatusMeta(status: BookingStatus): StatusMeta {
 export const BOOKING_STATUS_OPTIONS = (
   Object.keys(statusMeta) as BookingStatus[]
 ).map((value) => ({ value, label: statusMeta[value].label }));
+
+/** Các trạng thái provider được chuyển tới, theo trạng thái hiện tại. */
+export const TOUR_BOOKING_TRANSITIONS: Partial<
+  Record<BookingStatus, ProviderBookingTransition[]>
+> = {
+  paid: ["confirmed", "cancelled"],
+  confirmed: ["completed"],
+};
 
 const paymentMeta: Record<PaymentState, StatusMeta> = {
   unpaid: {
@@ -138,6 +148,11 @@ export function mapTourBookingToListItem(
     providerAmount: Number(booking.providerAmount),
     paymentState: getPaymentState(booking),
     status: booking.status,
+    tourEndsAt: getTourEndDate(
+      booking.departureDate,
+      booking.tourDeparture?.returnDate ?? null,
+      booking.tourDeparture?.tour.durationDays ?? null,
+    ).toISOString(),
     createdAt: booking.createdAt.toISOString(),
   };
 }
