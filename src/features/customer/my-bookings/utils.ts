@@ -46,6 +46,11 @@ export function mapToMyHotelBookingItem(
   };
 }
 
+const CANCELLABLE_RESTAURANT_STATUSES: BookingStatus[] = [
+  "pending_confirmation",
+  "confirmed",
+];
+
 export function mapToMyRestaurantBookingItem(
   booking: RestaurantBookingListItem,
 ): MyRestaurantBookingItem {
@@ -59,7 +64,7 @@ export function mapToMyRestaurantBookingItem(
     guests: booking.guests,
     status: booking.status,
     cancelReason: booking.cancelReason,
-    canCancel: booking.status === "confirmed",
+    canCancel: CANCELLABLE_RESTAURANT_STATUSES.includes(booking.status),
     cancelDeadlinePassed: !canCustomerCancelBefore(
       reservationInstant(booking.reservationDate, booking.startTime),
       new Date(),

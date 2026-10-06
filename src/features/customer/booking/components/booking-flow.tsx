@@ -222,7 +222,12 @@ export function BookingFlow({
 
       <section className="page-x py-12">
         {step === lastStep ? (
-          <CompleteStep code={code} contact={contact} summary={summary} />
+          <CompleteStep
+            awaitingConfirmation={summary.kind === "restaurant"}
+            code={code}
+            contact={contact}
+            summary={summary}
+          />
         ) : (
           <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
             <div>

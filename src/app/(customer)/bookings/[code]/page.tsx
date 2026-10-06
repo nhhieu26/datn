@@ -103,7 +103,7 @@ function InactiveBooking({
   );
 }
 
-/** Đơn đặt bàn không có thanh toán: confirmed/completed → hoàn tất, còn lại → đã hủy. */
+/** Đơn đặt bàn không có thanh toán: chờ xác nhận / đã xác nhận / hoàn thành → tóm tắt đơn, còn lại → đã hủy. */
 async function RestaurantBookingResult({
   code,
   customerId,
@@ -114,17 +114,22 @@ async function RestaurantBookingResult({
   const booking = await restaurantBookingRepo.findByCodeForCustomer(code, customerId);
   if (!booking) notFound();
   const summary = restaurantBookingSummary(booking);
-  const active = booking.status === "confirmed" || booking.status === "completed";
+  const awaiting = booking.status === "pending_confirmation";
+  const active =
+    awaiting || booking.status === "confirmed" || booking.status === "completed";
 
   return (
     <ResultLayout
       code={booking.code}
       done={active}
       summary={summary}
-      title={active ? "Đặt bàn thành công" : "Đơn đặt bàn"}
+      title={
+        awaiting ? "Chờ nhà hàng xác nhận" : active ? "Đặt bàn thành công" : "Đơn đặt bàn"
+      }
     >
       {active ? (
         <CompleteStep
+          awaitingConfirmation={awaiting}
           code={booking.code}
           contact={{
             contactName: booking.contactName,

@@ -2,9 +2,14 @@ import type { BookingStatus } from "@/generated/prisma/enums";
 
 export const MY_BOOKINGS_PAGE_SIZE = 10;
 
-export const MY_BOOKINGS_TABS = [
+const ALL_TABS = [
   { key: "all", label: "Tất cả", statuses: undefined },
   { key: "pending", label: "Chờ thanh toán", statuses: ["pending_payment"] },
+  {
+    key: "awaiting",
+    label: "Chờ xác nhận",
+    statuses: ["pending_confirmation"],
+  },
   { key: "paid", label: "Đã thanh toán", statuses: ["paid"] },
   { key: "confirmed", label: "Đã xác nhận", statuses: ["confirmed"] },
   { key: "completed", label: "Hoàn thành", statuses: ["completed"] },
@@ -19,13 +24,18 @@ export const MY_BOOKINGS_TABS = [
   statuses: readonly BookingStatus[] | undefined;
 }[];
 
-export type MyBookingsTab = (typeof MY_BOOKINGS_TABS)[number]["key"];
+export type MyBookingsTab = (typeof ALL_TABS)[number]["key"];
 
-type MyBookingsTabDef = (typeof MY_BOOKINGS_TABS)[number];
+type MyBookingsTabDef = (typeof ALL_TABS)[number];
+
+// Tour / khách sạn thanh toán trước nên không có bước chờ xác nhận
+export const MY_BOOKINGS_TABS: readonly MyBookingsTabDef[] = ALL_TABS.filter(
+  (t) => t.key !== "awaiting",
+);
 
 // Đơn đặt bàn không thanh toán nên bỏ các tab chờ thanh toán / đã thanh toán
 export const MY_RESTAURANT_BOOKINGS_TABS: readonly MyBookingsTabDef[] =
-  MY_BOOKINGS_TABS.filter((t) => t.key !== "pending" && t.key !== "paid");
+  ALL_TABS.filter((t) => t.key !== "pending" && t.key !== "paid");
 
 export type MyBookingsQuery = { tab: MyBookingsTab; page: number };
 
@@ -62,6 +72,6 @@ export function buildMyBookingsUrl(
 }
 
 export function getTabStatuses(tab: MyBookingsTab): BookingStatus[] | undefined {
-  const statuses = MY_BOOKINGS_TABS.find((t) => t.key === tab)?.statuses;
+  const statuses = ALL_TABS.find((t) => t.key === tab)?.statuses;
   return statuses && [...statuses];
 }

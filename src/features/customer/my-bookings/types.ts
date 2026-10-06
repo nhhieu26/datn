@@ -49,7 +49,7 @@ export type MyRestaurantBookingItem = {
   guests: number;
   status: BookingStatus;
   cancelReason: string | null;
-  /** Đơn confirmed — customer được hủy (nếu còn trong hạn). */
+  /** Đơn chờ xác nhận / đã xác nhận — customer được hủy (nếu còn trong hạn). */
   canCancel: boolean;
   cancelDeadlinePassed: boolean;
   createdAt: string;

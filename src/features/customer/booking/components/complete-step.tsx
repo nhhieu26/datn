@@ -7,10 +7,13 @@ export function CompleteStep({
   summary,
   contact,
   code,
+  awaitingConfirmation = false,
 }: {
   summary: BookingSummary;
   contact: ContactValues;
   code: string;
+  /** Đơn đặt bàn mới gửi, nhà hàng chưa xác nhận */
+  awaitingConfirmation?: boolean;
 }) {
   const paid = summary.totalAmount != null;
   const rows = [
@@ -25,7 +28,11 @@ export function CompleteStep({
     ...(contact.note.trim() ? [{ label: "Ghi chú", value: contact.note }] : []),
     {
       label: "Trạng thái",
-      value: paid ? "Đã thanh toán" : "Đã xác nhận",
+      value: paid
+        ? "Đã thanh toán"
+        : awaitingConfirmation
+          ? "Chờ nhà hàng xác nhận"
+          : "Đã xác nhận",
     },
     ...(paid ? [{ label: "Thanh toán", value: "PayPal" }] : []),
   ];
@@ -34,11 +41,12 @@ export function CompleteStep({
     <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
       <div>
         <h3 className="mb-3 text-2xl font-bold text-new-title">
-          Đặt chỗ thành công
+          {awaitingConfirmation ? "Đã gửi yêu cầu đặt bàn" : "Đặt chỗ thành công"}
         </h3>
         <p className="mb-8 text-new-paragraph">
-          Cảm ơn bạn đã đặt chỗ tại Roamly! Chúng tôi đã ghi nhận đơn của bạn.
-          Vui lòng kiểm tra email để xem xác nhận và thông tin chi tiết.
+          {awaitingConfirmation
+            ? "Cảm ơn bạn đã đặt bàn tại Roamly! Nhà hàng sẽ xem và xác nhận yêu cầu của bạn. Bạn có thể theo dõi trạng thái trong mục Đơn đặt bàn."
+            : "Cảm ơn bạn đã đặt chỗ tại Roamly! Chúng tôi đã ghi nhận đơn của bạn. Vui lòng kiểm tra email để xem xác nhận và thông tin chi tiết."}
         </p>
         <h3 className="mb-4 text-2xl font-bold text-new-title">
           Tóm tắt đặt chỗ

@@ -53,6 +53,7 @@ enum TourDepartureStatus {
 
 enum BookingStatus {
   pending_payment
+  pending_confirmation
   paid
   confirmed
   completed
@@ -451,7 +452,7 @@ model RestaurantBooking {
   reservationDate      DateTime
   startTime            String
   guests               Int
-  status               BookingStatus       @default(confirmed)
+  status               BookingStatus       @default(pending_confirmation)
 
   contactName  String
   contactPhone String

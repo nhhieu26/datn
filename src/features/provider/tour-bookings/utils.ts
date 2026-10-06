@@ -25,6 +25,11 @@ const statusMeta: Record<BookingStatus, StatusMeta> = {
     icon: "schedule",
     className: "border-amber-200/80 bg-amber-50 text-amber-700",
   },
+  pending_confirmation: {
+    label: "Chờ xác nhận",
+    icon: "hourglass_top",
+    className: "border-amber-200/80 bg-amber-50 text-amber-700",
+  },
   paid: {
     label: "Đã thanh toán",
     icon: "payments",

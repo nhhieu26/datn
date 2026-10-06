@@ -16,9 +16,12 @@ import type {
 
 const STALE_STATUS_MESSAGE = "Trạng thái đơn đã thay đổi, vui lòng tải lại.";
 
+/** Đơn đặt bàn còn hiệu lực: đang chờ nhà hàng xác nhận hoặc đã xác nhận. */
+const ACTIVE_STATUSES: BookingStatus[] = ["pending_confirmation", "confirmed"];
+
 /**
- * Đặt bàn: không thanh toán nên tạo thẳng đơn confirmed.
- * Sức chứa tính theo từng khung giờ: tổng khách các đơn confirmed cùng ngày + giờ ≤ capacity.
+ * Đặt bàn: không thanh toán, tạo đơn pending_confirmation chờ nhà hàng duyệt.
+ * Sức chứa tính theo từng khung giờ: tổng khách các đơn còn hiệu lực cùng ngày + giờ ≤ capacity.
  */
 export function createConfirmed(
   customerId: string,
@@ -49,7 +52,7 @@ export function createConfirmed(
         restaurantId: restaurant.id,
         reservationDate,
         startTime: slot.startTime,
-        status: "confirmed",
+        status: { in: ACTIVE_STATUSES },
       },
       _sum: { guests: true },
     });
@@ -73,12 +76,11 @@ export function createConfirmed(
         reservationDate,
         startTime: slot.startTime,
         guests: input.guests,
-        status: "confirmed",
+        status: "pending_confirmation",
         contactName: input.contactName,
         contactPhone: input.contactPhone,
         contactEmail: input.contactEmail,
         note: input.note || null,
-        confirmedAt: new Date(),
       },
     });
   });
@@ -137,7 +139,7 @@ export async function summarizeByCustomerId(customerId: string) {
     prisma.restaurantBooking.count({
       where: {
         customerId,
-        status: "confirmed",
+        status: { in: ACTIVE_STATUSES },
         // Ngày lưu 00:00 UTC → so với hôm nay (giờ Việt Nam) là đủ cho "sắp tới"
         reservationDate: { gte: new Date(`${todayIsoDate()}T00:00:00Z`) },
       },
@@ -146,7 +148,7 @@ export async function summarizeByCustomerId(customerId: string) {
   return { rows, upcoming };
 }
 
-/** Customer tự hủy đơn confirmed, chỉ khi còn trước giờ đặt bàn đủ hạn hủy. */
+/** Customer tự hủy đơn chờ xác nhận / đã xác nhận, chỉ khi còn trước giờ đặt bàn đủ hạn hủy. */
 export function cancelForCustomer(code: string, customerId: string, reason: string) {
   return prisma.$transaction(async (tx) => {
     const rows = await tx.$queryRaw<
@@ -155,7 +157,7 @@ export function cancelForCustomer(code: string, customerId: string, reason: stri
       SELECT "id", "reservationDate", "startTime" FROM "RestaurantBooking"
       WHERE "code" = ${code}
         AND "customerId" = ${customerId}
-        AND "status" = 'confirmed'::"BookingStatus"
+        AND "status" IN ('pending_confirmation'::"BookingStatus", 'confirmed'::"BookingStatus")
       FOR UPDATE`;
     if (rows.length === 0) throw new ConflictError(STALE_STATUS_MESSAGE);
     const { id, reservationDate, startTime } = rows[0];
