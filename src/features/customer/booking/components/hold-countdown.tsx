@@ -34,7 +34,7 @@ export function HoldCountdown({ remaining }: { remaining: number | null }) {
       </span>
       {expired ? (
         <span className="font-medium">
-          Hết thời gian giữ chỗ. Vui lòng đặt lại tour.
+          Hết thời gian giữ chỗ. Vui lòng đặt lại.
         </span>
       ) : (
         <span>

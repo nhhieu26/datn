@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { formatPrice } from "@/features/customer/components/cards/card-parts";
+import { todayIsoDate } from "@/lib/utils";
 import type { HotelDetail } from "../lib/to-hotel-detail";
 
 const fieldBox =
@@ -15,6 +16,10 @@ const DAY = 86_400_000;
 
 function toTime(s: string) {
   return new Date(`${s}T00:00:00Z`).getTime();
+}
+
+function nextDay(s: string) {
+  return new Date(toTime(s) + DAY).toISOString().slice(0, 10);
 }
 
 export function HotelBookingCard({ hotel }: { hotel: HotelDetail }) {
@@ -35,6 +40,12 @@ export function HotelBookingCard({ hotel }: { hotel: HotelDetail }) {
       ? Math.max(0, Math.round((toTime(checkOut) - toTime(checkIn)) / DAY))
       : 0;
   const price = room?.basePrice ?? hotel.minPrice;
+
+  function selectCheckIn(value: string) {
+    setCheckIn(value);
+    // Ngày trả phòng phải sau ngày nhận phòng
+    if (checkOut && value && checkOut <= value) setCheckOut("");
+  }
 
   function selectRoom(id: string) {
     setRoomId(id);
@@ -82,7 +93,8 @@ export function HotelBookingCard({ hotel }: { hotel: HotelDetail }) {
           <span className="sr-only">Nhận phòng</span>
           <input
             className={dateInput}
-            onChange={(e) => setCheckIn(e.target.value)}
+            min={todayIsoDate()}
+            onChange={(e) => selectCheckIn(e.target.value)}
             type="date"
             value={checkIn}
           />
@@ -91,7 +103,7 @@ export function HotelBookingCard({ hotel }: { hotel: HotelDetail }) {
           <span className="sr-only">Trả phòng</span>
           <input
             className={dateInput}
-            min={checkIn || undefined}
+            min={checkIn ? nextDay(checkIn) : nextDay(todayIsoDate())}
             onChange={(e) => setCheckOut(e.target.value)}
             type="date"
             value={checkOut}

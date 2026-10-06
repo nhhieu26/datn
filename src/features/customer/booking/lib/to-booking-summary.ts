@@ -1,8 +1,9 @@
 import type { HotelDetail } from "@/features/customer/hotel-detail/lib/to-hotel-detail";
 import type { RestaurantDetail } from "@/features/customer/restaurant-detail/lib/restaurant-detail";
 import type { TourDetail } from "@/features/customer/tour-detail/lib/to-tour-detail";
+import type { HotelBookingDetail } from "@/entities/hotel-booking";
 import type { TourBookingDetail } from "@/entities/tour-booking";
-import { formatDate } from "@/lib/utils";
+import { formatDate, todayIsoDate } from "@/lib/utils";
 import { formatVnd } from "@/features/customer/components/cards/card-parts";
 import type { BookingSummary } from "../types";
 
@@ -71,7 +72,7 @@ export function hotelSummary(
   const room = hotel.rooms.find((r) => r.id === str(q, "roomId"));
   const checkIn = str(q, "checkIn");
   const checkOut = str(q, "checkOut");
-  if (!room || !checkIn || !checkOut) return null;
+  if (!room || !checkIn || !checkOut || checkIn < todayIsoDate()) return null;
   const nights = Math.round(
     (new Date(`${checkOut}T00:00:00Z`).getTime() -
       new Date(`${checkIn}T00:00:00Z`).getTime()) /
@@ -96,6 +97,29 @@ export function hotelSummary(
       { label: "Đơn giá / đêm", value: formatVnd(room.basePrice) },
     ],
     totalAmount: room.basePrice * nights * rooms,
+    cancellation: "Trước ngày nhận phòng 24 giờ",
+    hotel: { roomId: room.id, checkIn, checkOut, rooms, guests },
+  };
+}
+
+/** Tóm tắt từ booking khách sạn đã lưu (snapshot), dùng cho trang /bookings/[code] */
+export function hotelBookingSummary(b: HotelBookingDetail): BookingSummary {
+  const slug = b.room?.hotel.slug;
+  return {
+    kind: "hotel",
+    backHref: slug ? `/hotels/${slug}` : "/explore?kind=hotel",
+    name: b.hotelName,
+    location: b.room?.hotel.province.name ?? "",
+    highlight: { label: "Nhận phòng", value: formatDate(b.checkInDate) },
+    rows: [
+      { label: "Trả phòng", value: formatDate(b.checkOutDate) },
+      { label: "Loại phòng", value: b.roomName },
+      { label: "Số đêm", value: String(b.nights) },
+      { label: "Số phòng", value: String(b.roomQuantity) },
+      { label: "Số khách", value: String(b.guests) },
+      { label: "Đơn giá / đêm", value: formatVnd(Number(b.unitPrice)) },
+    ],
+    totalAmount: Number(b.totalAmount),
     cancellation: "Trước ngày nhận phòng 24 giờ",
   };
 }

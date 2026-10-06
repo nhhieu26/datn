@@ -2,6 +2,10 @@
 
 import { headers } from "next/headers";
 import {
+  createHotelBookingSchema,
+  hotelBookingRepo,
+} from "@/entities/hotel-booking";
+import {
   createTourBookingSchema,
   tourBookingRepo,
 } from "@/entities/tour-booking";
@@ -74,6 +78,57 @@ export async function startTourPaymentAction(code: string) {
     });
     await tourBookingRepo.createPayment({
       tourBookingId: booking.id,
+      amount: booking.totalAmount,
+      chargedAmount: amountUsd,
+      exchangeRate: USD_RATE,
+      gatewayOrderId: order.id,
+    });
+    return { approveUrl: order.approveUrl };
+  });
+}
+
+/** Bước "Tiếp tục" của khách sạn: tạo booking pending_payment và giữ phòng. */
+export async function createHotelBookingAction(input: unknown) {
+  return runAction(async () => {
+    const customerId = await requireCustomerId();
+    const parsed = createHotelBookingSchema.safeParse(input);
+    if (!parsed.success) throw new ValidationError(fromZodError(parsed.error));
+    const booking = await hotelBookingRepo.createHeld(customerId, parsed.data);
+    return { code: booking.code, expiresAt: booking.expiresAt!.toISOString() };
+  });
+}
+
+/** Tạo PayPal order cho booking khách sạn đang giữ phòng, trả link approve để redirect. */
+export async function startHotelPaymentAction(code: string) {
+  return runAction(async () => {
+    const customerId = await requireCustomerId();
+    const booking = await hotelBookingRepo.findByCodeForCustomer(
+      String(code),
+      customerId
+    );
+    if (!booking) throw new NotFoundError("Không tìm thấy đơn đặt phòng.");
+    if (
+      booking.status !== "pending_payment" ||
+      !booking.expiresAt ||
+      booking.expiresAt <= new Date()
+    ) {
+      throw new ConflictError("Đơn đã hết thời gian giữ phòng hoặc đã thanh toán.");
+    }
+    if (booking.payments.some((p) => p.status === "processing")) {
+      throw new ConflictError("Thanh toán trước đó đang được xác nhận, vui lòng đợi.");
+    }
+
+    const origin = await appOrigin();
+    const amountUsd = booking.totalAmount.div(USD_RATE).toFixed(2);
+    const order = await createOrder({
+      amountUsd,
+      referenceId: booking.id,
+      description: `${booking.code} - ${booking.hotelName} (${booking.roomName})`,
+      returnUrl: `${origin}/api/paypal/orders/return`,
+      cancelUrl: `${origin}/bookings/${booking.code}`,
+    });
+    await hotelBookingRepo.createPayment({
+      hotelBookingId: booking.id,
       amount: booking.totalAmount,
       chargedAmount: amountUsd,
       exchangeRate: USD_RATE,

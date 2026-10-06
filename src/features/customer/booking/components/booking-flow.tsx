@@ -5,10 +5,17 @@ import { formatEntityCode } from "@/lib/utils";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import {
+  createHotelBookingAction,
   createTourBookingAction,
+  startHotelPaymentAction,
   startTourPaymentAction,
 } from "../actions";
-import { CODE_PREFIX, KIND_LABEL, stepLabels } from "../lib/booking-labels";
+import {
+  CODE_PREFIX,
+  KIND_LABEL,
+  REBOOK_LABEL,
+  stepLabels,
+} from "../lib/booking-labels";
 import type { BookingSummary, ContactValues } from "../types";
 import { BookingStepper } from "./booking-stepper";
 import { BookingSummaryCard } from "./booking-summary-card";
@@ -46,26 +53,26 @@ export function BookingFlow({
   const [agreeError, setAgreeError] = useState<string>();
   const [formError, setFormError] = useState<string>();
   const [code, setCode] = useState("");
-  // Booking tour đang giữ chỗ (đã tạo ở server)
+  // Booking tour / khách sạn đang giữ chỗ (đã tạo ở server)
   const [hold, setHold] = useState<Hold | null>(null);
   const [pending, startTransition] = useTransition();
   const remaining = useHoldRemaining(hold?.expiresAt ?? new Date(0).toISOString());
   const holdExpired = hold != null && remaining === 0;
 
   function finish() {
-    // ponytail: UI-only cho khách sạn / nhà hàng — mã giả sinh ở client
+    // ponytail: UI-only cho nhà hàng — mã giả sinh ở client
     setCode(formatEntityCode(CODE_PREFIX[summary.kind], crypto.randomUUID()));
     setStep(lastStep);
     window.scrollTo({ top: 0 });
   }
 
-  function createTourHold() {
+  function createHold() {
     setFormError(undefined);
     startTransition(async () => {
-      const result = await createTourBookingAction({
-        ...contact,
-        ...summary.tour,
-      });
+      const result =
+        summary.kind === "hotel"
+          ? await createHotelBookingAction({ ...contact, ...summary.hotel })
+          : await createTourBookingAction({ ...contact, ...summary.tour });
       if (result.status === "success" && result.data) {
         setHold(result.data);
         setStep(1);
@@ -78,19 +85,29 @@ export function BookingFlow({
           Object.entries(fieldErrors).map(([k, v]) => [k, v[0]]),
         ) as ContactErrors,
       );
+      const invalidChoice = [
+        "departureId",
+        "roomId",
+        "checkIn",
+        "checkOut",
+        "rooms",
+        "guests",
+      ].find((key) => fieldErrors[key]);
       setFormError(
         result.formError ??
-          (fieldErrors.departureId || fieldErrors.guests
-            ? "Lựa chọn tour không hợp lệ, vui lòng chọn lại."
+          (invalidChoice
+            ? `${fieldErrors[invalidChoice][0]}. Vui lòng chọn lại.`
             : undefined),
       );
     });
   }
 
-  function payTour(bookingCode: string) {
+  function pay(bookingCode: string) {
     setFormError(undefined);
     startTransition(async () => {
-      const result = await startTourPaymentAction(bookingCode);
+      const start =
+        summary.kind === "hotel" ? startHotelPaymentAction : startTourPaymentAction;
+      const result = await start(bookingCode);
       if (result.status === "success" && result.data) {
         window.location.assign(result.data.approveUrl);
         return;
@@ -104,7 +121,7 @@ export function BookingFlow({
       const found = validateContact(contact);
       setErrors(found);
       if (Object.keys(found).length) return;
-      if (summary.kind === "tour") createTourHold();
+      if (summary.kind === "tour" || summary.kind === "hotel") createHold();
       else if (needsPayment) setStep(1);
       else finish();
     } else if (step === 1) {
@@ -112,7 +129,7 @@ export function BookingFlow({
         setAgreeError("Vui lòng đồng ý điều khoản để tiếp tục");
         return;
       }
-      if (hold) payTour(hold.code);
+      if (hold) pay(hold.code);
       else finish();
     }
   }
@@ -145,7 +162,7 @@ export function BookingFlow({
         {errorBox}
         {holdExpired ? (
           <Link className={`${PRIMARY_BTN} text-center`} href={summary.backHref}>
-            Đặt lại tour
+            {REBOOK_LABEL[summary.kind]}
           </Link>
         ) : (
           <button
@@ -157,7 +174,7 @@ export function BookingFlow({
             {pending ? "Đang chuyển sang PayPal..." : "Thanh toán với PayPal"}
           </button>
         )}
-        {/* Booking tour đã giữ chỗ với thông tin liên hệ hiện tại → không cho sửa */}
+        {/* Booking đã giữ chỗ với thông tin liên hệ hiện tại → không cho sửa */}
         {!hold && (
           <button
             className="cursor-pointer text-sm font-medium text-new-teal"

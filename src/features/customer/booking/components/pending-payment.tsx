@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { startTourPaymentAction } from "../actions";
+import { startHotelPaymentAction, startTourPaymentAction } from "../actions";
+import { REBOOK_LABEL } from "../lib/booking-labels";
 import type { BookingSummary } from "../types";
 import { BookingSummaryCard } from "./booking-summary-card";
 import { HoldCountdown, useHoldRemaining } from "./hold-countdown";
@@ -11,8 +12,8 @@ import { PaymentStep } from "./payment-step";
 const PRIMARY_BTN =
   "block w-full cursor-pointer rounded bg-new-teal px-7 py-3.5 text-center font-bold text-white transition-colors hover:bg-new-teal-hover disabled:cursor-not-allowed disabled:opacity-50";
 
-/** Booking tour đang giữ chỗ: đếm ngược + thanh toán (lại) với PayPal. */
-export function PendingTourPayment({
+/** Booking tour / khách sạn đang giữ chỗ: đếm ngược + thanh toán (lại) với PayPal. */
+export function PendingPayment({
   code,
   expiresAt,
   failureReason,
@@ -38,7 +39,9 @@ export function PendingTourPayment({
     }
     setError(undefined);
     startTransition(async () => {
-      const result = await startTourPaymentAction(code);
+      const start =
+        summary.kind === "hotel" ? startHotelPaymentAction : startTourPaymentAction;
+      const result = await start(code);
       if (result.status === "success" && result.data) {
         window.location.assign(result.data.approveUrl);
         return;
@@ -73,7 +76,7 @@ export function PendingTourPayment({
         )}
         {remaining === 0 ? (
           <Link className={PRIMARY_BTN} href={summary.backHref}>
-            Đặt lại tour
+            {REBOOK_LABEL[summary.kind]}
           </Link>
         ) : (
           <button

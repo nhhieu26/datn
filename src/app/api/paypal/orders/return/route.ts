@@ -1,8 +1,22 @@
 import type { Prisma } from "@/generated/prisma/client";
+import { hotelBookingRepo } from "@/entities/hotel-booking";
 import { tourBookingRepo } from "@/entities/tour-booking";
 import { auth } from "@/lib/auth";
 import { captureOrder } from "@/lib/paypal";
 import { NextResponse, type NextRequest } from "next/server";
+
+/** Tìm payment theo order id cùng booking (tour hoặc khách sạn) và repo xử lý tương ứng. */
+async function findPayment(orderId: string) {
+  const tourPayment = await tourBookingRepo.findPaymentByOrderId(orderId);
+  if (tourPayment?.tourBooking) {
+    return { payment: tourPayment, booking: tourPayment.tourBooking, repo: tourBookingRepo };
+  }
+  const hotelPayment = await hotelBookingRepo.findPaymentByOrderId(orderId);
+  if (hotelPayment?.hotelBooking) {
+    return { payment: hotelPayment, booking: hotelPayment.hotelBooking, repo: hotelBookingRepo };
+  }
+  return null;
+}
 
 // PayPal redirect về đây sau khi customer approve: ?token=<orderId>&PayerID=...
 export async function GET(request: NextRequest) {
@@ -12,20 +26,18 @@ export async function GET(request: NextRequest) {
   }
 
   const orderId = request.nextUrl.searchParams.get("token");
-  const payment = orderId
-    ? await tourBookingRepo.findPaymentByOrderId(orderId)
-    : null;
-  const booking = payment?.tourBooking;
-  if (!payment || !booking || booking.customerId !== session.user.id) {
+  const found = orderId ? await findPayment(orderId) : null;
+  if (!found || found.booking.customerId !== session.user.id) {
     return NextResponse.redirect(new URL("/", request.url));
   }
+  const { payment, booking, repo } = found;
   const done = () =>
     NextResponse.redirect(new URL(`/bookings/${booking.code}`, request.url));
 
   if (payment.status === "pending") {
-    const held = await tourBookingRepo.markPaymentProcessing(payment.id, booking.id);
+    const held = await repo.markPaymentProcessing(payment.id, booking.id);
     if (!held) {
-      await tourBookingRepo.markPaymentFailed(
+      await repo.markPaymentFailed(
         payment.id,
         "Hết thời gian giữ chỗ trước khi thanh toán hoàn tất"
       );
@@ -42,14 +54,14 @@ export async function GET(request: NextRequest) {
   try {
     const result = await captureOrder(payment.gatewayOrderId);
     if (result.completed) {
-      await tourBookingRepo.markPaid({
+      await repo.markPaid({
         paymentId: payment.id,
         bookingId: booking.id,
         captureId: result.captureId,
         raw: result.raw as Prisma.InputJsonValue,
       });
     } else {
-      await tourBookingRepo.markPaymentFailed(
+      await repo.markPaymentFailed(
         payment.id,
         "PayPal từ chối giao dịch",
         result.raw as Prisma.InputJsonValue

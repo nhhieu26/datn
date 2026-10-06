@@ -22,6 +22,14 @@ export type BookingSummary = {
   cancellation: string;
   /** Lựa chọn gửi lên server khi tạo booking tour */
   tour?: { departureId: string; guests: number };
+  /** Lựa chọn gửi lên server khi tạo booking khách sạn */
+  hotel?: {
+    roomId: string;
+    checkIn: string;
+    checkOut: string;
+    rooms: number;
+    guests: number;
+  };
 };
 
 export type ContactValues = {

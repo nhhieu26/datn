@@ -1,0 +1,209 @@
+import { randomUUID } from "node:crypto";
+import { Prisma } from "@/generated/prisma/client";
+import { prisma } from "@/lib/prisma";
+import { formatEntityCode } from "@/lib/utils";
+import { ConflictError, NotFoundError } from "@/shared/lib/errors";
+import type { CreateHotelBookingInput, HotelBookingDetail } from "./type";
+
+type Tx = Prisma.TransactionClient;
+
+const HOLD_MINUTES = Number(process.env.BOOKING_HOLD_MINUTES ?? 10);
+const COMMISSION_RATE = Number(process.env.PLATFORM_COMMISSION_RATE ?? 0.1);
+const DAY = 86_400_000;
+
+const toUtcDate = (isoDate: string) => new Date(`${isoDate}T00:00:00Z`);
+
+/**
+ * Chuyển các booking pending_payment khớp `condition` sang expired.
+ * Tồn phòng tính động từ các booking còn hiệu lực nên không cần trả lại gì.
+ * Bỏ qua booking đang có Payment `processing` (đang capture) và booking đang bị khóa.
+ */
+function releaseWhere(db: Tx | typeof prisma, condition: Prisma.Sql) {
+  const now = new Date();
+  return db.$executeRaw`
+    UPDATE "HotelBooking" b
+    SET "status" = 'expired', "cancelledAt" = ${now}, "updatedAt" = ${now}
+    WHERE b."id" IN (
+      SELECT h."id" FROM "HotelBooking" h
+      WHERE h."status" = 'pending_payment'
+        AND ${condition}
+        AND NOT EXISTS (
+          SELECT 1 FROM "Payment" p
+          WHERE p."hotelBookingId" = h."id" AND p."status" = 'processing'
+        )
+      FOR UPDATE SKIP LOCKED
+    )`;
+}
+
+/** Nhả các booking hết hạn giữ phòng. Gọi trước khi đọc số phòng trống. */
+export function releaseExpired(db: Tx | typeof prisma = prisma) {
+  return releaseWhere(db, Prisma.sql`h."expiresAt" < ${new Date()}`);
+}
+
+/** Giữ phòng: kiểm tra phòng trống theo khoảng ngày và tạo booking pending_payment hết hạn sau HOLD_MINUTES. */
+export function createHeld(customerId: string, input: CreateHotelBookingInput) {
+  return prisma.$transaction(async (tx) => {
+    await releaseExpired(tx);
+    // Mỗi customer chỉ giữ một đơn chờ thanh toán cho cùng loại phòng
+    await releaseWhere(
+      tx,
+      Prisma.sql`h."customerId" = ${customerId} AND h."roomId" = ${input.roomId}`
+    );
+
+    const room = await tx.room.findFirst({
+      where: {
+        id: input.roomId,
+        status: "published",
+        hotel: { status: "published" },
+      },
+      include: { hotel: true },
+    });
+    if (!room) throw new NotFoundError("Phòng không còn mở bán.");
+
+    // Khóa room để các lượt đặt cùng loại phòng chạy tuần tự khi kiểm tra tồn phòng
+    await tx.$queryRaw`SELECT "id" FROM "Room" WHERE "id" = ${room.id} FOR UPDATE`;
+
+    const checkInDate = toUtcDate(input.checkIn);
+    const checkOutDate = toUtcDate(input.checkOut);
+    const nights = Math.round((checkOutDate.getTime() - checkInDate.getTime()) / DAY);
+
+    if (input.guests > room.capacity * input.rooms) {
+      throw new ConflictError(
+        `Tối đa ${room.capacity * input.rooms} khách cho số phòng đã chọn.`
+      );
+    }
+
+    const [{ booked }] = await tx.$queryRaw<{ booked: number }[]>`
+      SELECT COALESCE(SUM("roomQuantity"), 0)::int AS "booked"
+      FROM "HotelBooking"
+      WHERE "roomId" = ${room.id}
+        AND "status" IN ('pending_payment', 'paid', 'confirmed')
+        AND "checkInDate" < ${checkOutDate}
+        AND "checkOutDate" > ${checkInDate}`;
+    if (booked + input.rooms > room.quantity) {
+      throw new ConflictError("Không còn đủ phòng trống cho ngày đã chọn.");
+    }
+
+    // Giá luôn tính lại ở server, không tin dữ liệu từ client
+    const unitPrice = room.basePrice;
+    const totalAmount = unitPrice.mul(nights).mul(input.rooms);
+    const platformFee = totalAmount.mul(COMMISSION_RATE).toDecimalPlaces(2);
+
+    return tx.hotelBooking.create({
+      data: {
+        code: formatEntityCode("HB", randomUUID()),
+        customerId,
+        providerProfileId: room.hotel.providerProfileId,
+        roomId: room.id,
+        hotelName: room.hotel.name,
+        roomName: room.name,
+        checkInDate,
+        checkOutDate,
+        nights,
+        roomQuantity: input.rooms,
+        guests: input.guests,
+        contactName: input.contactName,
+        contactPhone: input.contactPhone,
+        contactEmail: input.contactEmail,
+        note: input.note || null,
+        unitPrice,
+        totalAmount,
+        commissionRate: COMMISSION_RATE,
+        platformFee,
+        providerAmount: totalAmount.sub(platformFee),
+        expiresAt: new Date(Date.now() + HOLD_MINUTES * 60_000),
+      },
+    });
+  });
+}
+
+export function findByCodeForCustomer(
+  code: string,
+  customerId: string
+): Promise<HotelBookingDetail | null> {
+  return prisma.hotelBooking.findFirst({
+    where: { code, customerId },
+    include: {
+      room: {
+        include: { hotel: { select: { slug: true, province: true } } },
+      },
+      payments: { orderBy: { createdAt: "desc" } },
+    },
+  });
+}
+
+export function createPayment(data: {
+  hotelBookingId: string;
+  amount: Prisma.Decimal;
+  chargedAmount: string;
+  exchangeRate: number;
+  gatewayOrderId: string;
+}) {
+  return prisma.payment.create({
+    data: { ...data, gateway: "paypal", chargedCurrency: "USD" },
+  });
+}
+
+export function findPaymentByOrderId(gatewayOrderId: string) {
+  return prisma.payment.findFirst({
+    where: { gatewayOrderId, hotelBookingId: { not: null } },
+    include: { hotelBooking: { select: { id: true, code: true, customerId: true } } },
+  });
+}
+
+/**
+ * Khóa booking và chuyển payment pending → processing, chỉ khi booking còn được giữ phòng.
+ * Trả false nếu booking đã hết hạn / đã thanh toán → không được capture.
+ */
+export function markPaymentProcessing(paymentId: string, bookingId: string) {
+  return prisma.$transaction(async (tx) => {
+    const held = await tx.$queryRaw<{ id: string }[]>`
+      SELECT "id" FROM "HotelBooking"
+      WHERE "id" = ${bookingId}
+        AND "status" = 'pending_payment'
+        AND "expiresAt" > ${new Date()}
+      FOR UPDATE`;
+    if (held.length === 0) return false;
+    const { count } = await tx.payment.updateMany({
+      where: { id: paymentId, hotelBookingId: bookingId, status: "pending" },
+      data: { status: "processing" },
+    });
+    return count === 1;
+  });
+}
+
+export function markPaid(input: {
+  paymentId: string;
+  bookingId: string;
+  captureId: string | null;
+  raw: Prisma.InputJsonValue;
+}) {
+  const now = new Date();
+  return prisma.$transaction([
+    prisma.payment.update({
+      where: { id: input.paymentId },
+      data: {
+        status: "succeeded",
+        gatewayCaptureId: input.captureId,
+        paidAt: now,
+        failureReason: null,
+        rawResponse: input.raw,
+      },
+    }),
+    prisma.hotelBooking.update({
+      where: { id: input.bookingId },
+      data: { status: "paid", expiresAt: null },
+    }),
+  ]);
+}
+
+export function markPaymentFailed(
+  paymentId: string,
+  reason: string,
+  raw?: Prisma.InputJsonValue
+) {
+  return prisma.payment.update({
+    where: { id: paymentId },
+    data: { status: "failed", failureReason: reason, rawResponse: raw },
+  });
+}

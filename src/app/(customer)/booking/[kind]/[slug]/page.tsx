@@ -1,4 +1,5 @@
 import { hotelRepo } from "@/entities/hotel";
+import { hotelBookingRepo } from "@/entities/hotel-booking";
 import { restaurantRepo } from "@/entities/restaurant";
 import { tourRepo } from "@/entities/tour";
 import { tourBookingRepo } from "@/entities/tour-booking";
@@ -42,6 +43,7 @@ async function loadSummary(
       };
     }
     case "hotel": {
+      await hotelBookingRepo.releaseExpired();
       const row = await hotelRepo.findPublishedDetailBySlug(slug);
       if (!row) notFound();
       return {

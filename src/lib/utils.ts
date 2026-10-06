@@ -109,3 +109,8 @@ export function canCustomerCancelBefore(
     now.getTime()
   );
 }
+
+/** Ngày hôm nay theo giờ Việt Nam, dạng YYYY-MM-DD (so sánh được với <input type="date">). */
+export function todayIsoDate(now = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(now);
+}
