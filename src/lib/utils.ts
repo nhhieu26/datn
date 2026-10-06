@@ -25,6 +25,17 @@ export function formatDate(value: Date | string | null): string {
   }).format(date);
 }
 
+export function formatDateTime(value: Date | string | null): string {
+  if (!value) return "—";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("vi-VN", {
+    dateStyle: "short",
+    timeStyle: "short",
+    timeZone: "Asia/Ho_Chi_Minh",
+  }).format(date);
+}
+
 export function formatUpdatedLabel(date: Date): string {
   const diffMin = Math.floor((Date.now() - date.getTime()) / 60000);
   if (diffMin < 1) return "Cập nhật vừa xong";

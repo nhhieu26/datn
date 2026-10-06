@@ -1,7 +1,11 @@
-import type { TourBookingWithPayment } from "@/entities/tour-booking";
+import type {
+  TourBookingProviderDetail,
+  TourBookingWithPayment,
+} from "@/entities/tour-booking";
 import type { BookingStatus } from "@/generated/prisma/enums";
 import type {
   PaymentState,
+  TourBookingDetailView,
   TourBookingListItem,
   TourBookingsSummary,
 } from "./types";
@@ -95,7 +99,9 @@ export function getPaymentMeta(state: PaymentState): StatusMeta {
   return paymentMeta[state];
 }
 
-function getPaymentState(booking: TourBookingWithPayment): PaymentState {
+function getPaymentState(
+  booking: Pick<TourBookingWithPayment, "payments" | "refunds">,
+): PaymentState {
   const { payments, refunds } = booking;
   if (payments.some((p) => p.status === "succeeded")) {
     return refunds.some((r) => r.status === "succeeded") ? "refunded" : "paid";
@@ -108,8 +114,7 @@ function getPaymentState(booking: TourBookingWithPayment): PaymentState {
 
 const FALLBACK_IMAGE = "/image-notfound.png";
 
-function extractTourImageUrl(booking: TourBookingWithPayment): string {
-  const images = booking.tourDeparture?.tour.images;
+function extractTourImageUrl(images: unknown): string {
   if (Array.isArray(images) && images.length > 0) {
     const first = images[0] as { url?: unknown };
     if (typeof first?.url === "string") return first.url;
@@ -124,7 +129,7 @@ export function mapTourBookingToListItem(
     id: booking.id,
     code: booking.code,
     tourTitle: booking.tourTitle,
-    tourImageUrl: extractTourImageUrl(booking),
+    tourImageUrl: extractTourImageUrl(booking.tourDeparture?.tour.images),
     customerName: booking.contactName,
     customerPhone: booking.contactPhone,
     customerEmail: booking.contactEmail,
@@ -134,6 +139,59 @@ export function mapTourBookingToListItem(
     paymentState: getPaymentState(booking),
     status: booking.status,
     createdAt: booking.createdAt.toISOString(),
+  };
+}
+
+const iso = (d: Date | null) => (d ? d.toISOString() : null);
+
+export function mapTourBookingToDetail(
+  booking: TourBookingProviderDetail,
+): TourBookingDetailView {
+  const tour = booking.tourDeparture?.tour;
+  const succeeded = booking.payments.find((p) => p.status === "succeeded");
+  const payment = succeeded ?? booking.payments[0] ?? null;
+  return {
+    code: booking.code,
+    status: booking.status,
+    paymentState: getPaymentState(booking),
+    tourTitle: booking.tourTitle,
+    tourImageUrl: extractTourImageUrl(tour?.images),
+    provinceName: tour?.province.name ?? null,
+    duration: tour
+      ? { days: tour.durationDays, nights: tour.durationNights }
+      : null,
+    departureDate: booking.departureDate.toISOString(),
+    guests: booking.guests,
+    unitPrice: Number(booking.unitPrice),
+    totalAmount: Number(booking.totalAmount),
+    commissionRate: Number(booking.commissionRate),
+    platformFee: Number(booking.platformFee),
+    providerAmount: Number(booking.providerAmount),
+    contactName: booking.contactName,
+    contactEmail: booking.contactEmail,
+    contactPhone: booking.contactPhone,
+    accountName: booking.customer.fullname,
+    note: booking.note,
+    cancelReason: booking.cancelReason,
+    expiresAt: iso(booking.expiresAt),
+    createdAt: booking.createdAt.toISOString(),
+    paidAt: iso(succeeded?.paidAt ?? null),
+    confirmedAt: iso(booking.confirmedAt),
+    completedAt: iso(booking.completedAt),
+    cancelledAt: iso(booking.cancelledAt),
+    payment: payment && {
+      gateway: payment.gateway,
+      status: payment.status,
+      chargedAmount: String(payment.chargedAmount),
+      chargedCurrency: payment.chargedCurrency,
+      gatewayOrderId: payment.gatewayOrderId,
+    },
+    refundedAmount: booking.refunds
+      .filter((r) => r.status === "succeeded")
+      .reduce((sum, r) => sum + Number(r.amount), 0),
+    payout: booking.payout
+      ? { status: booking.payout.status, paidAt: iso(booking.payout.paidAt) }
+      : null,
   };
 }
 

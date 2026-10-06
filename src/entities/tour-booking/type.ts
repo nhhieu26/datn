@@ -14,6 +14,28 @@ export type TourBookingDetail = Prisma.TourBookingGetPayload<{
   };
 }>;
 
+export type TourBookingProviderDetail = Prisma.TourBookingGetPayload<{
+  include: {
+    tourDeparture: {
+      include: {
+        tour: {
+          select: {
+            slug: true;
+            images: true;
+            durationDays: true;
+            durationNights: true;
+            province: { select: { name: true } };
+          };
+        };
+      };
+    };
+    customer: { select: { fullname: true } };
+    payments: { include: { refunds: true } };
+    refunds: true;
+    payout: true;
+  };
+}>;
+
 export type TourBookingWithPayment = Prisma.TourBookingGetPayload<{
   include: {
     payments: { select: { status: true } };

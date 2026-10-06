@@ -7,6 +7,7 @@ import type {
   CreateTourBookingInput,
   TourBookingDetail,
   TourBookingFilter,
+  TourBookingProviderDetail,
 } from "./type";
 
 type Tx = Prisma.TransactionClient;
@@ -123,6 +124,34 @@ export function findByCodeForCustomer(
         include: { tour: { select: { slug: true, province: true } } },
       },
       payments: { orderBy: { createdAt: "desc" } },
+    },
+  });
+}
+
+export function findByCodeForProvider(
+  code: string,
+  providerProfileId: string
+): Promise<TourBookingProviderDetail | null> {
+  return prisma.tourBooking.findFirst({
+    where: { code, providerProfileId },
+    include: {
+      tourDeparture: {
+        include: {
+          tour: {
+            select: {
+              slug: true,
+              images: true,
+              durationDays: true,
+              durationNights: true,
+              province: { select: { name: true } },
+            },
+          },
+        },
+      },
+      customer: { select: { fullname: true } },
+      payments: { orderBy: { createdAt: "desc" }, include: { refunds: true } },
+      refunds: true,
+      payout: true,
     },
   });
 }

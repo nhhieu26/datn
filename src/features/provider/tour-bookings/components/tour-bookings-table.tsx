@@ -1,6 +1,5 @@
 "use client";
 
-import type { BookingStatus } from "@/generated/prisma/enums";
 import { formatCurrency, formatDate, formatRelativeTime } from "@/lib/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -10,52 +9,9 @@ import {
   type DateRange,
   type TourBookingsQuery,
 } from "../search-params";
-import type { PaymentState, TourBookingListItem } from "../types";
-import {
-  BOOKING_STATUS_OPTIONS,
-  getBookingStatusMeta,
-  getPaymentMeta,
-} from "../utils";
-
-function StatusBadge({ status }: { status: BookingStatus }) {
-  const meta = getBookingStatusMeta(status);
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold whitespace-nowrap shadow-xs ${meta.className}`}
-    >
-      <span
-        className="material-symbols-outlined"
-        style={{
-          fontSize: "15px",
-          fontVariationSettings: meta.filled ? "'FILL' 1" : undefined,
-        }}
-      >
-        {meta.icon}
-      </span>
-      {meta.label}
-    </span>
-  );
-}
-
-function PaymentBadge({ state }: { state: PaymentState }) {
-  const meta = getPaymentMeta(state);
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap ${meta.className}`}
-    >
-      <span
-        className="material-symbols-outlined"
-        style={{
-          fontSize: "14px",
-          fontVariationSettings: meta.filled ? "'FILL' 1" : undefined,
-        }}
-      >
-        {meta.icon}
-      </span>
-      {meta.label}
-    </span>
-  );
-}
+import type { TourBookingListItem } from "../types";
+import { BOOKING_STATUS_OPTIONS } from "../utils";
+import { PaymentBadge, StatusBadge } from "./booking-badges";
 
 function BookingRow({ booking }: { booking: TourBookingListItem }) {
   return (
@@ -119,10 +75,10 @@ function BookingRow({ booking }: { booking: TourBookingListItem }) {
         </div>
       </td>
       <td className="px-6 py-5 text-right align-middle whitespace-nowrap">
-        <button
-          className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+        <Link
+          className="inline-flex rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+          href={`/provider/bookings/tours/${encodeURIComponent(booking.code)}`}
           title="Xem chi tiết"
-          type="button"
         >
           <span
             className="material-symbols-outlined"
@@ -130,7 +86,7 @@ function BookingRow({ booking }: { booking: TourBookingListItem }) {
           >
             visibility
           </span>
-        </button>
+        </Link>
       </td>
     </tr>
   );
