@@ -171,8 +171,9 @@ function ProfileRow({ profile }: { profile: ProviderProfile }) {
             </Link>
           ) : (
             <Link
-              className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-200/80 hover:text-slate-900"
+              className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
               href={`/provider/profiles/${profile.id}/edit`}
+              title="Sửa hồ sơ"
             >
               <span
                 className="material-symbols-outlined"
@@ -180,7 +181,6 @@ function ProfileRow({ profile }: { profile: ProviderProfile }) {
               >
                 edit
               </span>
-              <span>Sửa</span>
             </Link>
           )}
           <IconAction icon="visibility" title="Xem chi tiết" />
