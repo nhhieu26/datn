@@ -1,0 +1,65 @@
+import type { PaymentState } from "@/features/provider/tour-bookings/types";
+import type { BookingStatus } from "@/generated/prisma/enums";
+
+export type HotelBookingListItem = {
+  id: string;
+  code: string;
+  hotelName: string;
+  roomName: string;
+  imageUrl: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string;
+  checkInDate: string;
+  checkOutDate: string;
+  nights: number;
+  roomQuantity: number;
+  guests: number;
+  totalAmount: number;
+  providerAmount: number;
+  paymentState: PaymentState;
+  status: BookingStatus;
+  createdAt: string;
+};
+
+export type HotelBookingDetailView = {
+  code: string;
+  status: BookingStatus;
+  paymentState: PaymentState;
+  hotelName: string;
+  roomName: string;
+  imageUrl: string;
+  provinceName: string | null;
+  address: string | null;
+  checkInDate: string;
+  checkOutDate: string;
+  nights: number;
+  roomQuantity: number;
+  guests: number;
+  unitPrice: number;
+  totalAmount: number;
+  commissionRate: number;
+  platformFee: number;
+  providerAmount: number;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string;
+  accountName: string;
+  note: string | null;
+  cancelReason: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+  paidAt: string | null;
+  confirmedAt: string | null;
+  completedAt: string | null;
+  cancelledAt: string | null;
+  payment: {
+    gateway: string;
+    status: string;
+    chargedAmount: string;
+    chargedCurrency: string;
+    gatewayOrderId: string;
+  } | null;
+  refundedAmount: number;
+  payout: { status: string; paidAt: string | null } | null;
+};

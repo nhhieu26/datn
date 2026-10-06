@@ -1,15 +1,13 @@
-import type { TourBookingFilter } from "@/entities/tour-booking";
+import type { HotelBookingFilter } from "@/entities/hotel-booking";
 import type { DateRange } from "@/features/provider/components/list-controls";
 import type { BookingStatus } from "@/generated/prisma/enums";
-import { BOOKING_STATUS_OPTIONS } from "./utils";
+import { BOOKING_STATUS_OPTIONS } from "@/features/provider/tour-bookings/utils";
 
-export const TOUR_BOOKINGS_PAGE_SIZE = 10;
+export const HOTEL_BOOKINGS_PAGE_SIZE = 10;
 
-export type { DateRange };
-
-export type TourBookingsQuery = {
+export type HotelBookingsQuery = {
   q: string;
-  tour: string;
+  hotel: string;
   status: BookingStatus | "all";
   range: DateRange;
   from: string;
@@ -32,12 +30,12 @@ function parseDate(value: string) {
   return DATE_PATTERN.test(value) ? value : "";
 }
 
-export function parseTourBookingsQuery(params: RawParams): TourBookingsQuery {
+export function parseHotelBookingsQuery(params: RawParams): HotelBookingsQuery {
   const status = first(params.status);
   const range = first(params.range);
   return {
     q: first(params.q).trim(),
-    tour: first(params.tour),
+    hotel: first(params.hotel),
     status: BOOKING_STATUS_OPTIONS.some((o) => o.value === status)
       ? (status as BookingStatus)
       : "all",
@@ -48,24 +46,24 @@ export function parseTourBookingsQuery(params: RawParams): TourBookingsQuery {
   };
 }
 
-export function hasActiveFilters(query: TourBookingsQuery) {
+export function hasActiveFilters(query: HotelBookingsQuery) {
   return (
     query.q !== "" ||
-    query.tour !== "" ||
+    query.hotel !== "" ||
     query.status !== "all" ||
     query.range !== "all"
   );
 }
 
-export function buildTourBookingsUrl(
-  query: TourBookingsQuery,
-  patch: Partial<TourBookingsQuery> = {},
+export function buildHotelBookingsUrl(
+  query: HotelBookingsQuery,
+  patch: Partial<HotelBookingsQuery> = {},
 ) {
   // Đổi bộ lọc thì về trang 1; `page` chỉ giữ khi được truyền trong patch
   const next = { ...query, page: 1, ...patch };
   const params = new URLSearchParams();
   if (next.q) params.set("q", next.q);
-  if (next.tour) params.set("tour", next.tour);
+  if (next.hotel) params.set("hotel", next.hotel);
   if (next.status !== "all") params.set("status", next.status);
   if (next.range !== "all") params.set("range", next.range);
   if (next.range === "custom") {
@@ -77,9 +75,9 @@ export function buildTourBookingsUrl(
   return search ? `?${search}` : "?";
 }
 
-export function toTourBookingFilter(
-  query: TourBookingsQuery,
-): TourBookingFilter {
+export function toHotelBookingFilter(
+  query: HotelBookingsQuery,
+): HotelBookingFilter {
   let createdFrom: Date | undefined;
   let createdTo: Date | undefined;
 
@@ -103,7 +101,7 @@ export function toTourBookingFilter(
 
   return {
     q: query.q || undefined,
-    tourTitle: query.tour || undefined,
+    hotelName: query.hotel || undefined,
     status: query.status === "all" ? undefined : query.status,
     createdFrom:
       createdFrom && !Number.isNaN(createdFrom.getTime())

@@ -3,7 +3,12 @@ import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { formatEntityCode } from "@/lib/utils";
 import { ConflictError, NotFoundError } from "@/shared/lib/errors";
-import type { CreateHotelBookingInput, HotelBookingDetail } from "./type";
+import type {
+  CreateHotelBookingInput,
+  HotelBookingDetail,
+  HotelBookingFilter,
+  HotelBookingProviderDetail,
+} from "./type";
 
 type Tx = Prisma.TransactionClient;
 
@@ -205,5 +210,103 @@ export function markPaymentFailed(
   return prisma.payment.update({
     where: { id: paymentId },
     data: { status: "failed", failureReason: reason, rawResponse: raw },
+  });
+}
+
+// --- Provider xem danh sách đơn ---
+
+function providerWhere(
+  providerProfileId: string,
+  filter: HotelBookingFilter = {}
+): Prisma.HotelBookingWhereInput {
+  const q = filter.q?.trim();
+  return {
+    providerProfileId,
+    ...(filter.status && { status: filter.status }),
+    ...(filter.hotelName && { hotelName: filter.hotelName }),
+    ...((filter.createdFrom || filter.createdTo) && {
+      createdAt: { gte: filter.createdFrom, lte: filter.createdTo },
+    }),
+    ...(q && {
+      OR: [
+        { hotelName: { contains: q, mode: "insensitive" } },
+        { roomName: { contains: q, mode: "insensitive" } },
+        { contactName: { contains: q, mode: "insensitive" } },
+        { contactEmail: { contains: q, mode: "insensitive" } },
+        { contactPhone: { contains: q } },
+      ],
+    }),
+  };
+}
+
+export async function findPageByProviderProfileId(
+  providerProfileId: string,
+  filter: HotelBookingFilter,
+  page: { skip: number; take: number }
+) {
+  const where = providerWhere(providerProfileId, filter);
+  const [total, items] = await prisma.$transaction([
+    prisma.hotelBooking.count({ where }),
+    prisma.hotelBooking.findMany({
+      where,
+      skip: page.skip,
+      take: page.take,
+      include: {
+        payments: { select: { status: true }, orderBy: { createdAt: "desc" } },
+        refunds: { select: { status: true } },
+        room: {
+          select: { images: true, hotel: { select: { images: true } } },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+  return { items, total };
+}
+
+/** Số đơn và tổng tiền thực nhận theo từng trạng thái, không phụ thuộc bộ lọc. */
+export function summarizeByStatus(providerProfileId: string) {
+  return prisma.hotelBooking.groupBy({
+    by: ["status"],
+    where: { providerProfileId },
+    _count: { _all: true },
+    _sum: { providerAmount: true },
+  });
+}
+
+export async function findHotelNames(providerProfileId: string) {
+  const rows = await prisma.hotelBooking.findMany({
+    where: { providerProfileId },
+    select: { hotelName: true },
+    distinct: ["hotelName"],
+    orderBy: { hotelName: "asc" },
+  });
+  return rows.map((row) => row.hotelName);
+}
+
+export function findByCodeForProvider(
+  code: string,
+  providerProfileId: string
+): Promise<HotelBookingProviderDetail | null> {
+  return prisma.hotelBooking.findFirst({
+    where: { code, providerProfileId },
+    include: {
+      room: {
+        select: {
+          images: true,
+          hotel: {
+            select: {
+              images: true,
+              address: true,
+              province: { select: { name: true } },
+            },
+          },
+        },
+      },
+      customer: { select: { fullname: true } },
+      payments: { include: { refunds: true }, orderBy: { createdAt: "desc" } },
+      refunds: true,
+      payout: true,
+    },
   });
 }

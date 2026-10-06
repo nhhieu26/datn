@@ -41,7 +41,7 @@ const navItems: NavItem[] = [
     expandable: true,
     children: [
       { label: "Đặt tour", href: "/provider/bookings/tours" },
-      { label: "Đặt phòng", href: "#" },
+      { label: "Đặt phòng", href: "/provider/bookings/hotels" },
       { label: "Đặt bàn", href: "#" },
     ],
     icon: [

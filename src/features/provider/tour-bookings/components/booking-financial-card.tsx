@@ -1,6 +1,19 @@
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import type { TourBookingDetailView } from "../types";
 
+type FinancialInfo = Pick<
+  TourBookingDetailView,
+  | "unitPrice"
+  | "totalAmount"
+  | "commissionRate"
+  | "platformFee"
+  | "providerAmount"
+  | "refundedAmount"
+  | "payment"
+  | "paidAt"
+  | "payout"
+> & { guests?: number };
+
 function Row({
   label,
   value,
@@ -20,17 +33,20 @@ function Row({
 
 export function BookingFinancialCard({
   booking: b,
+  priceLabel = `Đơn giá × ${b.guests} khách`,
+  priceValue = `${formatCurrency(b.unitPrice)} × ${b.guests}`,
+  payoutHint = "Chi trả sau khi hoàn thành tour",
 }: {
-  booking: TourBookingDetailView;
+  booking: FinancialInfo;
+  priceLabel?: string;
+  priceValue?: string;
+  payoutHint?: string;
 }) {
   const ratePct = `${+(b.commissionRate * 100).toFixed(2)}%`;
   return (
     <div className="grid gap-6 md:grid-cols-2">
       <div className="flex flex-col gap-3">
-        <Row
-          label={`Đơn giá × ${b.guests} khách`}
-          value={`${formatCurrency(b.unitPrice)} × ${b.guests}`}
-        />
+        <Row label={priceLabel} value={priceValue} />
         <Row label="Tổng thanh toán" value={formatCurrency(b.totalAmount)} />
         <Row
           className="text-rose-600"
@@ -52,7 +68,7 @@ export function BookingFinancialCard({
             <span className="text-xs text-slate-500">
               {b.payout?.status === "succeeded"
                 ? `Đã chi trả ${formatDateTime(b.payout.paidAt)}`
-                : "Chi trả sau khi hoàn thành tour"}
+                : payoutHint}
             </span>
           </div>
           <span className="text-2xl font-extrabold text-brand-600">

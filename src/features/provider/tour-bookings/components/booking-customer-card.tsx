@@ -1,9 +1,14 @@
 import type { TourBookingDetailView } from "../types";
 
+type CustomerInfo = Pick<
+  TourBookingDetailView,
+  "contactName" | "contactEmail" | "contactPhone" | "accountName"
+>;
+
 export function BookingCustomerCard({
   booking: b,
 }: {
-  booking: TourBookingDetailView;
+  booking: CustomerInfo;
 }) {
   const initial = b.contactName.trim().charAt(0).toUpperCase() || "?";
   return (

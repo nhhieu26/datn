@@ -1,13 +1,24 @@
 import { formatDateTime } from "@/lib/utils";
 import type { TourBookingDetailView } from "../types";
 
+type TimelineInfo = Pick<
+  TourBookingDetailView,
+  | "status"
+  | "createdAt"
+  | "paidAt"
+  | "expiresAt"
+  | "confirmedAt"
+  | "completedAt"
+  | "cancelledAt"
+>;
+
 type Step = {
   label: string;
   hint: string;
   state: "done" | "pending" | "failed";
 };
 
-function buildSteps(b: TourBookingDetailView): Step[] {
+function buildSteps(b: TimelineInfo): Step[] {
   const steps: Step[] = [
     { label: "Tạo đơn", hint: formatDateTime(b.createdAt), state: "done" },
   ];
@@ -59,7 +70,7 @@ const dot = {
   failed: { icon: "cancel", cls: "text-rose-500" },
 } as const;
 
-export function BookingTimeline({ booking }: { booking: TourBookingDetailView }) {
+export function BookingTimeline({ booking }: { booking: TimelineInfo }) {
   const steps = buildSteps(booking);
   return (
     <ol className="flex flex-col gap-4 sm:flex-row sm:gap-0">
