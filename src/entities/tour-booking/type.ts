@@ -1,4 +1,4 @@
-import type { Prisma, TourBooking } from "@/generated/prisma/client";
+import type { BookingStatus, Prisma, TourBooking } from "@/generated/prisma/client";
 import type { z } from "zod";
 import type { createTourBookingSchema } from "./schema";
 
@@ -13,3 +13,19 @@ export type TourBookingDetail = Prisma.TourBookingGetPayload<{
     payments: true;
   };
 }>;
+
+export type TourBookingWithPayment = Prisma.TourBookingGetPayload<{
+  include: {
+    payments: { select: { status: true } };
+    refunds: { select: { status: true } };
+    tourDeparture: { select: { tour: { select: { images: true } } } };
+  };
+}>;
+
+export type TourBookingFilter = {
+  q?: string;
+  tourTitle?: string;
+  status?: BookingStatus;
+  createdFrom?: Date;
+  createdTo?: Date;
+};

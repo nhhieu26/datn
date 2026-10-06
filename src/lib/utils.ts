@@ -35,6 +35,20 @@ export function formatUpdatedLabel(date: Date): string {
   return `Cập nhật ${diffDay} ngày trước`;
 }
 
+export function formatRelativeTime(value: Date | string): string {
+  const date = value instanceof Date ? value : new Date(value);
+  const diffMin = Math.floor((Date.now() - date.getTime()) / 60000);
+  if (diffMin < 1) return "Vừa xong";
+  if (diffMin < 60) return `${diffMin} phút trước`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr} giờ trước`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay < 30) return `${diffDay} ngày trước`;
+  const diffMonth = Math.floor(diffDay / 30);
+  if (diffMonth < 12) return `${diffMonth} tháng trước`;
+  return `${Math.floor(diffMonth / 12)} năm trước`;
+}
+
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat("vi-VN", {
     style: "currency",

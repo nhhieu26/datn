@@ -1,0 +1,114 @@
+import type { TourBookingFilter } from "@/entities/tour-booking";
+import type { BookingStatus } from "@/generated/prisma/enums";
+import { BOOKING_STATUS_OPTIONS } from "./utils";
+
+export const TOUR_BOOKINGS_PAGE_SIZE = 10;
+
+export type DateRange = "all" | "7d" | "30d" | "12m" | "custom";
+
+export type TourBookingsQuery = {
+  q: string;
+  tour: string;
+  status: BookingStatus | "all";
+  range: DateRange;
+  from: string;
+  to: string;
+  page: number;
+};
+
+type RawParams = Record<string, string | string[] | undefined>;
+
+const RANGES: DateRange[] = ["all", "7d", "30d", "12m", "custom"];
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+// Ngày người dùng chọn được hiểu theo giờ Việt Nam bất kể múi giờ server
+const TIME_ZONE_OFFSET = "+07:00";
+
+function first(value: string | string[] | undefined) {
+  return (Array.isArray(value) ? value[0] : value) ?? "";
+}
+
+function parseDate(value: string) {
+  return DATE_PATTERN.test(value) ? value : "";
+}
+
+export function parseTourBookingsQuery(params: RawParams): TourBookingsQuery {
+  const status = first(params.status);
+  const range = first(params.range);
+  return {
+    q: first(params.q).trim(),
+    tour: first(params.tour),
+    status: BOOKING_STATUS_OPTIONS.some((o) => o.value === status)
+      ? (status as BookingStatus)
+      : "all",
+    range: RANGES.includes(range as DateRange) ? (range as DateRange) : "all",
+    from: parseDate(first(params.from)),
+    to: parseDate(first(params.to)),
+    page: Math.max(1, Math.floor(Number(first(params.page))) || 1),
+  };
+}
+
+export function hasActiveFilters(query: TourBookingsQuery) {
+  return (
+    query.q !== "" ||
+    query.tour !== "" ||
+    query.status !== "all" ||
+    query.range !== "all"
+  );
+}
+
+export function buildTourBookingsUrl(
+  query: TourBookingsQuery,
+  patch: Partial<TourBookingsQuery> = {},
+) {
+  // Đổi bộ lọc thì về trang 1; `page` chỉ giữ khi được truyền trong patch
+  const next = { ...query, page: 1, ...patch };
+  const params = new URLSearchParams();
+  if (next.q) params.set("q", next.q);
+  if (next.tour) params.set("tour", next.tour);
+  if (next.status !== "all") params.set("status", next.status);
+  if (next.range !== "all") params.set("range", next.range);
+  if (next.range === "custom") {
+    if (next.from) params.set("from", next.from);
+    if (next.to) params.set("to", next.to);
+  }
+  if (next.page > 1) params.set("page", String(next.page));
+  const search = params.toString();
+  return search ? `?${search}` : "?";
+}
+
+export function toTourBookingFilter(
+  query: TourBookingsQuery,
+): TourBookingFilter {
+  let createdFrom: Date | undefined;
+  let createdTo: Date | undefined;
+
+  if (query.range === "custom") {
+    if (query.from) {
+      createdFrom = new Date(`${query.from}T00:00:00${TIME_ZONE_OFFSET}`);
+    }
+    if (query.to) {
+      createdTo = new Date(`${query.to}T23:59:59.999${TIME_ZONE_OFFSET}`);
+    }
+  } else if (query.range !== "all") {
+    createdFrom = new Date();
+    if (query.range === "12m") {
+      createdFrom.setMonth(createdFrom.getMonth() - 12);
+    } else {
+      createdFrom.setDate(
+        createdFrom.getDate() - (query.range === "7d" ? 7 : 30),
+      );
+    }
+  }
+
+  return {
+    q: query.q || undefined,
+    tourTitle: query.tour || undefined,
+    status: query.status === "all" ? undefined : query.status,
+    createdFrom:
+      createdFrom && !Number.isNaN(createdFrom.getTime())
+        ? createdFrom
+        : undefined,
+    createdTo:
+      createdTo && !Number.isNaN(createdTo.getTime()) ? createdTo : undefined,
+  };
+}

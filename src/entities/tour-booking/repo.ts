@@ -3,7 +3,11 @@ import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { formatEntityCode } from "@/lib/utils";
 import { ConflictError, NotFoundError } from "@/shared/lib/errors";
-import type { CreateTourBookingInput, TourBookingDetail } from "./type";
+import type {
+  CreateTourBookingInput,
+  TourBookingDetail,
+  TourBookingFilter,
+} from "./type";
 
 type Tx = Prisma.TransactionClient;
 
@@ -197,4 +201,70 @@ export function markPaymentFailed(
     where: { id: paymentId },
     data: { status: "failed", failureReason: reason, rawResponse: raw },
   });
+}
+
+function providerWhere(
+  providerProfileId: string,
+  filter: TourBookingFilter = {}
+): Prisma.TourBookingWhereInput {
+  const q = filter.q?.trim();
+  return {
+    providerProfileId,
+    ...(filter.status && { status: filter.status }),
+    ...(filter.tourTitle && { tourTitle: filter.tourTitle }),
+    ...((filter.createdFrom || filter.createdTo) && {
+      createdAt: { gte: filter.createdFrom, lte: filter.createdTo },
+    }),
+    ...(q && {
+      OR: [
+        { tourTitle: { contains: q, mode: "insensitive" } },
+        { contactName: { contains: q, mode: "insensitive" } },
+        { contactEmail: { contains: q, mode: "insensitive" } },
+        { contactPhone: { contains: q } },
+      ],
+    }),
+  };
+}
+
+export async function findPageByProviderProfileId(
+  providerProfileId: string,
+  filter: TourBookingFilter,
+  page: { skip: number; take: number }
+) {
+  const where = providerWhere(providerProfileId, filter);
+  const [total, items] = await prisma.$transaction([
+    prisma.tourBooking.count({ where }),
+    prisma.tourBooking.findMany({
+      where,
+      skip: page.skip,
+      take: page.take,
+      include: {
+        payments: { select: { status: true }, orderBy: { createdAt: "desc" } },
+        refunds: { select: { status: true } },
+        tourDeparture: { select: { tour: { select: { images: true } } } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+  return { items, total };
+}
+
+/** Số đơn và tổng tiền thực nhận theo từng trạng thái, không phụ thuộc bộ lọc. */
+export function summarizeByStatus(providerProfileId: string) {
+  return prisma.tourBooking.groupBy({
+    by: ["status"],
+    where: { providerProfileId },
+    _count: { _all: true },
+    _sum: { providerAmount: true },
+  });
+}
+
+export async function findTourTitles(providerProfileId: string) {
+  const rows = await prisma.tourBooking.findMany({
+    where: { providerProfileId },
+    select: { tourTitle: true },
+    distinct: ["tourTitle"],
+    orderBy: { tourTitle: "asc" },
+  });
+  return rows.map((row) => row.tourTitle);
 }
