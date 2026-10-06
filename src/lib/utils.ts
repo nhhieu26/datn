@@ -97,6 +97,11 @@ export function hasTourEnded(endDate: Date | string, now = new Date()): boolean 
   return now.getTime() >= new Date(endDate).getTime() + DAY_MS;
 }
 
+/** Đơn đặt phòng coi là đã trả phòng từ ngày check-out (giờ Việt Nam). */
+export function hasCheckedOut(checkOutDate: Date | string, now = new Date()): boolean {
+  return todayIsoDate(now) >= new Date(checkOutDate).toISOString().slice(0, 10);
+}
+
 /** Customer chỉ được tự hủy đơn trước giờ khởi hành ít nhất số giờ này. */
 export const CUSTOMER_CANCEL_CUTOFF_HOURS = 24;
 

@@ -7,10 +7,16 @@ import {
   dateInputClass,
   type DateRange,
 } from "@/features/provider/components/list-controls";
-import { formatCurrency, formatDate, formatRelativeTime } from "@/lib/utils";
+import {
+  formatCurrency,
+  formatDate,
+  formatRelativeTime,
+  hasTourEnded,
+} from "@/lib/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
+import { updateTourBookingStatusAction } from "../actions";
 import { buildTourBookingsUrl, type TourBookingsQuery } from "../search-params";
 import type { TourBookingListItem } from "../types";
 import { BOOKING_STATUS_OPTIONS } from "../utils";
@@ -63,7 +69,18 @@ function BookingRow({ booking }: { booking: TourBookingListItem }) {
         <PaymentBadge state={booking.paymentState} />
       </td>
       <td className="px-6 py-5 align-middle">
-        <BookingStatusMenu booking={booking} />
+        <BookingStatusMenu
+          booking={booking}
+          config={{
+            noun: "đặt tour",
+            subtitle: booking.tourTitle,
+            cancelEffect: `trả lại ${booking.guests} chỗ cho lịch khởi hành`,
+            completeBlockedHint: hasTourEnded(booking.tourEndsAt)
+              ? null
+              : "Tour chưa kết thúc",
+            onSubmit: updateTourBookingStatusAction,
+          }}
+        />
       </td>
       <td className="px-6 py-5 align-middle whitespace-nowrap">
         <div className="flex flex-col">

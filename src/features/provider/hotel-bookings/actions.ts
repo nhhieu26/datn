@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { hotelBookingRepo } from "@/entities/hotel-booking";
 import { providerProfileRepo } from "@/entities/provider-profile";
 import { tourBookingRepo } from "@/entities/tour-booking";
+import { updateBookingStatusSchema } from "@/features/provider/tour-bookings/schema";
 import { auth } from "@/lib/auth";
 import {
   createPayout,
@@ -16,32 +18,32 @@ import {
   UnauthenticatedError,
   ValidationError,
 } from "@/shared/lib/errors";
-import { updateBookingStatusSchema } from "./schema";
 
-async function requireTourProviderId() {
+async function requireHotelProviderId() {
   const session = await auth();
   if (!session?.user?.id) throw new UnauthenticatedError();
   const profile = await providerProfileRepo.findApprovedByUserIdAndBusinessType(
     session.user.id,
-    "tour",
+    "hotel",
   );
   if (!profile) throw new ForbiddenError();
   return profile.id;
 }
 
-export async function updateTourBookingStatusAction(input: unknown) {
+export async function updateHotelBookingStatusAction(input: unknown) {
   return runAction<{ moneyStatus?: TransferStatus }>(async () => {
-    const providerProfileId = await requireTourProviderId();
+    const providerProfileId = await requireHotelProviderId();
     const parsed = updateBookingStatusSchema.safeParse(input);
     if (!parsed.success) throw new ValidationError(fromZodError(parsed.error));
     const data = parsed.data;
 
+    // Refund / Payout cập nhật theo id, dùng chung với tour booking
     let moneyStatus: TransferStatus | undefined;
     if (data.status === "confirmed") {
-      await tourBookingRepo.confirmForProvider(data.code, providerProfileId);
+      await hotelBookingRepo.confirmForProvider(data.code, providerProfileId);
     } else if (data.status === "cancelled") {
       const { booking, refund, captureId } =
-        await tourBookingRepo.cancelForProvider(
+        await hotelBookingRepo.cancelForProvider(
           data.code,
           providerProfileId,
           data.reason,
@@ -59,7 +61,7 @@ export async function updateTourBookingStatusAction(input: unknown) {
       );
     } else {
       const { booking, payout, recipientType } =
-        await tourBookingRepo.completeForProvider(data.code, providerProfileId);
+        await hotelBookingRepo.completeForProvider(data.code, providerProfileId);
       moneyStatus = await settleTransfer(
         `payout ${booking.code}`,
         () =>
@@ -68,14 +70,14 @@ export async function updateTourBookingStatusAction(input: unknown) {
             amountUsd: payout.chargedAmount.toFixed(2),
             receiver: payout.receiver,
             recipientType,
-            note: `Thanh toán đơn ${booking.code} - ${booking.tourTitle}`,
+            note: `Thanh toán đơn ${booking.code} - ${booking.hotelName}`,
           }),
         (result) => tourBookingRepo.markPayoutResult(payout.id, result),
       );
     }
 
-    revalidatePath("/provider/bookings/tours");
-    revalidatePath(`/provider/bookings/tours/${data.code}`);
+    revalidatePath("/provider/bookings/hotels");
+    revalidatePath(`/provider/bookings/hotels/${data.code}`);
     return { moneyStatus };
   });
 }

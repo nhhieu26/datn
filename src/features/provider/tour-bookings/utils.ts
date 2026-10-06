@@ -69,7 +69,7 @@ export const BOOKING_STATUS_OPTIONS = (
 ).map((value) => ({ value, label: statusMeta[value].label }));
 
 /** Các trạng thái provider được chuyển tới, theo trạng thái hiện tại. */
-export const TOUR_BOOKING_TRANSITIONS: Partial<
+export const PROVIDER_BOOKING_TRANSITIONS: Partial<
   Record<BookingStatus, ProviderBookingTransition[]>
 > = {
   paid: ["confirmed", "cancelled"],

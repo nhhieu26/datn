@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { Prisma } from "@/generated/prisma/client";
+import { Prisma, type BookingStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { formatEntityCode } from "@/lib/utils";
+import { formatEntityCode, hasCheckedOut } from "@/lib/utils";
 import { ConflictError, NotFoundError } from "@/shared/lib/errors";
 import type {
   CreateHotelBookingInput,
@@ -308,5 +308,127 @@ export function findByCodeForProvider(
       refunds: true,
       payout: true,
     },
+  });
+}
+
+// --- Provider chuyển trạng thái đơn ---
+
+const STALE_STATUS_MESSAGE = "Trạng thái đơn đã thay đổi, vui lòng tải lại.";
+
+/** Khóa booking của provider đang ở trạng thái `from`; không khớp → ConflictError. */
+async function lockForProvider(
+  tx: Tx,
+  code: string,
+  providerProfileId: string,
+  from: BookingStatus
+) {
+  const rows = await tx.$queryRaw<{ id: string }[]>`
+    SELECT "id" FROM "HotelBooking"
+    WHERE "code" = ${code}
+      AND "providerProfileId" = ${providerProfileId}
+      AND "status" = ${from}::"BookingStatus"
+    FOR UPDATE`;
+  if (rows.length === 0) throw new ConflictError(STALE_STATUS_MESSAGE);
+  return rows[0].id;
+}
+
+export function confirmForProvider(code: string, providerProfileId: string) {
+  return prisma.$transaction(async (tx) => {
+    const id = await lockForProvider(tx, code, providerProfileId, "paid");
+    return tx.hotelBooking.update({
+      where: { id },
+      data: { status: "confirmed", confirmedAt: new Date() },
+    });
+  });
+}
+
+/**
+ * Provider hủy đơn đã thanh toán: tạo Refund (processing) hoàn toàn bộ tiền.
+ * Tồn phòng tính động từ các booking còn hiệu lực nên hủy là tự nhả phòng.
+ */
+export function cancelForProvider(
+  code: string,
+  providerProfileId: string,
+  reason: string
+) {
+  return prisma.$transaction(async (tx) => {
+    const id = await lockForProvider(tx, code, providerProfileId, "paid");
+    const payment = await tx.payment.findFirst({
+      where: { hotelBookingId: id, status: "succeeded", gatewayCaptureId: { not: null } },
+    });
+    if (!payment?.gatewayCaptureId) {
+      throw new ConflictError("Không tìm thấy giao dịch thanh toán để hoàn tiền.");
+    }
+
+    const booking = await tx.hotelBooking.update({
+      where: { id },
+      data: { status: "cancelled", cancelledAt: new Date(), cancelReason: reason },
+    });
+    const refund = await tx.refund.create({
+      data: {
+        hotelBookingId: id,
+        paymentId: payment.id,
+        status: "processing",
+        amount: booking.totalAmount,
+        chargedAmount: payment.chargedAmount,
+        chargedCurrency: payment.chargedCurrency,
+        reason,
+      },
+    });
+    return { booking, refund, captureId: payment.gatewayCaptureId };
+  });
+}
+
+/** Hoàn thành đơn từ ngày trả phòng: tạo Payout (processing) cho provider. */
+export function completeForProvider(code: string, providerProfileId: string) {
+  return prisma.$transaction(async (tx) => {
+    const id = await lockForProvider(tx, code, providerProfileId, "confirmed");
+    const booking = await tx.hotelBooking.findUniqueOrThrow({
+      where: { id },
+      include: {
+        providerProfile: { select: { paypalPayerId: true, payoutEmail: true } },
+        payments: { where: { status: "succeeded" }, take: 1 },
+      },
+    });
+
+    if (!hasCheckedOut(booking.checkOutDate)) {
+      throw new ConflictError("Chỉ có thể hoàn thành đơn từ ngày trả phòng.");
+    }
+
+    const { paypalPayerId, payoutEmail } = booking.providerProfile;
+    const receiver = paypalPayerId ?? payoutEmail;
+    if (!receiver) {
+      throw new ConflictError(
+        "Vui lòng liên kết tài khoản PayPal ở mục Thanh toán / PayPal để nhận tiền."
+      );
+    }
+
+    const exchangeRate =
+      booking.payments[0]?.exchangeRate ??
+      new Prisma.Decimal(process.env.PAYPAL_USD_RATE ?? 25_000);
+
+    const updated = await tx.hotelBooking.update({
+      where: { id },
+      data: { status: "completed", completedAt: new Date() },
+    });
+    const payout = await tx.payout.create({
+      data: {
+        hotelBookingId: id,
+        providerProfileId,
+        gateway: "paypal",
+        status: "processing",
+        amount: booking.providerAmount,
+        chargedAmount: booking.providerAmount.div(exchangeRate).toDecimalPlaces(2),
+        chargedCurrency: "USD",
+        exchangeRate,
+        receiver,
+      },
+    });
+    return {
+      booking: updated,
+      payout,
+      // payer ID là "encrypted PayPal account number" → recipient_type PAYPAL_ID
+      recipientType: paypalPayerId ? ("PAYPAL_ID" as const) : ("EMAIL" as const),
+    };
   });
 }

@@ -3,14 +3,34 @@
 import { formatCurrency } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { updateTourBookingStatusAction } from "../actions";
-import type { ProviderBookingTransition, TourBookingListItem } from "../types";
+import type { BookingStatus } from "@/generated/prisma/enums";
+import type { updateTourBookingStatusAction } from "../actions";
+import type { ProviderBookingTransition } from "../types";
 import { getBookingStatusMeta } from "../utils";
 
+export type StatusTargetBooking = {
+  code: string;
+  status: BookingStatus;
+  totalAmount: number;
+  providerAmount: number;
+};
+
+/** Phần khác nhau giữa đơn tour / đơn khách sạn khi đổi trạng thái. */
+export type BookingStatusConfig = {
+  /** "đặt tour" | "đặt phòng" */
+  noun: string;
+  subtitle: string;
+  /** Hệ quả trả lại chỗ/phòng khi hủy, vd "trả lại 2 chỗ cho lịch khởi hành" */
+  cancelEffect: string;
+  /** null = được hoàn thành; ngược lại là lý do chưa được hoàn thành */
+  completeBlockedHint: string | null;
+  onSubmit: typeof updateTourBookingStatusAction;
+};
+
 const TITLES: Record<ProviderBookingTransition, string> = {
-  confirmed: "Xác nhận đơn đặt tour?",
-  completed: "Hoàn thành đơn đặt tour?",
-  cancelled: "Hủy đơn đặt tour?",
+  confirmed: "Xác nhận đơn",
+  completed: "Hoàn thành đơn",
+  cancelled: "Hủy đơn",
 };
 
 // PayPal từ chối giao dịch ngay khi gọi API; đơn vẫn đã chuyển trạng thái.
@@ -23,7 +43,8 @@ const FAILED_NOTICE: Partial<Record<ProviderBookingTransition, string>> = {
 
 function describe(
   target: ProviderBookingTransition,
-  booking: TourBookingListItem,
+  booking: StatusTargetBooking,
+  config: BookingStatusConfig,
 ) {
   switch (target) {
     case "confirmed":
@@ -31,16 +52,18 @@ function describe(
     case "completed":
       return `Sàn sẽ chuyển ${formatCurrency(booking.providerAmount)} (thực nhận) vào tài khoản PayPal đã liên kết của bạn. Thao tác không thể hoàn tác.`;
     case "cancelled":
-      return `Sàn sẽ hoàn ${formatCurrency(booking.totalAmount)} cho khách qua PayPal và trả lại ${booking.guests} chỗ cho lịch khởi hành. Thao tác không thể hoàn tác.`;
+      return `Sàn sẽ hoàn ${formatCurrency(booking.totalAmount)} cho khách qua PayPal và ${config.cancelEffect}. Thao tác không thể hoàn tác.`;
   }
 }
 
 export function BookingStatusDialog({
   booking,
+  config,
   target,
   onClose,
 }: {
-  booking: TourBookingListItem;
+  booking: StatusTargetBooking;
+  config: BookingStatusConfig;
   target: ProviderBookingTransition;
   onClose: () => void;
 }) {
@@ -70,7 +93,7 @@ export function BookingStatusDialog({
     setError("");
     setReasonError("");
     startTransition(async () => {
-      const result = await updateTourBookingStatusAction({
+      const result = await config.onSubmit({
         code: booking.code,
         status: target,
         ...(isCancel && { reason }),
@@ -123,10 +146,10 @@ export function BookingStatusDialog({
           className="text-lg font-bold text-slate-900"
           id="booking-status-heading"
         >
-          {TITLES[target]}
+          {TITLES[target]} {config.noun}?
         </h2>
         <p className="mt-1 text-xs font-semibold text-brand-600">
-          {booking.code} · {booking.tourTitle}
+          {booking.code} · {config.subtitle}
         </p>
 
         {notice ? (
@@ -147,7 +170,7 @@ export function BookingStatusDialog({
         ) : (
           <>
             <p className="mt-3 text-sm leading-relaxed text-slate-600">
-              {describe(target, booking)}
+              {describe(target, booking, config)}
             </p>
 
             {isCancel ? (

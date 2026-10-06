@@ -1,19 +1,24 @@
 "use client";
 
-import { hasTourEnded } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { ProviderBookingTransition, TourBookingListItem } from "../types";
-import { TOUR_BOOKING_TRANSITIONS, getBookingStatusMeta } from "../utils";
+import type { ProviderBookingTransition } from "../types";
+import { PROVIDER_BOOKING_TRANSITIONS, getBookingStatusMeta } from "../utils";
 import { StatusBadge } from "./booking-badges";
-import { BookingStatusDialog } from "./booking-status-dialog";
+import {
+  BookingStatusDialog,
+  type BookingStatusConfig,
+  type StatusTargetBooking,
+} from "./booking-status-dialog";
 
 const MENU_WIDTH = 240;
 
 export function BookingStatusMenu({
   booking,
+  config,
 }: {
-  booking: TourBookingListItem;
+  booking: StatusTargetBooking;
+  config: BookingStatusConfig;
 }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -22,7 +27,7 @@ export function BookingStatusMenu({
     left: number;
   } | null>(null);
   const [target, setTarget] = useState<ProviderBookingTransition | null>(null);
-  const transitions = TOUR_BOOKING_TRANSITIONS[booking.status] ?? [];
+  const transitions = PROVIDER_BOOKING_TRANSITIONS[booking.status] ?? [];
   const open = position !== null;
 
   useEffect(() => {
@@ -55,7 +60,6 @@ export function BookingStatusMenu({
   if (transitions.length === 0) return <StatusBadge status={booking.status} />;
 
   const meta = getBookingStatusMeta(booking.status);
-  const tourEnded = hasTourEnded(booking.tourEndsAt);
 
   function toggle() {
     if (open) {
@@ -116,7 +120,8 @@ export function BookingStatusMenu({
               </p>
               {transitions.map((status) => {
                 const option = getBookingStatusMeta(status);
-                const disabled = status === "completed" && !tourEnded;
+                const disabled =
+                  status === "completed" && config.completeBlockedHint !== null;
                 return (
                   <button
                     className="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
@@ -150,7 +155,7 @@ export function BookingStatusMenu({
                       </span>
                       {disabled ? (
                         <span className="text-xs text-slate-500">
-                          Tour chưa kết thúc
+                          {config.completeBlockedHint}
                         </span>
                       ) : null}
                     </span>
@@ -166,6 +171,7 @@ export function BookingStatusMenu({
         ? createPortal(
             <BookingStatusDialog
               booking={booking}
+              config={config}
               onClose={() => setTarget(null)}
               target={target}
             />,

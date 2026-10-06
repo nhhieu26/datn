@@ -7,15 +7,19 @@ import {
   dateInputClass,
   type DateRange,
 } from "@/features/provider/components/list-controls";
-import {
-  PaymentBadge,
-  StatusBadge,
-} from "@/features/provider/tour-bookings/components/booking-badges";
+import { PaymentBadge } from "@/features/provider/tour-bookings/components/booking-badges";
+import { BookingStatusMenu } from "@/features/provider/tour-bookings/components/booking-status-menu";
 import { BOOKING_STATUS_OPTIONS } from "@/features/provider/tour-bookings/utils";
-import { formatCurrency, formatDate, formatRelativeTime } from "@/lib/utils";
+import {
+  formatCurrency,
+  formatDate,
+  formatRelativeTime,
+  hasCheckedOut,
+} from "@/lib/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
+import { updateHotelBookingStatusAction } from "../actions";
 import {
   buildHotelBookingsUrl,
   type HotelBookingsQuery,
@@ -86,7 +90,18 @@ function BookingRow({ booking }: { booking: HotelBookingListItem }) {
         <PaymentBadge state={booking.paymentState} />
       </td>
       <td className="px-6 py-5 align-middle">
-        <StatusBadge status={booking.status} />
+        <BookingStatusMenu
+          booking={booking}
+          config={{
+            noun: "đặt phòng",
+            subtitle: `${booking.hotelName} · ${booking.roomName}`,
+            cancelEffect: `mở lại ${booking.roomQuantity} phòng cho khoảng ngày đã đặt`,
+            completeBlockedHint: hasCheckedOut(booking.checkOutDate)
+              ? null
+              : "Chưa đến ngày trả phòng",
+            onSubmit: updateHotelBookingStatusAction,
+          }}
+        />
       </td>
       <td className="px-6 py-5 align-middle whitespace-nowrap">
         <div className="flex flex-col">
