@@ -37,24 +37,24 @@ const PASSWORD = "Password123";
 
 const USERS: UserSeed[] = [
   {
-    email: "customer1@example.com",
+    email: "messi@roamly.com",
     phone: "0900000101",
-    fullname: "Nguyễn Văn Khách",
+    fullname: "Lionel Messi",
     role: "customer",
     onboardingCompleted: true,
     preferences: { tags: ["Biển", "Nghỉ dưỡng"], provinces: ["Đà Nẵng"] },
   },
   {
-    email: "customer2@example.com",
+    email: "ronaldo@roamly.com",
     phone: "0900000102",
-    fullname: "Trần Thị Khách",
+    fullname: "Cristiano Ronaldo",
     role: "customer",
     preferences: { tags: ["Núi", "Phượt"] },
   },
   {
-    email: "provider1@example.com",
+    email: "neymar@roamly.com",
     phone: "0900000111",
-    fullname: "Lê Văn Tour",
+    fullname: "Neymar Jr.",
     role: "provider",
     profiles: [
       {
@@ -64,8 +64,8 @@ const USERS: UserSeed[] = [
         address: "12 Trần Phú, Đà Nẵng",
         description: "Tour biển đảo Đà Nẵng - Hội An.",
         approvalStatus: "approved",
-        paypalPayerId: "H2XD7V5XQKFA2",
-        payoutEmail: "sb-1vtys53189905@personal.example.com",
+        paypalPayerId: "2VRLAHRXJ7FK6",
+        payoutEmail: "neymar@roamly.com",
         paypalLinkedAt: "2026-10-05 12:13:44.18",
       },
       {
@@ -73,16 +73,16 @@ const USERS: UserSeed[] = [
         businessType: "hotel",
         address: "34 Võ Nguyên Giáp, Đà Nẵng",
         approvalStatus: "pending",
-        paypalPayerId: "W9X69Z7QL46YJ",
-        payoutEmail: "sb-lb3mz53189898@personal.example.com",
+        paypalPayerId: "2VRLAHRXJ7FK6",
+        payoutEmail: "neymar@roamly.com",
         paypalLinkedAt: "2026-10-05 12:13:44.18",
       },
     ],
   },
   {
-    email: "provider2@example.com",
+    email: "debruyne@roamly.com",
     phone: "0900000112",
-    fullname: "Phạm Thị Ẩm Thực",
+    fullname: "Kevin De Bruyne",
     role: "provider",
     profiles: [
       {
@@ -91,8 +91,8 @@ const USERS: UserSeed[] = [
         address: "56 Nguyễn Huệ, Huế",
         description: "Đặc sản miền Trung.",
         approvalStatus: "approved",
-        paypalPayerId: "SLH4RFFUF2ULL",
-        payoutEmail: "sb-b6f0m53189887@personal.example.com",
+        paypalPayerId: "H2XD7V5XQKFA2",
+        payoutEmail: "debruyne@roamly.com",
         paypalLinkedAt: "2026-10-05 12:13:44.18",
       },
       {
@@ -100,8 +100,8 @@ const USERS: UserSeed[] = [
         businessType: "tour",
         address: "78 Lê Lợi, Huế",
         approvalStatus: "pending",
-        paypalPayerId: "2VRLAHRXJ7FK6",
-        payoutEmail: "sb-435pyh53189952@personal.example.com",
+        paypalPayerId: "H2XD7V5XQKFA2",
+        payoutEmail: "debruyne@roamly.com",
         paypalLinkedAt: "2026-10-05 12:13:44.18",
       },
       {
@@ -109,16 +109,16 @@ const USERS: UserSeed[] = [
         businessType: "hotel",
         address: "90 Bến Nghé, Huế",
         approvalStatus: "rejected",
-        paypalPayerId: "JPNUTJ3SRFSRQ",
-        payoutEmail: "sb-ew6zm53189958@personal.example.com",
+        paypalPayerId: "H2XD7V5XQKFA2",
+        payoutEmail: "debruyne@roamly.com",
         paypalLinkedAt: "2026-10-05 12:13:44.18",
       },
     ],
   },
   {
-    email: "provider3@example.com",
+    email: "haaland@roamly.com",
     phone: "0900000113",
-    fullname: "Hoàng Văn Nghỉ Dưỡng",
+    fullname: "Erling Haaland",
     role: "provider",
     profiles: [
       {
@@ -127,8 +127,8 @@ const USERS: UserSeed[] = [
         address: "1 Đồi Thông, Đà Lạt",
         description: "Nghỉ dưỡng giữa rừng thông.",
         approvalStatus: "approved",
-        paypalPayerId: "XKNEJVY7KNDLG",
-        payoutEmail: "sb-rtnun53189959@personal.example.com",
+        paypalPayerId: "W9X69Z7QL46YJ",
+        payoutEmail: "haaland@roamly.com",
         paypalLinkedAt: "2026-10-05 12:13:44.18",
       },
     ],
@@ -142,7 +142,7 @@ async function seedAdmin() {
 
   if (!email || !password || !phone) {
     console.log(
-      "⚠ Bỏ qua tạo tài khoản quản trị (thiếu ADMIN_EMAIL/ADMIN_PASSWORD/ADMIN_PHONE trong .env)."
+      "⚠ Bỏ qua tạo tài khoản quản trị (thiếu ADMIN_EMAIL/ADMIN_PASSWORD/ADMIN_PHONE trong .env).",
     );
     return;
   }
@@ -217,7 +217,9 @@ export async function seedUsers() {
           approvalStatus: p.approvalStatus ?? "not_submitted",
           paypalPayerId: p.paypalPayerId,
           payoutEmail: p.payoutEmail,
-          paypalLinkedAt: p.paypalLinkedAt ? new Date(p.paypalLinkedAt) : undefined,
+          paypalLinkedAt: p.paypalLinkedAt
+            ? new Date(p.paypalLinkedAt)
+            : undefined,
         },
         update: {
           businessName: p.businessName,
@@ -230,19 +232,18 @@ export async function seedUsers() {
           approvalStatus: p.approvalStatus ?? "not_submitted",
           paypalPayerId: p.paypalPayerId,
           payoutEmail: p.payoutEmail,
-          paypalLinkedAt: p.paypalLinkedAt ? new Date(p.paypalLinkedAt) : undefined,
+          paypalLinkedAt: p.paypalLinkedAt
+            ? new Date(p.paypalLinkedAt)
+            : undefined,
         },
       });
     }
 
     console.log(
-      `✓ ${u.fullname} <${u.email}> (${u.role}, ${u.profiles?.length ?? 0} profile)`
+      `✓ ${u.fullname} <${u.email}> (${u.role}, ${u.profiles?.length ?? 0} profile)`,
     );
   }
 
-  const profileCount = USERS.reduce(
-    (n, u) => n + (u.profiles?.length ?? 0),
-    0
-  );
+  const profileCount = USERS.reduce((n, u) => n + (u.profiles?.length ?? 0), 0);
   console.log(`\nSeeded ${USERS.length} users and ${profileCount} profiles.`);
 }

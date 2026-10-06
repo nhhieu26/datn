@@ -19,8 +19,11 @@ const INPUT_CLASS =
 const DEV_CREDENTIALS =
   process.env.NODE_ENV === "development"
     ? {
-        customer: { email: "customer1@example.com", password: "Password123" },
-        provider: { email: "provider1@example.com", password: "Password123" },
+        customer: {
+          email: "messi@roamly.com",
+          password: "Password123",
+        },
+        provider: { email: "neymar@roamly.com", password: "Password123" },
       }
     : null;
 
