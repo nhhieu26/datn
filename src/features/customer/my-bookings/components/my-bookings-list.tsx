@@ -6,6 +6,7 @@ import {
   type MyBookingsQuery,
 } from "../search-params";
 import type { MyBookingItem } from "../types";
+import { MyBookingReviewLink } from "./my-booking-review-link";
 import { MyBookingStatusMenu } from "./my-booking-status-menu";
 import { MyBookingsPagination } from "./my-bookings-pagination";
 
@@ -82,6 +83,7 @@ export function MyBookingsList({
                 <td className={td}>{item.guests}</td>
                 <td className={td}>
                   <MyBookingStatusMenu item={{ ...item, kind: "tour", title: item.tourTitle }} />
+                  <MyBookingReviewLink review={item.review} />
                   {item.status === "pending_payment" && item.expiresAt && (
                     <span className="mt-1 block text-xs text-new-paragraph">
                       Giữ chỗ đến {formatDate(item.expiresAt)}

@@ -15,6 +15,7 @@ export type MyBookingItem = {
   /** Đơn paid/confirmed — customer được hủy (nếu còn trong hạn). */
   canCancel: boolean;
   cancelDeadlinePassed: boolean;
+  review: ReviewState;
   createdAt: string;
 };
 
@@ -36,6 +37,7 @@ export type MyHotelBookingItem = {
   /** Đơn paid/confirmed — customer được hủy (nếu còn trong hạn). */
   canCancel: boolean;
   cancelDeadlinePassed: boolean;
+  review: ReviewState;
   createdAt: string;
 };
 
@@ -52,10 +54,14 @@ export type MyRestaurantBookingItem = {
   /** Đơn chờ xác nhận / đã xác nhận — customer được hủy (nếu còn trong hạn). */
   canCancel: boolean;
   cancelDeadlinePassed: boolean;
+  review: ReviewState;
   createdAt: string;
 };
 
 export type BookingKind = "tour" | "hotel" | "restaurant";
+
+/** Đơn completed: URL tới form đánh giá, "reviewed" nếu đã đánh giá; null với đơn khác. */
+export type ReviewState = string | null;
 
 /** Dữ liệu tối thiểu để menu/dialog hủy dùng chung cho đơn tour và khách sạn. */
 export type CancellableBooking = {

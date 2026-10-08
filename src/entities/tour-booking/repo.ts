@@ -321,9 +321,10 @@ export async function findPageByCustomerId(
         tourDeparture: {
           select: {
             returnDate: true,
-            tour: { select: { images: true, durationDays: true } },
+            tour: { select: { images: true, durationDays: true, slug: true } },
           },
         },
+        review: { select: { id: true } },
       },
       orderBy: { createdAt: "desc" },
     }),

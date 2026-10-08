@@ -46,7 +46,7 @@ export function RestaurantCard({ item }: { item: ExploreItem }) {
             </p>
             <p>/món (TB)</p>
           </div>
-          <Rating />
+          {item.rating ? <Rating {...item.rating} /> : null}
         </div>
       </div>
     </article>

@@ -300,8 +300,12 @@ export async function findPageByCustomerId(
         payments: { select: { status: true }, orderBy: { createdAt: "desc" } },
         refunds: { select: { status: true } },
         room: {
-          select: { images: true, hotel: { select: { images: true } } },
+          select: {
+            images: true,
+            hotel: { select: { images: true, slug: true } },
+          },
         },
+        review: { select: { id: true } },
       },
       orderBy: { createdAt: "desc" },
     }),

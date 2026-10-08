@@ -15,6 +15,8 @@ export type ExploreItem = {
   href?: string;
   /** hai chip thông tin, icon do từng card quyết định */
   meta: [string, string];
+  /** điểm đánh giá; điểm đến không có review */
+  rating?: { avg: number; count: number };
 };
 
 export const KIND_LABELS: Record<ExploreKind, string> = {

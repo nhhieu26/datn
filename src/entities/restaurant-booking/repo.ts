@@ -123,8 +123,9 @@ export async function findPageByCustomerId(
       skip: page.skip,
       take: page.take,
       include: {
-        restaurant: { select: { images: true } },
+        restaurant: { select: { images: true, slug: true } },
         restaurantTimeSlot: { select: { endTime: true } },
+        review: { select: { id: true } },
       },
       orderBy: { createdAt: "desc" },
     }),

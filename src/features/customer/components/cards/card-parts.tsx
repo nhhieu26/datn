@@ -1,7 +1,3 @@
-// ponytail: chưa có Review model nên rating/reviews là số giả, thay khi có dữ liệu thật
-export const FAKE_RATING = 4.7;
-export const FAKE_REVIEWS = 20;
-
 const currency = new Intl.NumberFormat("vi-VN", {
   style: "currency",
   currency: "VND",
@@ -22,14 +18,18 @@ export function formatPrice(price?: number) {
   return price ? formatVnd(price) : "Liên hệ";
 }
 
-export function Rating() {
+export function Rating({ avg, count }: { avg: number; count: number }) {
   return (
     <div className="flex items-center gap-1.5 text-new-star">
-      <span aria-hidden className="material-symbols-outlined text-base">
+      <span
+        aria-hidden
+        className="material-symbols-outlined text-base"
+        style={count ? { fontVariationSettings: "'FILL' 1" } : undefined}
+      >
         star
       </span>
       <p className="text-sm font-medium text-new-title">
-        {FAKE_RATING} ({FAKE_REVIEWS})
+        {count ? `${avg.toFixed(1)} (${count})` : "Chưa có đánh giá"}
       </p>
     </div>
   );

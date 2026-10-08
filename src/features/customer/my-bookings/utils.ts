@@ -1,7 +1,8 @@
-import type { HotelBookingWithPayment } from "@/entities/hotel-booking";
-import type { RestaurantBookingListItem } from "@/entities/restaurant-booking";
-import type { TourBookingWithPayment } from "@/entities/tour-booking";
+import type { hotelBookingRepo } from "@/entities/hotel-booking";
+import type { restaurantBookingRepo } from "@/entities/restaurant-booking";
+import type { tourBookingRepo } from "@/entities/tour-booking";
 import type { BookingStatus } from "@/generated/prisma/enums";
+import { reviewUrl } from "@/features/customer/reviews/paths";
 import { extractRoomImageUrl } from "@/features/provider/hotel-bookings/utils";
 import {
   extractTourImageUrl,
@@ -13,17 +14,32 @@ import {
   RESTAURANT_CANCEL_CUTOFF_HOURS,
 } from "@/lib/utils";
 import type {
+  BookingKind,
   MyBookingItem,
   MyBookingsSummary,
   MyHotelBookingItem,
   MyRestaurantBookingItem,
   MyRestaurantBookingsSummary,
+  ReviewState,
 } from "./types";
+
+type PageItem<T extends (...args: never[]) => Promise<{ items: unknown[] }>> =
+  Awaited<ReturnType<T>>["items"][number];
 
 const CANCELLABLE_STATUSES: BookingStatus[] = ["paid", "confirmed"];
 
+function toReviewState(
+  kind: BookingKind,
+  booking: { status: BookingStatus; review: { id: string } | null },
+  slug: string | undefined,
+): ReviewState {
+  if (booking.status !== "completed") return null;
+  if (booking.review) return "reviewed";
+  return slug ? reviewUrl(kind, slug) : null;
+}
+
 export function mapToMyHotelBookingItem(
-  booking: HotelBookingWithPayment,
+  booking: PageItem<typeof hotelBookingRepo.findPageByCustomerId>,
 ): MyHotelBookingItem {
   return {
     code: booking.code,
@@ -42,6 +58,7 @@ export function mapToMyHotelBookingItem(
     cancelReason: booking.cancelReason,
     canCancel: CANCELLABLE_STATUSES.includes(booking.status),
     cancelDeadlinePassed: !canCustomerCancelBefore(booking.checkInDate),
+    review: toReviewState("hotel", booking, booking.room?.hotel.slug),
     createdAt: booking.createdAt.toISOString(),
   };
 }
@@ -52,7 +69,7 @@ const CANCELLABLE_RESTAURANT_STATUSES: BookingStatus[] = [
 ];
 
 export function mapToMyRestaurantBookingItem(
-  booking: RestaurantBookingListItem,
+  booking: PageItem<typeof restaurantBookingRepo.findPageByCustomerId>,
 ): MyRestaurantBookingItem {
   return {
     code: booking.code,
@@ -70,6 +87,7 @@ export function mapToMyRestaurantBookingItem(
       new Date(),
       RESTAURANT_CANCEL_CUTOFF_HOURS,
     ),
+    review: toReviewState("restaurant", booking, booking.restaurant?.slug),
     createdAt: booking.createdAt.toISOString(),
   };
 }
@@ -92,7 +110,9 @@ export function getMyRestaurantBookingsSummary({
   };
 }
 
-export function mapToMyBookingItem(booking: TourBookingWithPayment): MyBookingItem {
+export function mapToMyBookingItem(
+  booking: PageItem<typeof tourBookingRepo.findPageByCustomerId>,
+): MyBookingItem {
   return {
     code: booking.code,
     tourTitle: booking.tourTitle,
@@ -106,6 +126,7 @@ export function mapToMyBookingItem(booking: TourBookingWithPayment): MyBookingIt
     cancelReason: booking.cancelReason,
     canCancel: CANCELLABLE_STATUSES.includes(booking.status),
     cancelDeadlinePassed: !canCustomerCancelBefore(booking.departureDate),
+    review: toReviewState("tour", booking, booking.tourDeparture?.tour.slug),
     createdAt: booking.createdAt.toISOString(),
   };
 }

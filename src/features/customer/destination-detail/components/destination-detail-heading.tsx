@@ -1,4 +1,4 @@
-import { Rating, formatPrice } from "@/features/customer/components/cards/card-parts";
+import { formatPrice } from "@/features/customer/components/cards/card-parts";
 import type { DestinationDetail } from "../lib/to-destination-detail";
 
 export function DestinationDetailHeading({
@@ -47,7 +47,6 @@ export function DestinationDetailHeading({
           </p>
           {!free && <p>/người</p>}
         </div>
-        <Rating />
       </div>
     </div>
   );

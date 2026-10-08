@@ -5,6 +5,7 @@ import {
   type MyBookingsQuery,
 } from "../search-params";
 import type { MyRestaurantBookingItem } from "../types";
+import { MyBookingReviewLink } from "./my-booking-review-link";
 import { MyBookingStatusMenu } from "./my-booking-status-menu";
 import { MyBookingsPagination } from "./my-bookings-pagination";
 
@@ -86,6 +87,7 @@ export function MyRestaurantBookingsList({
                   <MyBookingStatusMenu
                     item={{ ...item, kind: "restaurant", title: item.restaurantName, totalAmount: 0 }}
                   />
+                  <MyBookingReviewLink review={item.review} />
                   {item.cancelReason && (
                     <span
                       title={item.cancelReason}

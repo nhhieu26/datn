@@ -8,10 +8,7 @@ import {
   DestinationInfoCard,
 } from "@/features/customer/destination-detail";
 import { toDestinationDetail } from "@/features/customer/destination-detail/lib/to-destination-detail";
-import {
-  TourComments,
-  TourGallerySlider,
-} from "@/features/customer/tour-detail";
+import { TourGallerySlider } from "@/features/customer/tour-detail";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -53,9 +50,6 @@ export default async function DestinationDetailPage({ params }: Props) {
           <div className="mt-8 grid gap-8 lg:grid-cols-3 xl:grid-cols-[2fr_1fr]">
             <div className="lg:col-span-2 xl:col-span-1">
               <DestinationContent destination={destination} />
-              <div className="mt-8">
-                <TourComments />
-              </div>
             </div>
             <aside>
               <DestinationInfoCard destination={destination} />

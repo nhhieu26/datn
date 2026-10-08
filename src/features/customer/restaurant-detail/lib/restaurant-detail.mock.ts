@@ -11,6 +11,8 @@ for (let m = 6 * 60; m < 22 * 60 + 30; m += 30) {
 }
 
 export const MOCK_RESTAURANT: RestaurantDetail = {
+  id: "mock-la-trattoria",
+  rating: { avg: 0, count: 0 },
   name: "Nhà hàng Ý La Trattoria",
   slug: "la-trattoria",
   location: "Hà Nội",

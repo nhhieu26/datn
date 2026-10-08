@@ -15,6 +15,10 @@ type DestinationRow = Awaited<
   ReturnType<typeof destinationRepo.findPaged>
 >["items"][number];
 
+function toRating(s: { ratingAvg: unknown; reviewCount: number }) {
+  return { avg: Number(s.ratingAvg), count: s.reviewCount };
+}
+
 function formatMoney(value: number) {
   return `${new Intl.NumberFormat("vi-VN").format(value)}đ`;
 }
@@ -30,6 +34,7 @@ export function toTourItem(t: TourRow): ExploreItem {
     location: t.province.name,
     image: firstImage(t.images),
     price: Number(t.basePrice),
+    rating: toRating(t),
     meta: [
       `${t.durationDays} ngày ${t.durationNights} đêm`,
       `${t._count.departures} lịch khởi hành`,
@@ -48,6 +53,7 @@ export function toHotelItem(h: HotelRow): ExploreItem {
     location: h.province.name,
     image: firstImage(h.images),
     price: average(h.rooms.map((r) => Number(r.basePrice))),
+    rating: toRating(h),
     meta: [
       `${h.rooms.length} loại phòng`,
       capacity ? `Tối đa ${capacity} khách` : "—",
@@ -67,6 +73,7 @@ export function toRestaurantItem(r: RestaurantRow): ExploreItem {
     location: r.province.name,
     image: firstImage(r.images),
     price: menuAveragePrice(r.menu),
+    rating: toRating(r),
     meta: [
       `Sức chứa ${r.capacity}`,
       starts.length ? `${starts[0]} - ${ends[ends.length - 1]}` : "—",

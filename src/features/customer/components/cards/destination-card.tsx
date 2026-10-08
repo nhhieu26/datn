@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ExploreItem } from "@/features/customer/explore/data";
-import { Rating } from "./card-parts";
 
 export function DestinationCard({ item }: { item: ExploreItem }) {
   const card = (
@@ -41,7 +40,6 @@ export function DestinationCard({ item }: { item: ExploreItem }) {
         </div>
         <div className="flex items-center justify-between gap-3 whitespace-nowrap">
           <p className="text-sm font-medium text-new-teal-cta">Khám phá ngay</p>
-          <Rating />
         </div>
       </div>
     </article>

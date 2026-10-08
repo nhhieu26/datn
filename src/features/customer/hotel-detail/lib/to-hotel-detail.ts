@@ -18,6 +18,7 @@ export type HotelRoom = {
 };
 
 export type HotelDetail = {
+  id: string;
   slug: string;
   name: string;
   location: string;
@@ -31,6 +32,7 @@ export type HotelDetail = {
   minPrice: number;
   maxCapacity: number;
   rooms: HotelRoom[];
+  rating: { avg: number; count: number };
 };
 
 const FALLBACK: Img[] = [{ url: "/image-notfound.png" }];
@@ -52,6 +54,8 @@ export function toHotelDetail(h: HotelRow): HotelDetail {
   });
   const images = (h.images as Img[] | null) ?? [];
   return {
+    id: h.id,
+    rating: { avg: Number(h.ratingAvg), count: h.reviewCount },
     slug: h.slug,
     name: h.name,
     location: h.province.name,

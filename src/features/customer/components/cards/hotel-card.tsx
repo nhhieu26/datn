@@ -46,7 +46,7 @@ export function HotelCard({ item }: { item: ExploreItem }) {
             </p>
             <p>/đêm (TB)</p>
           </div>
-          <Rating />
+          {item.rating ? <Rating {...item.rating} /> : null}
         </div>
       </div>
     </article>

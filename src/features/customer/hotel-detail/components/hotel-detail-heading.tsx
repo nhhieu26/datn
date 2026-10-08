@@ -42,7 +42,9 @@ export function HotelDetailHeading({ hotel }: { hotel: HotelDetail }) {
           </p>
           <p>/đêm</p>
         </div>
-        <Rating />
+        <a className="w-fit hover:underline" href="#reviews">
+          <Rating {...hotel.rating} />
+        </a>
         {/* ponytail: chưa có module booking/đánh giá nên hardcode số lượt đặt */}
         <p className="text-sm text-new-paragraph">128 lượt đặt</p>
       </div>

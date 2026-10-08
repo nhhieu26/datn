@@ -5,14 +5,20 @@ import { tourBookingRepo } from "@/entities/tour-booking";
 import { PageBanner } from "@/features/customer/components/page-banner";
 import {
   TourBookingCard,
-  TourComments,
   TourContent,
   TourDetailHeading,
   TourGallerySlider,
 } from "@/features/customer/tour-detail";
 import { toTourDetail } from "@/features/customer/tour-detail/lib/to-tour-detail";
+import {
+  parseReviewsTake,
+  ServiceReviews,
+} from "@/features/customer/reviews";
 
-type Props = { params: Promise<{ slug: string }> };
+type Props = {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -20,8 +26,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: tour ? `${tour.title} — Roamly` : "Không tìm thấy tour" };
 }
 
-export default async function TourDetailPage({ params }: Props) {
+export default async function TourDetailPage({
+  params,
+  searchParams,
+}: Props) {
   const { slug } = await params;
+  const reviewsTake = parseReviewsTake((await searchParams).reviews);
   // Nhả chỗ của các đơn hết hạn giữ chỗ để số chỗ trống hiển thị đúng
   await tourBookingRepo.releaseExpired();
   const row = await tourRepo.findPublishedDetailBySlug(slug);
@@ -46,7 +56,13 @@ export default async function TourDetailPage({ params }: Props) {
             <div className="lg:col-span-2 xl:col-span-1">
               <TourContent tour={tour} />
               <div className="mt-8">
-                <TourComments />
+                <ServiceReviews
+                  kind="tour"
+                  serviceId={tour.id}
+                  slug={tour.slug}
+                  take={reviewsTake}
+                  total={tour.rating.count}
+                />
               </div>
             </div>
             <aside>

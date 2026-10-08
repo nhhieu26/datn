@@ -52,7 +52,9 @@ export function RestaurantDetailHeading({
             {formatPrice(minMenuPrice(restaurant.menu))}
           </p>
         </div>
-        <Rating />
+        <a className="w-fit hover:underline" href="#reviews">
+          <Rating {...restaurant.rating} />
+        </a>
         {/* ponytail: chưa có module booking/đánh giá nên hardcode số lượt đặt */}
         <p className="text-sm text-new-paragraph">128 lượt đặt</p>
       </div>

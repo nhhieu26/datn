@@ -46,7 +46,7 @@ export function TourCard({ item }: { item: ExploreItem }) {
               {formatPrice(item.price)}
             </p>
           </div>
-          <Rating />
+          {item.rating ? <Rating {...item.rating} /> : null}
         </div>
       </div>
     </article>

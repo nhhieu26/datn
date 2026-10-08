@@ -23,6 +23,8 @@ export function toRestaurantDetail(r: RestaurantRow): RestaurantDetail {
     }))
     .filter((m) => Number.isFinite(m.price));
   return {
+    id: r.id,
+    rating: { avg: Number(r.ratingAvg), count: r.reviewCount },
     name: r.name,
     slug: r.slug,
     location: r.province.name,

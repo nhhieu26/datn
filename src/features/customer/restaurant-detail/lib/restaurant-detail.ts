@@ -8,6 +8,7 @@ export type RestaurantTimeSlot = { startTime: string; endTime: string };
 
 // Mirrors the Restaurant Prisma model (province flattened to `location`).
 export type RestaurantDetail = {
+  id: string;
   name: string;
   slug: string;
   location: string;
@@ -21,6 +22,7 @@ export type RestaurantDetail = {
   menu: RestaurantMenuItem[];
   tags: string[];
   timeSlots: RestaurantTimeSlot[];
+  rating: { avg: number; count: number };
 };
 
 function toMinutes(t: string) {

@@ -9,11 +9,15 @@ import {
 } from "@/features/customer/restaurant-detail";
 import { toRestaurantDetail } from "@/features/customer/restaurant-detail/lib/to-restaurant-detail";
 import {
-  TourComments,
-  TourGallerySlider,
-} from "@/features/customer/tour-detail";
+  parseReviewsTake,
+  ServiceReviews,
+} from "@/features/customer/reviews";
+import { TourGallerySlider } from "@/features/customer/tour-detail";
 
-type Props = { params: Promise<{ slug: string }> };
+type Props = {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -23,8 +27,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function RestaurantDetailPage({ params }: Props) {
+export default async function RestaurantDetailPage({
+  params,
+  searchParams,
+}: Props) {
   const { slug } = await params;
+  const reviewsTake = parseReviewsTake((await searchParams).reviews);
   const row = await restaurantRepo.findPublishedDetailBySlug(slug);
   if (!row) notFound();
   const restaurant = toRestaurantDetail(row);
@@ -51,7 +59,13 @@ export default async function RestaurantDetailPage({ params }: Props) {
             <div className="lg:col-span-2 xl:col-span-1">
               <RestaurantContent restaurant={restaurant} />
               <div className="mt-8">
-                <TourComments />
+                <ServiceReviews
+                  kind="restaurant"
+                  serviceId={restaurant.id}
+                  slug={restaurant.slug}
+                  take={reviewsTake}
+                  total={restaurant.rating.count}
+                />
               </div>
             </div>
             <aside>

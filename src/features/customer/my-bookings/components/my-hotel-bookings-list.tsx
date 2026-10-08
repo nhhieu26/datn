@@ -6,6 +6,7 @@ import {
   type MyBookingsQuery,
 } from "../search-params";
 import type { MyHotelBookingItem } from "../types";
+import { MyBookingReviewLink } from "./my-booking-review-link";
 import { MyBookingStatusMenu } from "./my-booking-status-menu";
 import { MyBookingsPagination } from "./my-bookings-pagination";
 
@@ -91,6 +92,7 @@ export function MyHotelBookingsList({
                   <MyBookingStatusMenu
                     item={{ ...item, kind: "hotel", title: `${item.hotelName} · ${item.roomName}` }}
                   />
+                  <MyBookingReviewLink review={item.review} />
                   {item.status === "pending_payment" && item.expiresAt && (
                     <span className="mt-1 block text-xs text-new-paragraph">
                       Giữ phòng đến {formatDate(item.expiresAt)}
