@@ -19,7 +19,7 @@ export const RESTAURANT_PROVIDER_TRANSITIONS: Partial<
   Record<BookingStatus, ProviderBookingTransition[]>
 > = {
   pending_confirmation: ["confirmed", "cancelled"],
-  confirmed: ["cancelled"],
+  confirmed: ["completed", "cancelled"],
 };
 
 const RESTAURANT_STATUSES: BookingStatus[] = [

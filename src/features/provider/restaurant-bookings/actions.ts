@@ -34,6 +34,8 @@ export async function updateRestaurantBookingStatusAction(input: unknown) {
 
     if (data.status === "confirmed") {
       await restaurantBookingRepo.confirmForProvider(data.code, providerProfileId);
+    } else if (data.status === "completed") {
+      await restaurantBookingRepo.completeForProvider(data.code, providerProfileId);
     } else {
       await restaurantBookingRepo.cancelForProvider(
         data.code,

@@ -116,7 +116,7 @@ export async function findPageByCustomerId(
     customerId,
     ...(statuses && { status: { in: statuses } }),
   };
-  const [total, items] = await prisma.$transaction([
+  const [total, items] = await Promise.all([
     prisma.restaurantBooking.count({ where }),
     prisma.restaurantBooking.findMany({
       where,
@@ -214,7 +214,7 @@ export async function findPageByProviderProfileId(
   page: { skip: number; take: number }
 ) {
   const where = providerWhere(providerProfileId, filter);
-  const [total, items] = await prisma.$transaction([
+  const [total, items] = await Promise.all([
     prisma.restaurantBooking.count({ where }),
     prisma.restaurantBooking.findMany({
       where,
@@ -314,6 +314,25 @@ export function confirmForProvider(code: string, providerProfileId: string) {
     return tx.restaurantBooking.update({
       where: { id },
       data: { status: "confirmed", confirmedAt: new Date() },
+    });
+  });
+}
+
+/** Provider hoàn thành đơn sau giờ đặt bàn. */
+export function completeForProvider(code: string, providerProfileId: string) {
+  return prisma.$transaction(async (tx) => {
+    const { id, reservationDate, startTime } = await lockForProvider(
+      tx,
+      code,
+      providerProfileId,
+      ["confirmed"]
+    );
+    if (reservationInstant(reservationDate, startTime) > new Date()) {
+      throw new ConflictError("Chỉ có thể hoàn thành sau giờ đặt bàn.");
+    }
+    return tx.restaurantBooking.update({
+      where: { id },
+      data: { status: "completed", completedAt: new Date() },
     });
   });
 }

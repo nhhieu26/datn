@@ -117,7 +117,7 @@ export async function findPaged(filter: ListFilter) {
       filter,
     );
   }
-  const [items, total] = await prisma.$transaction([
+  const [items, total] = await Promise.all([
     prisma.hotel.findMany({
       where,
       include,

@@ -1,8 +1,9 @@
 import { z } from "zod";
 
-/** Provider chuyển trạng thái đơn đặt bàn: chỉ xác nhận hoặc hủy. */
+/** Provider chuyển trạng thái đơn đặt bàn: xác nhận, hoàn thành hoặc hủy. */
 export const updateRestaurantBookingStatusSchema = z.discriminatedUnion("status", [
   z.object({ code: z.string().min(1), status: z.literal("confirmed") }),
+  z.object({ code: z.string().min(1), status: z.literal("completed") }),
   z.object({
     code: z.string().min(1),
     status: z.literal("cancelled"),

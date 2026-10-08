@@ -105,7 +105,7 @@ export async function findPaged(
     }),
   };
   const order = priceOrder(filter.sort);
-  const [items, total] = await prisma.$transaction([
+  const [items, total] = await Promise.all([
     prisma.tour.findMany({
       where,
       include: {

@@ -100,7 +100,7 @@ export async function findPaged(filter: ListFilter) {
     const all = await prisma.restaurant.findMany({ where, include, orderBy });
     return paginateByPrice(all, (r) => menuAveragePrice(r.menu), filter);
   }
-  const [items, total] = await prisma.$transaction([
+  const [items, total] = await Promise.all([
     prisma.restaurant.findMany({
       where,
       include,

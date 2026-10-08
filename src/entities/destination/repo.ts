@@ -75,7 +75,7 @@ export async function findPaged(filter: ListFilter) {
     ...(price && { ticketPrice: price }),
   };
   const order = priceOrder(filter.sort);
-  const [items, total] = await prisma.$transaction([
+  const [items, total] = await Promise.all([
     prisma.destination.findMany({
       where,
       include: { province: true },

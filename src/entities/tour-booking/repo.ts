@@ -225,7 +225,7 @@ export function markPaid(input: {
       where: { id: input.bookingId },
       data: { status: "paid", expiresAt: null },
     }),
-  ]);
+  ], { maxWait: 10_000, timeout: 20_000 });
 }
 
 export function markPaymentFailed(
@@ -268,7 +268,7 @@ export async function findPageByProviderProfileId(
   page: { skip: number; take: number }
 ) {
   const where = providerWhere(providerProfileId, filter);
-  const [total, items] = await prisma.$transaction([
+  const [total, items] = await Promise.all([
     prisma.tourBooking.count({ where }),
     prisma.tourBooking.findMany({
       where,
@@ -309,7 +309,7 @@ export async function findPageByCustomerId(
     customerId,
     ...(statuses && { status: { in: statuses } }),
   };
-  const [total, items] = await prisma.$transaction([
+  const [total, items] = await Promise.all([
     prisma.tourBooking.count({ where }),
     prisma.tourBooking.findMany({
       where,
