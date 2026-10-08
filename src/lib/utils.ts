@@ -121,7 +121,7 @@ export function canCustomerCancelBefore(
 
 /** Thời điểm đặt bàn: ngày (lưu 00:00 UTC hoặc YYYY-MM-DD) + giờ HH:mm theo giờ Việt Nam. */
 export function reservationInstant(date: Date | string, startTime: string): Date {
-  const day = date instanceof Date ? date.toISOString().slice(0, 10) : date;
+  const day = (date instanceof Date ? date.toISOString() : date).slice(0, 10);
   return new Date(`${day}T${startTime}:00+07:00`);
 }
 
