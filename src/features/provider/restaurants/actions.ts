@@ -33,6 +33,14 @@ type CreationStage =
   | "database"
   | "embedding";
 
+function parseStoredImages(images: unknown): UploadedImage[] {
+  if (!Array.isArray(images)) return [];
+  return images.filter(
+    (image): image is UploadedImage =>
+      typeof image?.url === "string" && typeof image?.fileId === "string"
+  );
+}
+
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024;
 const ALLOWED_PHOTO_TYPES = ["image/png", "image/jpeg"];
 const MAX_PHOTOS = 5;
@@ -473,4 +481,223 @@ export async function createRestaurantFromLinksAction(
   }
 
   return { status: "success" };
+}
+
+export type UpdateRestaurantActionState = ActionState;
+
+export async function updateRestaurantAction(
+  restaurantId: string,
+  _prevState: UpdateRestaurantActionState,
+  formData: FormData
+): Promise<UpdateRestaurantActionState> {
+  const uploadedImages: UploadedImage[] = [];
+  let stage: CreationStage = "authorization";
+  let slug: string;
+  let removedImages: UploadedImage[];
+
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { status: "error", formError: "Vui lòng đăng nhập lại." };
+    }
+    if (session.user.role !== "provider") {
+      return {
+        status: "error",
+        formError: "Chỉ tài khoản đối tác mới có thể sửa nhà hàng.",
+      };
+    }
+
+    const providerProfile =
+      await providerProfileRepo.findApprovedByUserIdAndBusinessType(
+        session.user.id,
+        "restaurant"
+      );
+    if (!providerProfile) {
+      return {
+        status: "error",
+        formError:
+          "Tài khoản phải đang hoạt động và có hồ sơ doanh nghiệp loại Nhà hàng đã được duyệt.",
+      };
+    }
+
+    const restaurant = await restaurantRepo.findByIdForProvider(
+      restaurantId,
+      providerProfile.id
+    );
+    if (!restaurant) {
+      return { status: "error", formError: "Không tìm thấy nhà hàng." };
+    }
+    slug = restaurant.slug;
+
+    stage = "validation";
+    const parsed = createRestaurantSchema.safeParse({
+      name: formData.get("name"),
+      provinceId: formData.get("provinceId"),
+      address: formData.get("address"),
+      latitude: formData.get("latitude"),
+      longitude: formData.get("longitude"),
+      phone: formData.get("phone") ?? "",
+      capacity: formData.get("capacity"),
+      description: formData.get("description") ?? "",
+      tagIds: parseJsonField<string[]>(formData, "tagIds", []),
+      menu: parseJsonField<unknown[]>(formData, "menu", []),
+      timeSlots: parseJsonField<unknown[]>(formData, "timeSlots", []),
+    });
+
+    if (!parsed.success) {
+      return {
+        status: "error",
+        fieldErrors: parsed.error.flatten().fieldErrors as Record<
+          string,
+          string[]
+        >,
+      };
+    }
+
+    const storedImages = parseStoredImages(restaurant.images);
+    const keptFileIds = new Set(
+      parseJsonField<string[]>(formData, "existingImageIds", [])
+    );
+    const keptImages = storedImages.filter((image) =>
+      keptFileIds.has(image.fileId)
+    );
+    removedImages = storedImages.filter(
+      (image) => !keptFileIds.has(image.fileId)
+    );
+
+    const photos = formData
+      .getAll("photos")
+      .filter((file): file is File => file instanceof File && file.size > 0);
+    const totalPhotos = keptImages.length + photos.length;
+    if (totalPhotos === 0) {
+      return {
+        status: "error",
+        fieldErrors: { photos: ["Cần ít nhất 1 ảnh."] },
+      };
+    }
+    if (totalPhotos > MAX_PHOTOS) {
+      return {
+        status: "error",
+        fieldErrors: { photos: [`Tối đa ${MAX_PHOTOS} ảnh.`] },
+      };
+    }
+    // Chỉ kiểm tra file mới tải lên; ảnh cũ giữ lại đã hợp lệ từ lúc tạo
+    if (photos.length > 0) {
+      const photoError = await validatePhotos(photos);
+      if (photoError) return photoError;
+    }
+
+    const province = await provinceRepo.findById(parsed.data.provinceId);
+    if (!province) {
+      return {
+        status: "error",
+        fieldErrors: { provinceId: ["Tỉnh/thành đã chọn không tồn tại."] },
+      };
+    }
+
+    const uniqueTagIds = [...new Set(parsed.data.tagIds)];
+    if (uniqueTagIds.length > 0) {
+      const existingTags = await tagRepo.findManyByIds(uniqueTagIds);
+      if (existingTags.length !== uniqueTagIds.length) {
+        return {
+          status: "error",
+          fieldErrors: { tagIds: ["Một số tag đã chọn không tồn tại."] },
+        };
+      }
+    }
+
+    stage = "upload";
+    const uploadResults = await Promise.allSettled(
+      photos.map((photo) =>
+        uploadImage(photo, `restaurants/${providerProfile.id}`)
+      )
+    );
+    for (const result of uploadResults) {
+      if (result.status === "fulfilled") {
+        uploadedImages.push({
+          url: result.value.url,
+          fileId: result.value.fileId,
+        });
+      }
+    }
+    const uploadFailure = uploadResults.find(
+      (result): result is PromiseRejectedResult => result.status === "rejected"
+    );
+    if (uploadFailure) throw uploadFailure.reason;
+
+    stage = "database";
+    const updated = await restaurantRepo.update(restaurant.id, {
+      ...parsed.data,
+      tagIds: uniqueTagIds,
+      images: [...keptImages, ...uploadedImages],
+    });
+
+    try {
+      const embeddingText = [
+        parsed.data.name,
+        parsed.data.description,
+        province.fullName,
+        parsed.data.address,
+        parsed.data.menu.map((item) => item.name).join(", "),
+        parsed.data.menu.map((item) => item.description).join(", "),
+      ]
+        .filter(Boolean)
+        .join("\n");
+      const vector = await embedText(embeddingText);
+      await upsertRestaurantEmbedding(updated.id, vector, {
+        name: parsed.data.name,
+        provinceId: parsed.data.provinceId,
+        tagIds: uniqueTagIds,
+        status: updated.status,
+        providerProfileId: providerProfile.id,
+      });
+    } catch (error) {
+      console.error("Cập nhật embedding nhà hàng thất bại", {
+        restaurantId: updated.id,
+        error,
+      });
+    }
+  } catch (error) {
+    const cleanupResults = await Promise.allSettled(
+      uploadedImages.map((image) =>
+        retryCleanup(() => deleteImage(image.fileId))
+      )
+    );
+
+    console.error("Cập nhật nhà hàng thất bại", {
+      stage,
+      restaurantId,
+      error,
+      cleanupFailures: cleanupResults.filter(
+        (result) => result.status === "rejected"
+      ),
+    });
+
+    return {
+      status: "error",
+      formError:
+        stage === "upload"
+          ? STAGE_ERROR_MESSAGES.upload
+          : "Không thể cập nhật nhà hàng. Vui lòng thử lại.",
+    };
+  }
+
+  // Ảnh tạo từ link (seed) có fileId trùng url, không nằm trên ImageKit.
+  const imageCleanupResults = await Promise.allSettled(
+    removedImages
+      .filter((image) => image.fileId !== image.url)
+      .map((image) => retryCleanup(() => deleteImage(image.fileId)))
+  );
+  imageCleanupResults.forEach((result) => {
+    if (result.status === "rejected") {
+      console.error("Xóa ảnh nhà hàng cũ thất bại", {
+        restaurantId,
+        error: result.reason,
+      });
+    }
+  });
+
+  revalidatePath("/provider/restaurants");
+  revalidatePath(`/restaurants/${slug}`);
+  redirect("/provider/restaurants");
 }

@@ -71,3 +71,5 @@ export const createRestaurantSchema = z
       path: ["timeSlots"],
     }
   );
+
+export const updateRestaurantSchema = createRestaurantSchema;
