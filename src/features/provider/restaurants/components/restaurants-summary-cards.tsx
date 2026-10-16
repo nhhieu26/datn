@@ -34,15 +34,7 @@ export function RestaurantsSummaryCards({
       filled: true,
     },
     {
-      label: "Chờ duyệt",
-      value: summary.pending,
-      hint: "Đang chờ thẩm định",
-      icon: "schedule",
-      iconClass: "bg-amber-50 text-amber-600",
-      valueClass: "text-amber-600",
-    },
-    {
-      label: "Tạm dừng / Từ chối",
+      label: "Tạm dừng",
       value: summary.inactive,
       hint: "Cần kiểm tra lại",
       icon: "pause_circle",
@@ -52,7 +44,7 @@ export function RestaurantsSummaryCards({
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {cards.map((card) => (
         <div
           key={card.label}

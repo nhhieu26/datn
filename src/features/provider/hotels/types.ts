@@ -22,6 +22,5 @@ export type HotelListItem = {
 export type HotelsSummary = {
   total: number;
   published: number;
-  pending: number;
   inactive: number;
 };

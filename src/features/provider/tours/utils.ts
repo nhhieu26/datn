@@ -8,10 +8,7 @@ export function getToursSummary(tours: TourListItem[]): ToursSummary {
   return {
     total: tours.length,
     published: tours.filter((tour) => tour.status === "published").length,
-    pending: tours.filter((tour) => tour.status === "pending").length,
-    inactive: tours.filter(
-      (tour) => tour.status === "paused" || tour.status === "rejected",
-    ).length,
+    inactive: tours.filter((tour) => tour.status === "paused").length,
   };
 }
 

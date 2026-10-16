@@ -12,12 +12,8 @@ export function getRestaurantsSummary(
     published: restaurants.filter(
       (restaurant) => restaurant.status === "published"
     ).length,
-    pending: restaurants.filter(
-      (restaurant) => restaurant.status === "pending"
-    ).length,
     inactive: restaurants.filter(
-      (restaurant) =>
-        restaurant.status === "paused" || restaurant.status === "rejected"
+      (restaurant) => restaurant.status === "paused"
     ).length,
   };
 }

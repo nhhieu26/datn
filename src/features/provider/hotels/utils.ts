@@ -8,10 +8,7 @@ export function getHotelsSummary(hotels: HotelListItem[]): HotelsSummary {
   return {
     total: hotels.length,
     published: hotels.filter((hotel) => hotel.status === "published").length,
-    pending: hotels.filter((hotel) => hotel.status === "pending").length,
-    inactive: hotels.filter(
-      (hotel) => hotel.status === "paused" || hotel.status === "rejected",
-    ).length,
+    inactive: hotels.filter((hotel) => hotel.status === "paused").length,
   };
 }
 

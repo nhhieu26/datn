@@ -18,6 +18,5 @@ export type RestaurantListItem = {
 export type RestaurantsSummary = {
   total: number;
   published: number;
-  pending: number;
   inactive: number;
 };

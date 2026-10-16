@@ -21,6 +21,5 @@ export type TourListItem = {
 export type ToursSummary = {
   total: number;
   published: number;
-  pending: number;
   inactive: number;
 };

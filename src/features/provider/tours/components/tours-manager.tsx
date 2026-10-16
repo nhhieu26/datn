@@ -22,32 +22,18 @@ const statusMeta: Record<ServiceStatus, TourStatusMeta> = {
     dotClass: "bg-emerald-500",
     filled: true,
   },
-  pending: {
-    label: "Chờ duyệt",
-    icon: "schedule",
-    className: "border-amber-200/80 bg-amber-50 text-amber-700",
-    dotClass: "bg-amber-500",
-  },
   paused: {
     label: "Tạm dừng",
     icon: "pause_circle",
     className: "border-rose-200/80 bg-rose-50 text-rose-700",
     dotClass: "bg-rose-500",
   },
-  rejected: {
-    label: "Từ chối",
-    icon: "cancel",
-    className: "border-slate-200/80 bg-slate-100 text-slate-600",
-    dotClass: "bg-slate-400",
-  },
 };
 
 const statusFilters: { value: ServiceStatus | "all"; label: string }[] = [
   { value: "all", label: "Tất cả trạng thái" },
   { value: "published", label: "Đang mở bán" },
-  { value: "pending", label: "Chờ duyệt" },
   { value: "paused", label: "Tạm dừng" },
-  { value: "rejected", label: "Từ chối" },
 ];
 
 const PAGE_SIZE_OPTIONS = [6, 12, 24];
