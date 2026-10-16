@@ -1,6 +1,11 @@
-import type { HotelWithRelations } from "@/entities/hotel";
+import type { HotelForProvider, HotelWithRelations } from "@/entities/hotel";
 import { formatEntityCode } from "@/lib/utils";
 import { HotelListItem, HotelsSummary } from "./types";
+import type {
+  HotelFormState,
+  HotelPhoto,
+  RoomDraft,
+} from "./components/hotel-form";
 
 const FALLBACK_IMAGE = "/image-notfound.png";
 
@@ -55,5 +60,47 @@ export function mapHotelToListItem(hotel: HotelWithRelations): HotelListItem {
     rating: null,
     reviewCount: 0,
     status: hotel.status,
+  };
+}
+
+function toExistingPhotos(images: unknown): HotelPhoto[] {
+  if (!Array.isArray(images)) return [];
+  return images.flatMap((image) =>
+    typeof image?.url === "string" && typeof image?.fileId === "string"
+      ? [
+          {
+            kind: "existing" as const,
+            fileId: image.fileId,
+            previewUrl: image.url,
+          },
+        ]
+      : [],
+  );
+}
+
+export function mapHotelToFormValues(hotel: HotelForProvider): HotelFormState {
+  return {
+    name: hotel.name,
+    provinceId: hotel.provinceId,
+    address: hotel.address,
+    location:
+      hotel.latitude !== null && hotel.longitude !== null
+        ? { lat: Number(hotel.latitude), lng: Number(hotel.longitude) }
+        : null,
+    description: hotel.description ?? "",
+    amenities: hotel.amenities,
+    tagIds: hotel.tags.map((item) => item.tagId),
+    photos: toExistingPhotos(hotel.images),
+    rooms: hotel.rooms.map((room): RoomDraft => ({
+      id: room.id,
+      bookedCount: room._count.bookings,
+      name: room.name,
+      description: room.description ?? "",
+      capacity: String(room.capacity),
+      quantity: String(room.quantity),
+      basePrice: String(Number(room.basePrice)),
+      amenities: room.amenities,
+      photos: toExistingPhotos(room.images),
+    })),
   };
 }

@@ -63,6 +63,30 @@ function isUniqueConstraintError(error: unknown): boolean {
   );
 }
 
+type StoredImage = { url?: unknown; fileId?: unknown };
+
+function parseStoredImages(images: unknown): UploadedImage[] {
+  if (!Array.isArray(images)) return [];
+  return images.filter(
+    (image): image is UploadedImage =>
+      typeof (image as StoredImage)?.url === "string" &&
+      typeof (image as StoredImage)?.fileId === "string",
+  );
+}
+
+async function arePhotosValid(photos: File[]): Promise<boolean> {
+  for (const photo of photos) {
+    if (
+      !ALLOWED_PHOTO_TYPES.includes(photo.type) ||
+      photo.size > MAX_PHOTO_SIZE ||
+      !(await hasValidImageSignature(photo))
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
 async function hasValidImageSignature(file: File): Promise<boolean> {
   const bytes = new Uint8Array(await file.slice(0, 8).arrayBuffer());
   const isJpeg =
@@ -543,4 +567,367 @@ export async function createHotelFromLinksAction(
   }
 
   return { status: "success" };
+}
+
+export type UpdateHotelActionState = ActionState;
+
+export async function updateHotelAction(
+  hotelId: string,
+  _prevState: UpdateHotelActionState,
+  formData: FormData,
+): Promise<UpdateHotelActionState> {
+  const uploadedImages: UploadedImage[] = [];
+  let stage: CreationStage = "authorization";
+  let slug: string;
+  let removedImages: UploadedImage[];
+  let removedRoomImagesList: UploadedImage[][];
+
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { status: "error", formError: "Vui lòng đăng nhập lại." };
+    }
+    if (session.user.role !== "provider") {
+      return {
+        status: "error",
+        formError: "Chỉ tài khoản đối tác mới có thể sửa khách sạn.",
+      };
+    }
+
+    const providerProfile =
+      await providerProfileRepo.findApprovedByUserIdAndBusinessType(
+        session.user.id,
+        "hotel",
+      );
+    if (!providerProfile) {
+      return {
+        status: "error",
+        formError:
+          "Tài khoản phải đang hoạt động và có hồ sơ doanh nghiệp loại Khách sạn đã được duyệt.",
+      };
+    }
+
+    const hotel = await hotelRepo.findByIdForProvider(
+      hotelId,
+      providerProfile.id,
+    );
+    if (!hotel) {
+      return { status: "error", formError: "Không tìm thấy khách sạn." };
+    }
+    slug = hotel.slug;
+
+    stage = "validation";
+    const rawRooms = parseJsonField<
+      Array<{
+        id: unknown;
+        name: unknown;
+        description: unknown;
+        capacity: unknown;
+        quantity: unknown;
+        basePrice: unknown;
+        amenities: unknown;
+      }>
+    >(formData, "rooms", []);
+
+    const parsed = createHotelSchema.safeParse({
+      name: formData.get("name"),
+      provinceId: formData.get("provinceId"),
+      address: formData.get("address"),
+      latitude: formData.get("latitude"),
+      longitude: formData.get("longitude"),
+      description: formData.get("description"),
+      amenities: parseJsonField<string[]>(formData, "amenities", []),
+      tagIds: parseJsonField<string[]>(formData, "tagIds", []),
+      rooms: rawRooms,
+    });
+
+    if (!parsed.success) {
+      return {
+        status: "error",
+        fieldErrors: parsed.error.flatten().fieldErrors as Record<
+          string,
+          string[]
+        >,
+      };
+    }
+
+    const storedImages = parseStoredImages(hotel.images);
+    const keptFileIds = new Set(
+      parseJsonField<string[]>(formData, "existingImageIds", []),
+    );
+    const keptImages = storedImages.filter((image) =>
+      keptFileIds.has(image.fileId),
+    );
+    removedImages = storedImages.filter(
+      (image) => !keptFileIds.has(image.fileId),
+    );
+
+    const hotelPhotos = formData
+      .getAll("photos")
+      .filter((file): file is File => file instanceof File && file.size > 0);
+    const totalHotelPhotos = keptImages.length + hotelPhotos.length;
+    if (totalHotelPhotos === 0) {
+      return {
+        status: "error",
+        fieldErrors: { photos: ["Cần ít nhất 1 ảnh."] },
+      };
+    }
+    if (totalHotelPhotos > MAX_PHOTOS) {
+      return {
+        status: "error",
+        fieldErrors: { photos: [`Tối đa ${MAX_PHOTOS} ảnh.`] },
+      };
+    }
+    if (!(await arePhotosValid(hotelPhotos))) {
+      return {
+        status: "error",
+        fieldErrors: { photos: ["Ảnh phải là PNG/JPG hợp lệ và dưới 5MB."] },
+      };
+    }
+
+    const existingRooms = new Map(hotel.rooms.map((room) => [room.id, room]));
+    const submittedRoomIds = new Set<string>();
+    const keptRoomImagesList: UploadedImage[][] = [];
+    removedRoomImagesList = [];
+    const roomPhotosList: File[][] = [];
+
+    for (let index = 0; index < parsed.data.rooms.length; index += 1) {
+      const room = parsed.data.rooms[index];
+      const roomPhotos = formData
+        .getAll(`room-photos-${index}`)
+        .filter((file): file is File => file instanceof File && file.size > 0);
+
+      if (room.id) {
+        const existing = existingRooms.get(room.id);
+        if (!existing) {
+          return {
+            status: "error",
+            fieldErrors: { rooms: ["Loại phòng không hợp lệ."] },
+          };
+        }
+        submittedRoomIds.add(room.id);
+
+        const storedRoomImages = parseStoredImages(existing.images);
+        const keptRoomFileIds = new Set(
+          parseJsonField<string[]>(
+            formData,
+            `room-existing-photos-${index}`,
+            [],
+          ),
+        );
+        const keptRoomImages = storedRoomImages.filter((image) =>
+          keptRoomFileIds.has(image.fileId),
+        );
+        removedRoomImagesList.push(
+          storedRoomImages.filter((image) => !keptRoomFileIds.has(image.fileId)),
+        );
+        keptRoomImagesList.push(keptRoomImages);
+
+        const totalRoomPhotos = keptRoomImages.length + roomPhotos.length;
+        if (totalRoomPhotos === 0) {
+          return {
+            status: "error",
+            fieldErrors: { [`room-photos-${index}`]: ["Cần ít nhất 1 ảnh."] },
+          };
+        }
+        if (totalRoomPhotos > MAX_PHOTOS) {
+          return {
+            status: "error",
+            fieldErrors: {
+              [`room-photos-${index}`]: [`Tối đa ${MAX_PHOTOS} ảnh.`],
+            },
+          };
+        }
+        if (!(await arePhotosValid(roomPhotos))) {
+          return {
+            status: "error",
+            fieldErrors: {
+              [`room-photos-${index}`]: [
+                "Ảnh phải là PNG/JPG hợp lệ và dưới 5MB.",
+              ],
+            },
+          };
+        }
+        roomPhotosList.push(roomPhotos);
+      } else {
+        removedRoomImagesList.push([]);
+        keptRoomImagesList.push([]);
+        const roomPhotoError = await validatePhotos(
+          roomPhotos,
+          `room-photos-${index}`,
+        );
+        if (roomPhotoError) return roomPhotoError;
+        roomPhotosList.push(roomPhotos);
+      }
+    }
+
+    const removedRooms = hotel.rooms.filter(
+      (room) => !submittedRoomIds.has(room.id),
+    );
+    if (removedRooms.some((room) => room._count.bookings > 0)) {
+      return {
+        status: "error",
+        fieldErrors: {
+          rooms: ["Không thể xóa loại phòng đã có khách đặt."],
+        },
+      };
+    }
+
+    const tagIds = [...new Set(parsed.data.tagIds)];
+    const [province, tags] = await Promise.all([
+      provinceRepo.findById(parsed.data.provinceId),
+      tagRepo.findManyByIds(tagIds),
+    ]);
+    if (!province) {
+      return {
+        status: "error",
+        fieldErrors: { provinceId: ["Tỉnh/thành đã chọn không tồn tại."] },
+      };
+    }
+    if (tags.length !== tagIds.length) {
+      return {
+        status: "error",
+        fieldErrors: { tagIds: ["Một hoặc nhiều thẻ đã chọn không tồn tại."] },
+      };
+    }
+
+    stage = "upload";
+    const hotelUploadResults = await Promise.allSettled(
+      hotelPhotos.map((photo) =>
+        uploadImage(photo, `hotels/${providerProfile.id}`),
+      ),
+    );
+    const roomUploadResultsList = await Promise.all(
+      roomPhotosList.map((photos, index) =>
+        Promise.allSettled(
+          photos.map((photo) =>
+            uploadImage(photo, `hotels/${providerProfile.id}/rooms/${index}`),
+          ),
+        ),
+      ),
+    );
+
+    const hotelImages: UploadedImage[] = [];
+    for (const result of hotelUploadResults) {
+      if (result.status === "fulfilled") {
+        hotelImages.push({
+          url: result.value.url,
+          fileId: result.value.fileId,
+        });
+        uploadedImages.push({
+          url: result.value.url,
+          fileId: result.value.fileId,
+        });
+      }
+    }
+
+    const roomImages: UploadedImage[][] = roomUploadResultsList.map(
+      (results) => {
+        const images: UploadedImage[] = [];
+        for (const result of results) {
+          if (result.status === "fulfilled") {
+            images.push({ url: result.value.url, fileId: result.value.fileId });
+            uploadedImages.push({
+              url: result.value.url,
+              fileId: result.value.fileId,
+            });
+          }
+        }
+        return images;
+      },
+    );
+
+    const allUploadResults = [
+      ...hotelUploadResults,
+      ...roomUploadResultsList.flat(),
+    ];
+    const uploadFailure = allUploadResults.find(
+      (result): result is PromiseRejectedResult => result.status === "rejected",
+    );
+    if (uploadFailure) throw uploadFailure.reason;
+
+    stage = "database";
+    const updatedHotel = await hotelRepo.update(hotel.id, {
+      ...parsed.data,
+      tagIds,
+      images: [...keptImages, ...hotelImages],
+      rooms: parsed.data.rooms.map((room, index) => ({
+        ...room,
+        images: [...keptRoomImagesList[index], ...(roomImages[index] ?? [])],
+      })),
+      removedRoomIds: removedRooms.map((room) => room.id),
+    });
+
+    try {
+      const embeddingText = [
+        parsed.data.name,
+        parsed.data.description,
+        province.fullName,
+        parsed.data.address,
+        tags.map((tag) => tag.name).join(", "),
+        parsed.data.amenities.join(", "),
+        parsed.data.rooms.map((room) => room.name).join(", "),
+        parsed.data.rooms.map((room) => room.description).join(", "),
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      const vector = await embedText(embeddingText);
+      await upsertHotelEmbedding(updatedHotel.id, vector, {
+        name: parsed.data.name,
+        provinceId: parsed.data.provinceId,
+        tagIds,
+        status: updatedHotel.status,
+        providerProfileId: providerProfile.id,
+      });
+    } catch (error) {
+      console.error("Cập nhật embedding khách sạn thất bại", {
+        hotelId: updatedHotel.id,
+        error,
+      });
+    }
+  } catch (error) {
+    const cleanupResults = await Promise.allSettled(
+      uploadedImages.map((image) =>
+        retryCleanup(() => deleteImage(image.fileId)),
+      ),
+    );
+
+    console.error("Cập nhật khách sạn thất bại", {
+      stage,
+      hotelId,
+      error,
+      cleanupFailures: cleanupResults.filter(
+        (result) => result.status === "rejected",
+      ),
+    });
+
+    return {
+      status: "error",
+      formError:
+        stage === "upload"
+          ? STAGE_ERROR_MESSAGES.upload
+          : "Không thể cập nhật khách sạn. Vui lòng thử lại.",
+    };
+  }
+
+  // Ảnh tạo từ link (seed) có fileId trùng url, không nằm trên ImageKit.
+  const allRemovedImages = [...removedImages, ...removedRoomImagesList.flat()];
+  const imageCleanupResults = await Promise.allSettled(
+    allRemovedImages
+      .filter((image) => image.fileId !== image.url)
+      .map((image) => retryCleanup(() => deleteImage(image.fileId))),
+  );
+  imageCleanupResults.forEach((result) => {
+    if (result.status === "rejected") {
+      console.error("Xóa ảnh khách sạn cũ thất bại", {
+        hotelId,
+        error: result.reason,
+      });
+    }
+  });
+
+  revalidatePath("/provider/hotels");
+  revalidatePath(`/hotels/${slug}`);
+  redirect("/provider/hotels");
 }
