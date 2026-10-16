@@ -5,10 +5,6 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
 import { auth } from "@/lib/auth";
-import {
-  PAYPAL_REQUIRED_MESSAGE,
-  isPayPalLinked,
-} from "@/features/provider/payments/guard";
 import { deleteImage, uploadImage } from "@/lib/imagekit";
 import { embedText } from "@/lib/gemini";
 import { deleteHotelEmbedding, upsertHotelEmbedding } from "@/lib/pinecone";
@@ -231,10 +227,6 @@ export async function createHotelAction(
           "Tài khoản phải đang hoạt động và có hồ sơ doanh nghiệp loại Khách sạn đã được duyệt.",
       };
     }
-    if (!isPayPalLinked(providerProfile)) {
-      return { status: "error", formError: PAYPAL_REQUIRED_MESSAGE };
-    }
-
     stage = "validation";
     const rawRooms = parseJsonField<
       Array<{
@@ -433,10 +425,6 @@ export async function createHotelFromLinksAction(
     if (typeof providerProfileId !== "string" || !providerProfileId) {
       return { status: "error", formError: "Thiếu hồ sơ nhà cung cấp." };
     }
-    if (!(await providerProfileRepo.isPayPalLinkedById(providerProfileId))) {
-      return { status: "error", formError: PAYPAL_REQUIRED_MESSAGE };
-    }
-
     stage = "validation";
     const rawRooms = parseJsonField<
       Array<{

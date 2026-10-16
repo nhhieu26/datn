@@ -458,7 +458,7 @@ export function completeForProvider(code: string, providerProfileId: string) {
         tourDeparture: {
           select: { returnDate: true, tour: { select: { durationDays: true } } },
         },
-        providerProfile: { select: { paypalPayerId: true, payoutEmail: true } },
+        providerProfile: { select: { paypalPayerId: true } },
         payments: { where: { status: "succeeded" }, take: 1 },
       },
     });
@@ -472,13 +472,7 @@ export function completeForProvider(code: string, providerProfileId: string) {
       throw new ConflictError("Chỉ có thể hoàn thành đơn sau khi tour đã kết thúc.");
     }
 
-    const { paypalPayerId, payoutEmail } = booking.providerProfile;
-    const receiver = paypalPayerId ?? payoutEmail;
-    if (!receiver) {
-      throw new ConflictError(
-        "Vui lòng liên kết tài khoản PayPal ở mục Thanh toán / PayPal để nhận tiền."
-      );
-    }
+    const receiver = booking.providerProfile.paypalPayerId;
 
     const exchangeRate =
       booking.payments[0]?.exchangeRate ??
@@ -505,7 +499,7 @@ export function completeForProvider(code: string, providerProfileId: string) {
       booking: updated,
       payout,
       // payer ID là "encrypted PayPal account number" → recipient_type PAYPAL_ID
-      recipientType: paypalPayerId ? ("PAYPAL_ID" as const) : ("EMAIL" as const),
+      recipientType: "PAYPAL_ID" as const,
     };
   });
 }

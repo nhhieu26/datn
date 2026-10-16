@@ -114,6 +114,9 @@ export function create(
     userId: string;
     photoUrl: string | null;
     photoFileId: string | null;
+    payoutEmail: string;
+    paypalPayerId: string;
+    paypalLinkedAt: Date;
   }
 ): Promise<ProviderProfile> {
   const { licenseUrl, website, photoUrl, photoFileId, ...rest } = input;
@@ -169,19 +172,4 @@ export function linkPayPal(
       paypalLinkedAt: new Date(),
     },
   });
-}
-
-export function unlinkPayPal(id: string, userId: string) {
-  return prisma.providerProfile.updateMany({
-    where: { id, userId },
-    data: { payoutEmail: null, paypalPayerId: null, paypalLinkedAt: null },
-  });
-}
-
-export async function isPayPalLinkedById(id: string): Promise<boolean> {
-  const profile = await prisma.providerProfile.findUnique({
-    where: { id },
-    select: { paypalPayerId: true },
-  });
-  return Boolean(profile?.paypalPayerId);
 }

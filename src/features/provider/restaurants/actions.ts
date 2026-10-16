@@ -5,10 +5,6 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
 import { auth } from "@/lib/auth";
-import {
-  PAYPAL_REQUIRED_MESSAGE,
-  isPayPalLinked,
-} from "@/features/provider/payments/guard";
 import { deleteImage, uploadImage } from "@/lib/imagekit";
 import { embedText } from "@/lib/gemini";
 import {
@@ -241,10 +237,6 @@ export async function createRestaurantAction(
           "Tài khoản phải đang hoạt động và có hồ sơ doanh nghiệp loại Nhà hàng đã được duyệt.",
       };
     }
-    if (!isPayPalLinked(providerProfile)) {
-      return { status: "error", formError: PAYPAL_REQUIRED_MESSAGE };
-    }
-
     stage = "validation";
     const parsed = createRestaurantSchema.safeParse({
       name: formData.get("name"),
@@ -385,10 +377,6 @@ export async function createRestaurantFromLinksAction(
     if (typeof providerProfileId !== "string" || !providerProfileId) {
       return { status: "error", formError: "Thiếu hồ sơ nhà cung cấp." };
     }
-    if (!(await providerProfileRepo.isPayPalLinkedById(providerProfileId))) {
-      return { status: "error", formError: PAYPAL_REQUIRED_MESSAGE };
-    }
-
     stage = "validation";
     const parsed = createRestaurantSchema.safeParse({
       name: formData.get("name"),

@@ -11,10 +11,13 @@ export const metadata: Metadata = {
 
 export default async function EditProfilePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
+  const { paypal: paypalStatus } = await searchParams;
   const session = await auth();
   if (!session?.user?.id) redirect("/sign-in");
 
@@ -46,6 +49,11 @@ export default async function EditProfilePage({
         availableBusinessTypes={[profile.businessType]}
         initialValues={initialValues}
         mode="edit"
+        paypal={{
+          email: profile.payoutEmail,
+          linkedAt: profile.paypalLinkedAt.toISOString(),
+        }}
+        paypalStatus={typeof paypalStatus === "string" ? paypalStatus : undefined}
         profileId={profile.id}
         rejection={rejection}
       />

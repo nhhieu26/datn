@@ -12,19 +12,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/sign-in", request.url));
   }
 
+  // Có profileId → đổi PayPal cho hồ sơ đang sửa; không có → liên kết trước khi tạo hồ sơ
   const profileId = request.nextUrl.searchParams.get("profileId") ?? "";
-  const profile = profileId
-    ? await providerProfileRepo.findById(profileId, session.user.id)
-    : null;
-  if (!profile) {
-    return NextResponse.redirect(
-      new URL("/provider/payments?status=error", request.url)
-    );
+  if (profileId) {
+    const profile = await providerProfileRepo.findById(profileId, session.user.id);
+    if (!profile) {
+      return NextResponse.redirect(new URL("/provider/profiles", request.url));
+    }
   }
 
   const state = randomBytes(24).toString("hex");
   const response = NextResponse.redirect(buildAuthorizeUrl(state));
-  response.cookies.set(STATE_COOKIE, `${state}.${profile.id}`, {
+  response.cookies.set(STATE_COOKIE, `${state}.${profileId}`, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",

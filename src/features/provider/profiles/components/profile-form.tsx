@@ -47,6 +47,25 @@ const inputIconClass =
   "material-symbols-outlined pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[18px] text-slate-400";
 const fieldErrorClass = "mt-1 text-xs font-medium text-rose-500";
 
+const PAYPAL_STATUS_MESSAGES: Record<string, { text: string; className: string }> = {
+  linked: {
+    text: "Liên kết PayPal thành công.",
+    className: "bg-emerald-50 text-emerald-700",
+  },
+  cancelled: {
+    text: "Bạn đã hủy liên kết PayPal.",
+    className: "bg-amber-50 text-amber-700",
+  },
+  unverified: {
+    text: "Tài khoản PayPal chưa được xác minh nên không thể liên kết.",
+    className: "bg-rose-50 text-rose-600",
+  },
+  error: {
+    text: "Không thể liên kết PayPal. Vui lòng thử lại.",
+    className: "bg-rose-50 text-rose-600",
+  },
+};
+
 type ProfileFormValues = {
   businessName: string;
   businessType: BusinessType;
@@ -64,12 +83,16 @@ export function ProfileForm({
   initialValues,
   profileId,
   rejection,
+  paypal,
+  paypalStatus,
 }: {
   mode: "create" | "edit";
   availableBusinessTypes: BusinessType[];
   initialValues?: ProfileFormValues;
   profileId?: string;
   rejection?: { reason: string; timestamp: string };
+  paypal: { email: string; linkedAt: string } | null;
+  paypalStatus?: string;
 }) {
   const action =
     mode === "create"
@@ -91,6 +114,12 @@ export function ProfileForm({
   );
 
   const descriptionLength = description.length;
+  const paypalMessage = paypalStatus
+    ? PAYPAL_STATUS_MESSAGES[paypalStatus]
+    : undefined;
+  const paypalConnectHref = profileId
+    ? `/api/paypal/connect?profileId=${profileId}`
+    : "/api/paypal/connect";
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col space-y-6">
@@ -146,6 +175,71 @@ export function ProfileForm({
             {state.formError}
           </p>
         ) : null}
+
+        {/* Tài khoản PayPal */}
+        <div>
+          <label className="mb-2 block text-xs font-bold text-slate-700">
+            Tài khoản nhận tiền PayPal <span className="text-brand-500">*</span>
+          </label>
+          {paypalMessage ? (
+            <p
+              className={`mb-3 rounded-xl px-4 py-2.5 text-[13px] font-medium ${paypalMessage.className}`}
+            >
+              {paypalMessage.text}
+            </p>
+          ) : null}
+          <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-slate-50/50 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3.5">
+              <div
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                  paypal
+                    ? "bg-emerald-100 text-emerald-600"
+                    : "bg-slate-100 text-slate-500"
+                }`}
+              >
+                <span className="material-symbols-outlined text-[20px]">
+                  {paypal ? "verified" : "account_balance_wallet"}
+                </span>
+              </div>
+              {paypal ? (
+                <div className="space-y-0.5">
+                  <p className="text-sm font-bold text-slate-800">
+                    {paypal.email}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Đã liên kết ngày{" "}
+                    {new Date(paypal.linkedAt).toLocaleDateString("vi-VN")}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-0.5">
+                  <p className="text-sm font-bold text-slate-800">
+                    Chưa liên kết tài khoản PayPal
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Roamly chuyển tiền thanh toán của khách vào tài khoản này.
+                    Hãy liên kết trước khi điền thông tin bên dưới.
+                  </p>
+                </div>
+              )}
+            </div>
+            {/* Route handler redirect sang PayPal → dùng <a>, không dùng next/link */}
+            <a
+              className={
+                paypal
+                  ? "inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-2xs transition-all hover:bg-slate-100"
+                  : "inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600"
+              }
+              href={paypalConnectHref}
+            >
+              <span className="material-symbols-outlined text-[16px]">link</span>
+              {paypal ? "Đổi tài khoản PayPal" : "Liên kết với PayPal"}
+            </a>
+          </div>
+          {state.fieldErrors?.paypal ? (
+            <p className={fieldErrorClass}>{state.fieldErrors.paypal[0]}</p>
+          ) : null}
+        </div>
 
         {/* Tên doanh nghiệp */}
         <div>
@@ -460,7 +554,7 @@ export function ProfileForm({
           <div className="flex items-center gap-3">
             <button
               className="inline-flex items-center gap-2 rounded-2xl bg-brand-500 px-6 py-3 text-sm font-bold text-white shadow-md shadow-brand-500/25 transition-all hover:bg-brand-600 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isPending}
+              disabled={isPending || !paypal}
               type="submit"
             >
               <span className="material-symbols-outlined text-[18px]">

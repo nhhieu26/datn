@@ -1,8 +1,10 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
+import { PENDING_COOKIE, readPendingLink } from "@/lib/paypal-pending";
 import { deleteImage, uploadImage } from "@/lib/imagekit";
 import {
   createProviderProfileSchema,
@@ -51,6 +53,17 @@ export async function createProviderProfileAction(
       throw new ValidationError(fromZodError(parsed.error));
     }
 
+    const cookieStore = await cookies();
+    const paypal = readPendingLink(
+      cookieStore.get(PENDING_COOKIE)?.value,
+      session.user.id
+    );
+    if (!paypal) {
+      throw new ValidationError({
+        paypal: ["Vui lòng liên kết tài khoản PayPal."],
+      });
+    }
+
     const existingTypes = await providerProfileRepo.findBusinessTypesByUserId(
       session.user.id
     );
@@ -82,7 +95,11 @@ export async function createProviderProfileAction(
       userId: session.user.id,
       photoUrl,
       photoFileId,
+      payoutEmail: paypal.email,
+      paypalPayerId: paypal.payerId,
+      paypalLinkedAt: new Date(paypal.linkedAt),
     });
+    cookieStore.delete(PENDING_COOKIE);
   });
 
   if (result.status === "success") {

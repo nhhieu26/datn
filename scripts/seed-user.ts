@@ -18,9 +18,9 @@ type ProfileSeed = {
   description?: string;
   photoUrl?: string;
   approvalStatus?: ApprovalStatus;
-  paypalPayerId?: string;
-  payoutEmail?: string;
-  paypalLinkedAt?: Date | string;
+  paypalPayerId: string;
+  payoutEmail: string;
+  paypalLinkedAt: Date | string;
 };
 
 type UserSeed = {
@@ -217,9 +217,7 @@ export async function seedUsers() {
           approvalStatus: p.approvalStatus ?? "not_submitted",
           paypalPayerId: p.paypalPayerId,
           payoutEmail: p.payoutEmail,
-          paypalLinkedAt: p.paypalLinkedAt
-            ? new Date(p.paypalLinkedAt)
-            : undefined,
+          paypalLinkedAt: new Date(p.paypalLinkedAt),
         },
         update: {
           businessName: p.businessName,
@@ -232,9 +230,7 @@ export async function seedUsers() {
           approvalStatus: p.approvalStatus ?? "not_submitted",
           paypalPayerId: p.paypalPayerId,
           payoutEmail: p.payoutEmail,
-          paypalLinkedAt: p.paypalLinkedAt
-            ? new Date(p.paypalLinkedAt)
-            : undefined,
+          paypalLinkedAt: new Date(p.paypalLinkedAt),
         },
       });
     }

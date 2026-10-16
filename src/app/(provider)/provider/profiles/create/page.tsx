@@ -1,8 +1,10 @@
 import { auth } from "@/lib/auth";
+import { PENDING_COOKIE, readPendingLink } from "@/lib/paypal-pending";
 import { providerProfileRepo } from "@/entities/provider-profile";
 import { ProfileForm } from "@/features/provider/profiles";
 import type { BusinessType } from "@/generated/prisma/client";
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -12,7 +14,11 @@ export const metadata: Metadata = {
 
 const ALL_BUSINESS_TYPES: BusinessType[] = ["tour", "hotel", "restaurant"];
 
-export default async function CreateProfilePage() {
+export default async function CreateProfilePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const session = await auth();
   if (!session?.user?.id) redirect("/sign-in");
 
@@ -50,9 +56,20 @@ export default async function CreateProfilePage() {
     );
   }
 
+  const { paypal: paypalStatus } = await searchParams;
+  const paypal = readPendingLink(
+    (await cookies()).get(PENDING_COOKIE)?.value,
+    session.user.id
+  );
+
   return (
     <main className="flex-1 overflow-y-auto px-8 py-7">
-      <ProfileForm availableBusinessTypes={availableBusinessTypes} mode="create" />
+      <ProfileForm
+        availableBusinessTypes={availableBusinessTypes}
+        mode="create"
+        paypal={paypal}
+        paypalStatus={typeof paypalStatus === "string" ? paypalStatus : undefined}
+      />
     </main>
   );
 }
