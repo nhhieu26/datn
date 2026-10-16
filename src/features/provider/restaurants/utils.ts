@@ -1,6 +1,7 @@
 import type { RestaurantWithRelations } from "@/entities/restaurant";
 import { formatEntityCode } from "@/lib/utils";
 import type { RestaurantListItem, RestaurantsSummary } from "./types";
+import type { RestaurantFormState } from "./components/restaurant-form";
 
 const FALLBACK_IMAGE = "/image-notfound.png";
 
@@ -56,5 +57,59 @@ export function mapRestaurantToListItem(
     lowestMenuPrice: findLowestMenuPrice(restaurant.menu),
     tagNames: restaurant.tags.map((item) => item.tag.name),
     status: restaurant.status,
+  };
+}
+
+export function mapRestaurantToFormValues(
+  restaurant: RestaurantWithRelations
+): RestaurantFormState {
+  const images = Array.isArray(restaurant.images)
+    ? (restaurant.images as { url?: unknown; fileId?: unknown }[])
+    : [];
+  const menu = Array.isArray(restaurant.menu)
+    ? (restaurant.menu as {
+        name?: unknown;
+        description?: unknown;
+        price?: unknown;
+      }[])
+    : [];
+
+  return {
+    name: restaurant.name,
+    provinceId: restaurant.provinceId,
+    address: restaurant.address,
+    location:
+      restaurant.latitude === null || restaurant.longitude === null
+        ? null
+        : {
+            lat: Number(restaurant.latitude),
+            lng: Number(restaurant.longitude),
+          },
+    phone: restaurant.phone ?? "",
+    capacity: String(restaurant.capacity),
+    description: restaurant.description ?? "",
+    tagIds: restaurant.tags.map((item) => item.tagId),
+    photos: images.flatMap((image) =>
+      typeof image?.url === "string" && typeof image?.fileId === "string"
+        ? [
+            {
+              kind: "existing" as const,
+              fileId: image.fileId,
+              previewUrl: image.url,
+            },
+          ]
+        : []
+    ),
+    menu: menu.map((item) => {
+      const price = Number(item.price);
+      return {
+        name: typeof item.name === "string" ? item.name : "",
+        description: typeof item.description === "string" ? item.description : "",
+        price: Number.isFinite(price) ? String(price) : "",
+      };
+    }),
+    timeSlots: restaurant.timeSlots
+      .map((slot) => ({ startTime: slot.startTime, endTime: slot.endTime }))
+      .sort((a, b) => a.startTime.localeCompare(b.startTime)),
   };
 }

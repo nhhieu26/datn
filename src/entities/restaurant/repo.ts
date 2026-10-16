@@ -10,6 +10,7 @@ import type {
   CreateRestaurantInput,
   Restaurant,
   RestaurantWithRelations,
+  UpdateRestaurantInput,
 } from "./type";
 
 export function findBySlug(slug: string): Promise<Restaurant | null> {
@@ -64,6 +65,62 @@ export function create(
         })),
       },
     },
+  });
+}
+
+export function findByIdForProvider(
+  id: string,
+  providerProfileId: string
+): Promise<RestaurantWithRelations | null> {
+  return prisma.restaurant.findFirst({
+    where: { id, providerProfileId },
+    include: {
+      province: true,
+      tags: { include: { tag: true } },
+      timeSlots: { orderBy: { startTime: "asc" } },
+    },
+  });
+}
+
+export async function update(
+  id: string,
+  input: UpdateRestaurantInput & {
+    images: { url: string; fileId: string }[];
+  }
+): Promise<Restaurant> {
+  const { tagIds, menu, timeSlots, images, ...rest } = input;
+  const startTimes = timeSlots.map((slot) => slot.startTime);
+
+  return prisma.$transaction(async (tx) => {
+    const restaurant = await tx.restaurant.update({
+      where: { id },
+      data: { ...rest, images, menu },
+    });
+
+    await tx.restaurantTag.deleteMany({ where: { restaurantId: id } });
+    await tx.restaurantTag.createMany({
+      data: tagIds.map((tagId) => ({ restaurantId: id, tagId })),
+    });
+
+    // Giữ slot cũ vẫn được chọn để booking không mất liên kết (booking -> slot là SetNull)
+    await tx.restaurantTimeSlot.deleteMany({
+      where: { restaurantId: id, startTime: { notIn: startTimes } },
+    });
+    for (const slot of timeSlots) {
+      await tx.restaurantTimeSlot.upsert({
+        where: {
+          restaurantId_startTime: { restaurantId: id, startTime: slot.startTime },
+        },
+        update: { endTime: slot.endTime },
+        create: {
+          restaurantId: id,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+        },
+      });
+    }
+
+    return restaurant;
   });
 }
 

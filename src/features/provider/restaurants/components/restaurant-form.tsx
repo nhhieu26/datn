@@ -8,7 +8,10 @@ import {
   useMultiStepForm,
   type StepDefinition,
 } from "@/shared/components/multi-step-form";
-import { createRestaurantAction } from "@/features/provider/restaurants/actions";
+import {
+  createRestaurantAction,
+  updateRestaurantAction,
+} from "@/features/provider/restaurants/actions";
 import {
   FIXED_TIME_SLOTS,
   TIME_BOUNDARIES,
@@ -29,10 +32,9 @@ const steps: StepDefinition[] = [
   { id: 4, title: "Khung giờ", subtitle: "Giờ mở & sức chứa" },
 ];
 
-export type RestaurantPhoto = {
-  file: File;
-  previewUrl: string;
-};
+export type RestaurantPhoto =
+  | { kind: "new"; file: File; previewUrl: string }
+  | { kind: "existing"; fileId: string; previewUrl: string };
 
 export type MenuItemDraft = {
   name: string;
@@ -92,12 +94,18 @@ function sortTimeSlots(slots: TimeSlotDraft[]): TimeSlotDraft[] {
 export function RestaurantForm({
   provinces,
   tags,
+  mode = "create",
+  restaurantId,
+  initialValues,
 }: {
   provinces: Province[];
   tags: Tag[];
+  mode?: "create" | "edit";
+  restaurantId?: string;
+  initialValues?: RestaurantFormState;
 }) {
-  const [form, setForm] = useState<RestaurantFormState>(() =>
-    createInitialState(provinces)
+  const [form, setForm] = useState<RestaurantFormState>(
+    () => initialValues ?? createInitialState(provinces)
   );
   const [rangeStart, setRangeStart] = useState(TIME_BOUNDARIES[0]);
   const [rangeEnd, setRangeEnd] = useState(
@@ -106,7 +114,9 @@ export function RestaurantForm({
   const { currentStep, goTo, next, prev, isFirst, isLast } =
     useMultiStepForm(steps.length);
   const [actionState, formAction, isPending] = useActionState(
-    createRestaurantAction,
+    mode === "edit"
+      ? updateRestaurantAction.bind(null, restaurantId!)
+      : createRestaurantAction,
     INITIAL_ACTION_STATE
   );
 
@@ -134,7 +144,11 @@ export function RestaurantForm({
     const remaining = MAX_PHOTOS - form.photos.length;
     const next = Array.from(files)
       .slice(0, remaining)
-      .map((file) => ({ file, previewUrl: URL.createObjectURL(file) }));
+      .map((file) => ({
+        kind: "new" as const,
+        file,
+        previewUrl: URL.createObjectURL(file),
+      }));
     update("photos", [...form.photos, ...next]);
   };
 
@@ -203,7 +217,17 @@ export function RestaurantForm({
     fd.append("tagIds", JSON.stringify(form.tagIds));
     fd.append("menu", JSON.stringify(form.menu));
     fd.append("timeSlots", JSON.stringify(form.timeSlots));
-    form.photos.forEach((photo) => fd.append("photos", photo.file));
+    fd.append(
+      "existingImageIds",
+      JSON.stringify(
+        form.photos.flatMap((photo) =>
+          photo.kind === "existing" ? [photo.fileId] : []
+        )
+      )
+    );
+    form.photos.forEach((photo) => {
+      if (photo.kind === "new") fd.append("photos", photo.file);
+    });
 
     startTransition(() => {
       formAction(fd);
@@ -214,10 +238,12 @@ export function RestaurantForm({
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
       <section className="space-y-1">
         <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
-          Tạo Nhà Hàng Mới
+          {mode === "edit" ? "Chỉnh sửa Nhà hàng" : "Tạo Nhà Hàng Mới"}
         </h1>
         <p className="text-sm font-medium text-slate-500">
-          Nhập thông tin chi tiết để giới thiệu nhà hàng của bạn tới thực khách.
+          {mode === "edit"
+            ? "Cập nhật thông tin, hình ảnh, thực đơn và khung giờ phục vụ của nhà hàng."
+            : "Nhập thông tin chi tiết để giới thiệu nhà hàng của bạn tới thực khách."}
         </p>
       </section>
 
@@ -615,11 +641,17 @@ export function RestaurantForm({
           ) : null}
 
           <StepFooter
-            cancelHref="/provider/profiles"
+            cancelHref={mode === "edit" ? "/provider/restaurants" : "/provider/profiles"}
             isFirst={isFirst}
             isLast={isLast}
             lastLabel={
-              isPending ? "Đang tạo nhà hàng..." : "Hoàn tất & Xuất bản Nhà hàng"
+              mode === "edit"
+                ? isPending
+                  ? "Đang lưu..."
+                  : "Lưu thay đổi"
+                : isPending
+                  ? "Đang tạo nhà hàng..."
+                  : "Hoàn tất & Xuất bản Nhà hàng"
             }
             nextDisabled={isLast && isPending}
             onBack={prev}
