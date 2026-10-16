@@ -8,8 +8,10 @@ import {
 } from "../list-filter";
 import type {
   Hotel,
+  HotelForProvider,
   HotelWithRelations,
   RoomDraftInput,
+  UpdateHotelInput,
 } from "./type";
 
 type UploadedImage = { url: string; fileId: string };
@@ -77,6 +79,76 @@ export function create(input: {
         })),
       },
     },
+  });
+}
+
+export function findByIdForProvider(
+  id: string,
+  providerProfileId: string
+): Promise<HotelForProvider | null> {
+  return prisma.hotel.findFirst({
+    where: { id, providerProfileId },
+    include: {
+      province: true,
+      tags: { include: { tag: true } },
+      rooms: {
+        orderBy: { createdAt: "asc" },
+        include: { _count: { select: { bookings: true } } },
+      },
+    },
+  });
+}
+
+export async function update(
+  id: string,
+  input: Omit<UpdateHotelInput, "rooms"> & {
+    images: UploadedImage[];
+    rooms: (RoomDraftInput & { images: UploadedImage[] })[];
+    removedRoomIds: string[];
+  }
+): Promise<Hotel> {
+  const { tagIds, rooms, images, removedRoomIds, ...rest } = input;
+
+  return prisma.$transaction(async (tx) => {
+    const hotel = await tx.hotel.update({
+      where: { id },
+      data: { ...rest, images },
+    });
+
+    await tx.hotelTag.deleteMany({ where: { hotelId: id } });
+    await tx.hotelTag.createMany({
+      data: tagIds.map((tagId) => ({ hotelId: id, tagId })),
+    });
+
+    // chỉ xóa phòng chưa từng có booking (HotelBooking.roomId SetNull)
+    if (removedRoomIds.length > 0) {
+      await tx.room.deleteMany({
+        where: {
+          id: { in: removedRoomIds },
+          hotelId: id,
+          bookings: { none: {} },
+        },
+      });
+    }
+
+    for (const room of rooms) {
+      const data = {
+        name: room.name,
+        description: room.description,
+        capacity: room.capacity,
+        quantity: room.quantity,
+        basePrice: room.basePrice,
+        amenities: room.amenities,
+        images: room.images,
+      };
+      if (room.id) {
+        await tx.room.update({ where: { id: room.id, hotelId: id }, data });
+      } else {
+        await tx.room.create({ data: { ...data, hotelId: id } });
+      }
+    }
+
+    return hotel;
   });
 }
 

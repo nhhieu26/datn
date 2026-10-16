@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const roomDraftSchema = z.object({
+  id: z.string().optional(),
   name: z.string().trim().min(1, "Vui lòng nhập tên loại phòng").max(200),
   description: z
     .string()
@@ -41,3 +42,5 @@ export const createHotelSchema = z.object({
   tagIds: z.array(z.string()).default([]),
   rooms: z.array(roomDraftSchema).min(1, "Cần ít nhất 1 loại phòng"),
 });
+
+export const updateHotelSchema = createHotelSchema;

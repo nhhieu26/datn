@@ -8,7 +8,10 @@ import {
   useMultiStepForm,
   type StepDefinition,
 } from "@/shared/components/multi-step-form";
-import { createHotelAction } from "@/features/provider/hotels/actions";
+import {
+  createHotelAction,
+  updateHotelAction,
+} from "@/features/provider/hotels/actions";
 import { HotelPreviewCard } from "./hotel-preview-card";
 import { LocationPicker, type LatLng } from "@/shared/components/location-picker";
 
@@ -23,12 +26,13 @@ const steps: StepDefinition[] = [
   { id: 3, title: "Danh sách phòng", subtitle: "Loại phòng & giá" },
 ];
 
-export type HotelPhoto = {
-  file: File;
-  previewUrl: string;
-};
+export type HotelPhoto =
+  | { kind: "new"; file: File; previewUrl: string }
+  | { kind: "existing"; fileId: string; previewUrl: string };
 
 export type RoomDraft = {
+  id?: string;
+  bookedCount?: number;
   name: string;
   description: string;
   capacity: string;
@@ -203,17 +207,23 @@ function PhotoPicker({
 export function HotelForm({
   provinces,
   tags,
+  mode = "create",
+  hotelId,
+  initialValues,
 }: {
   provinces: Province[];
   tags: Tag[];
+  mode?: "create" | "edit";
+  hotelId?: string;
+  initialValues?: HotelFormState;
 }) {
   const [form, setForm] = useState<HotelFormState>(() =>
-    createInitialState(provinces)
+    initialValues ?? createInitialState(provinces)
   );
   const { currentStep, goTo, next, prev, isFirst, isLast } =
     useMultiStepForm(steps.length);
   const [actionState, formAction, isPending] = useActionState(
-    createHotelAction,
+    mode === "edit" ? updateHotelAction.bind(null, hotelId!) : createHotelAction,
     INITIAL_ACTION_STATE
   );
 
@@ -241,7 +251,11 @@ export function HotelForm({
     const remaining = MAX_PHOTOS - form.photos.length;
     const nextPhotos = Array.from(files)
       .slice(0, remaining)
-      .map((file) => ({ file, previewUrl: URL.createObjectURL(file) }));
+      .map((file) => ({
+        kind: "new" as const,
+        file,
+        previewUrl: URL.createObjectURL(file),
+      }));
     update("photos", [...form.photos, ...nextPhotos]);
   };
 
@@ -276,7 +290,11 @@ export function HotelForm({
     const remaining = MAX_PHOTOS - room.photos.length;
     const nextPhotos = Array.from(files)
       .slice(0, remaining)
-      .map((file) => ({ file, previewUrl: URL.createObjectURL(file) }));
+      .map((file) => ({
+        kind: "new" as const,
+        file,
+        previewUrl: URL.createObjectURL(file),
+      }));
     updateRoom(index, "photos", [...room.photos, ...nextPhotos]);
   };
 
@@ -305,6 +323,7 @@ export function HotelForm({
       "rooms",
       JSON.stringify(
         form.rooms.map((room) => ({
+          id: room.id,
           name: room.name,
           description: room.description,
           capacity: room.capacity,
@@ -314,11 +333,30 @@ export function HotelForm({
         }))
       )
     );
-    form.photos.forEach((photo) => fd.append("photos", photo.file));
+    fd.append(
+      "existingImageIds",
+      JSON.stringify(
+        form.photos.flatMap((photo) =>
+          photo.kind === "existing" ? [photo.fileId] : []
+        )
+      )
+    );
+    form.photos.forEach((photo) => {
+      if (photo.kind === "new") fd.append("photos", photo.file);
+    });
     form.rooms.forEach((room, index) => {
-      room.photos.forEach((photo) =>
-        fd.append(`room-photos-${index}`, photo.file)
+      fd.append(
+        `room-existing-photos-${index}`,
+        JSON.stringify(
+          room.photos.flatMap((photo) =>
+            photo.kind === "existing" ? [photo.fileId] : []
+          )
+        )
       );
+      room.photos.forEach((photo) => {
+        if (photo.kind === "new")
+          fd.append(`room-photos-${index}`, photo.file);
+      });
     });
 
     startTransition(() => {
@@ -330,11 +368,12 @@ export function HotelForm({
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
       <section className="space-y-1">
         <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
-          Tạo Khách Sạn Mới
+          {mode === "edit" ? "Chỉnh sửa Khách sạn" : "Tạo Khách Sạn Mới"}
         </h1>
         <p className="text-sm font-medium text-slate-500">
-          Nhập thông tin chi tiết để giới thiệu khách sạn của bạn tới khách du
-          lịch.
+          {mode === "edit"
+            ? "Cập nhật thông tin, hình ảnh và danh sách phòng của khách sạn."
+            : "Nhập thông tin chi tiết để giới thiệu khách sạn của bạn tới khách du lịch."}
         </p>
       </section>
 
@@ -520,7 +559,11 @@ export function HotelForm({
                       <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-50 text-xs font-bold text-brand-600">
                         {index + 1}
                       </span>
-                      {form.rooms.length > 1 ? (
+                      {room.bookedCount ? (
+                        <span className="text-xs font-semibold text-slate-500">
+                          Đã có khách đặt
+                        </span>
+                      ) : form.rooms.length > 1 ? (
                         <button
                           className="text-xs font-semibold text-rose-500 hover:text-rose-600"
                           onClick={() => removeRoom(index)}
@@ -657,11 +700,17 @@ export function HotelForm({
           ) : null}
 
           <StepFooter
-            cancelHref="/provider/profiles"
+            cancelHref={mode === "edit" ? "/provider/hotels" : "/provider/profiles"}
             isFirst={isFirst}
             isLast={isLast}
             lastLabel={
-              isPending ? "Đang tạo khách sạn..." : "Hoàn tất & Xuất bản Khách sạn"
+              mode === "edit"
+                ? isPending
+                  ? "Đang lưu..."
+                  : "Lưu thay đổi"
+                : isPending
+                  ? "Đang tạo khách sạn..."
+                  : "Hoàn tất & Xuất bản Khách sạn"
             }
             nextDisabled={isLast && isPending}
             onBack={prev}

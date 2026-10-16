@@ -64,4 +64,22 @@ const outOfRange = createHotelSchema.safeParse({
 });
 assert(!outOfRange.success, "vĩ độ ngoài khoảng phải bị từ chối");
 
+// roomDraftSchema: id tùy chọn dùng cho chế độ chỉnh sửa
+const withRoomId = createHotelSchema.safeParse({
+  ...base,
+  latitude: "16.05",
+  longitude: "108.2",
+  rooms: [{ ...base.rooms[0], id: "room-1" }],
+});
+assert(withRoomId.success, "room có id phải được chấp nhận");
+if (withRoomId.success) {
+  assert(withRoomId.data.rooms[0].id === "room-1", "room id phải được giữ nguyên");
+}
+const noRoomId = createHotelSchema.safeParse({
+  ...base,
+  latitude: "16.05",
+  longitude: "108.2",
+});
+assert(noRoomId.success, "room không có id (tạo mới) vẫn phải được chấp nhận");
+
 console.log("schema.check.ts passed");
