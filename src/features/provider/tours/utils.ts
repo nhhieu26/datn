@@ -1,5 +1,9 @@
 import type { TourWithRelations } from "@/entities/tour";
 import { TourListItem, ToursSummary } from "./types";
+import type {
+  ItineraryDay,
+  TourFormState,
+} from "./components/tour-form";
 import { formatEntityCode } from "@/lib/utils";
 
 const FALLBACK_IMAGE = "/image-notfound.png";
@@ -54,5 +58,45 @@ export function mapTourToListItem(tour: TourWithRelations): TourListItem {
     rating: null,
     reviewCount: 0,
     status: tour.status,
+  };
+}
+
+function toDateInputValue(date: Date | null): string {
+  return date ? date.toISOString().slice(0, 10) : "";
+}
+
+export function mapTourToFormValues(tour: TourWithRelations): TourFormState {
+  const images = Array.isArray(tour.images)
+    ? (tour.images as { url?: unknown; fileId?: unknown }[])
+    : [];
+  const itinerary = Array.isArray(tour.itinerary)
+    ? (tour.itinerary as ItineraryDay[])
+    : [];
+
+  return {
+    title: tour.title,
+    provinceId: tour.provinceId,
+    tagIds: tour.tags.map((tourTag) => tourTag.tagId),
+    durationDays: String(tour.durationDays),
+    durationNights: String(tour.durationNights),
+    description: tour.description ?? "",
+    includeServices: tour.includeServices,
+    excludeServices: tour.excludeServices,
+    photos: images.flatMap((image) =>
+      typeof image?.url === "string" && typeof image?.fileId === "string"
+        ? [{ kind: "existing" as const, fileId: image.fileId, previewUrl: image.url }]
+        : [],
+    ),
+    itinerary:
+      itinerary.length > 0 ? itinerary : [{ title: "", description: "" }],
+    basePrice: String(Number(tour.basePrice)),
+    departures: tour.departures.map((departure) => ({
+      id: departure.id,
+      bookedSlots: departure.bookedSlots,
+      departureDate: toDateInputValue(departure.departureDate),
+      returnDate: toDateInputValue(departure.returnDate),
+      price: departure.price === null ? "" : String(Number(departure.price)),
+      totalSlots: String(departure.totalSlots),
+    })),
   };
 }

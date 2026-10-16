@@ -55,6 +55,39 @@ function parseJsonField<T>(formData: FormData, key: string, fallback: T): T {
   }
 }
 
+function parseTourFormData(formData: FormData) {
+  return createTourSchema.safeParse({
+    title: formData.get("title"),
+    provinceId: formData.get("provinceId"),
+    tagIds: parseJsonField<string[]>(formData, "tagIds", []),
+    durationDays: formData.get("durationDays"),
+    durationNights: formData.get("durationNights"),
+    description: formData.get("description"),
+    includeServices: parseJsonField<string[]>(formData, "includeServices", []),
+    excludeServices: parseJsonField<string[]>(formData, "excludeServices", []),
+    itinerary: parseJsonField(formData, "itinerary", []),
+    basePrice: formData.get("basePrice"),
+    departures: parseJsonField(formData, "departures", []),
+  });
+}
+
+function buildEmbeddingText(
+  data: CreateTourInput,
+  provinceName: string,
+  tags: { name: string }[],
+): string {
+  return [
+    data.title,
+    data.description,
+    provinceName,
+    tags.map((tag) => tag.name).join(", "),
+    data.itinerary.map((day) => day.title).join(", "),
+    data.includeServices.join(", "),
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
 function isUniqueConstraintError(error: unknown): boolean {
   return (
     error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -102,6 +135,19 @@ async function hasValidImageSignature(file: File): Promise<boolean> {
     pngSignature.every((byte, index) => bytes[index] === byte);
 
   return isJpeg || isPng;
+}
+
+async function arePhotosValid(photos: File[]): Promise<boolean> {
+  for (const photo of photos) {
+    if (
+      !ALLOWED_PHOTO_TYPES.includes(photo.type) ||
+      photo.size > MAX_PHOTO_SIZE ||
+      !(await hasValidImageSignature(photo))
+    ) {
+      return false;
+    }
+  }
+  return true;
 }
 
 async function retryCleanup(operation: () => Promise<unknown>): Promise<void> {
@@ -193,27 +239,7 @@ export async function createTourAction(
       };
     }
     stage = "validation";
-    const parsed = createTourSchema.safeParse({
-      title: formData.get("title"),
-      provinceId: formData.get("provinceId"),
-      tagIds: parseJsonField<string[]>(formData, "tagIds", []),
-      durationDays: formData.get("durationDays"),
-      durationNights: formData.get("durationNights"),
-      description: formData.get("description"),
-      includeServices: parseJsonField<string[]>(
-        formData,
-        "includeServices",
-        [],
-      ),
-      excludeServices: parseJsonField<string[]>(
-        formData,
-        "excludeServices",
-        [],
-      ),
-      itinerary: parseJsonField(formData, "itinerary", []),
-      basePrice: formData.get("basePrice"),
-      departures: parseJsonField(formData, "departures", []),
-    });
+    const parsed = parseTourFormData(formData);
 
     if (!parsed.success) {
       return {
@@ -240,17 +266,11 @@ export async function createTourAction(
         fieldErrors: { photos: [`Tối đa ${MAX_PHOTOS} ảnh.`] },
       };
     }
-    for (const photo of photos) {
-      if (
-        !ALLOWED_PHOTO_TYPES.includes(photo.type) ||
-        photo.size > MAX_PHOTO_SIZE ||
-        !(await hasValidImageSignature(photo))
-      ) {
-        return {
-          status: "error",
-          fieldErrors: { photos: ["Ảnh phải là PNG/JPG hợp lệ và dưới 5MB."] },
-        };
-      }
+    if (!(await arePhotosValid(photos))) {
+      return {
+        status: "error",
+        fieldErrors: { photos: ["Ảnh phải là PNG/JPG hợp lệ và dưới 5MB."] },
+      };
     }
 
     const tagIds = [...new Set(parsed.data.tagIds)];
@@ -298,18 +318,9 @@ export async function createTourAction(
     createdTourId = tour.id;
 
     stage = "embedding";
-    const embeddingText = [
-      parsed.data.title,
-      parsed.data.description,
-      province.fullName,
-      tags.map((tag) => tag.name).join(", "),
-      parsed.data.itinerary.map((day) => day.title).join(", "),
-      parsed.data.includeServices.join(", "),
-    ]
-      .filter(Boolean)
-      .join("\n");
-
-    const vector = await embedText(embeddingText);
+    const vector = await embedText(
+      buildEmbeddingText(parsed.data, province.fullName, tags),
+    );
     embeddingUpsertAttempted = true;
     await upsertTourEmbedding(tour.id, vector, {
       title: parsed.data.title,
@@ -356,27 +367,7 @@ export async function createTourFromLinksAction(
       return { status: "error", formError: "Thiếu hồ sơ nhà cung cấp." };
     }
     stage = "validation";
-    const parsed = createTourSchema.safeParse({
-      title: formData.get("title"),
-      provinceId: formData.get("provinceId"),
-      tagIds: parseJsonField<string[]>(formData, "tagIds", []),
-      durationDays: formData.get("durationDays"),
-      durationNights: formData.get("durationNights"),
-      description: formData.get("description"),
-      includeServices: parseJsonField<string[]>(
-        formData,
-        "includeServices",
-        [],
-      ),
-      excludeServices: parseJsonField<string[]>(
-        formData,
-        "excludeServices",
-        [],
-      ),
-      itinerary: parseJsonField(formData, "itinerary", []),
-      basePrice: formData.get("basePrice"),
-      departures: parseJsonField(formData, "departures", []),
-    });
+    const parsed = parseTourFormData(formData);
 
     if (!parsed.success) {
       return {
@@ -418,18 +409,9 @@ export async function createTourFromLinksAction(
     createdTourId = tour.id;
 
     stage = "embedding";
-    const embeddingText = [
-      parsed.data.title,
-      parsed.data.description,
-      province.fullName,
-      tags.map((tag) => tag.name).join(", "),
-      parsed.data.itinerary.map((day) => day.title).join(", "),
-      parsed.data.includeServices.join(", "),
-    ]
-      .filter(Boolean)
-      .join("\n");
-
-    const vector = await embedText(embeddingText);
+    const vector = await embedText(
+      buildEmbeddingText(parsed.data, province.fullName, tags),
+    );
     embeddingUpsertAttempted = true;
     await upsertTourEmbedding(tour.id, vector, {
       title: parsed.data.title,
@@ -459,4 +441,243 @@ export async function createTourFromLinksAction(
   }
 
   return { status: "success" };
+}
+
+export type UpdateTourActionState = ActionState;
+
+function parseStoredImages(images: unknown): UploadedImage[] {
+  if (!Array.isArray(images)) return [];
+  return images.filter(
+    (image): image is UploadedImage =>
+      typeof image?.url === "string" && typeof image?.fileId === "string",
+  );
+}
+
+export async function updateTourAction(
+  tourId: string,
+  _prevState: UpdateTourActionState,
+  formData: FormData,
+): Promise<UpdateTourActionState> {
+  const uploadedImages: UploadedImage[] = [];
+  let stage: CreationStage = "authorization";
+  let slug: string;
+  let removedImages: UploadedImage[];
+
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { status: "error", formError: "Vui lòng đăng nhập lại." };
+    }
+    if (session.user.role !== "provider") {
+      return {
+        status: "error",
+        formError: "Chỉ tài khoản đối tác mới có thể sửa tour.",
+      };
+    }
+
+    const providerProfile =
+      await providerProfileRepo.findApprovedByUserIdAndBusinessType(
+        session.user.id,
+        "tour",
+      );
+    if (!providerProfile) {
+      return {
+        status: "error",
+        formError:
+          "Tài khoản phải đang hoạt động và có hồ sơ doanh nghiệp loại Tour đã được duyệt.",
+      };
+    }
+
+    const tour = await tourRepo.findByIdForProvider(
+      tourId,
+      providerProfile.id,
+    );
+    if (!tour) {
+      return { status: "error", formError: "Không tìm thấy tour." };
+    }
+    slug = tour.slug;
+
+    stage = "validation";
+    const parsed = parseTourFormData(formData);
+    if (!parsed.success) {
+      return {
+        status: "error",
+        fieldErrors: parsed.error.flatten().fieldErrors as Record<
+          string,
+          string[]
+        >,
+      };
+    }
+
+    const storedImages = parseStoredImages(tour.images);
+    const keptFileIds = new Set(
+      parseJsonField<string[]>(formData, "existingImageIds", []),
+    );
+    const keptImages = storedImages.filter((image) =>
+      keptFileIds.has(image.fileId),
+    );
+    removedImages = storedImages.filter(
+      (image) => !keptFileIds.has(image.fileId),
+    );
+
+    const photos = formData.getAll("photos").filter((file): file is File => {
+      return file instanceof File && file.size > 0;
+    });
+    const totalPhotos = keptImages.length + photos.length;
+    if (totalPhotos === 0) {
+      return {
+        status: "error",
+        fieldErrors: { photos: ["Cần ít nhất 1 ảnh cho tour."] },
+      };
+    }
+    if (totalPhotos > MAX_PHOTOS) {
+      return {
+        status: "error",
+        fieldErrors: { photos: [`Tối đa ${MAX_PHOTOS} ảnh.`] },
+      };
+    }
+    if (!(await arePhotosValid(photos))) {
+      return {
+        status: "error",
+        fieldErrors: { photos: ["Ảnh phải là PNG/JPG hợp lệ và dưới 5MB."] },
+      };
+    }
+
+    const existingDepartures = new Map(
+      tour.departures.map((departure) => [departure.id, departure]),
+    );
+    const submittedDepartureIds = new Set<string>();
+    for (const departure of parsed.data.departures) {
+      if (!departure.id) continue;
+      const existing = existingDepartures.get(departure.id);
+      if (!existing) {
+        return {
+          status: "error",
+          fieldErrors: { departures: ["Đợt khởi hành không hợp lệ."] },
+        };
+      }
+      if (departure.totalSlots < existing.bookedSlots) {
+        return {
+          status: "error",
+          fieldErrors: {
+            departures: [
+              `Tổng chỗ không được nhỏ hơn số chỗ đã đặt (${existing.bookedSlots}).`,
+            ],
+          },
+        };
+      }
+      submittedDepartureIds.add(departure.id);
+    }
+    const removedDepartures = tour.departures.filter(
+      (departure) => !submittedDepartureIds.has(departure.id),
+    );
+    if (removedDepartures.some((departure) => departure.bookedSlots > 0)) {
+      return {
+        status: "error",
+        fieldErrors: {
+          departures: ["Không thể xóa đợt khởi hành đã có khách đặt chỗ."],
+        },
+      };
+    }
+
+    const tagIds = [...new Set(parsed.data.tagIds)];
+    const [province, tags] = await Promise.all([
+      provinceRepo.findById(parsed.data.provinceId),
+      tagRepo.findManyByIds(tagIds),
+    ]);
+    if (!province) {
+      return {
+        status: "error",
+        fieldErrors: { provinceId: ["Tỉnh/thành đã chọn không tồn tại."] },
+      };
+    }
+    if (tags.length !== tagIds.length) {
+      return {
+        status: "error",
+        fieldErrors: { tagIds: ["Một hoặc nhiều thẻ đã chọn không tồn tại."] },
+      };
+    }
+
+    stage = "upload";
+    const uploadResults = await Promise.allSettled(
+      photos.map((photo) => uploadImage(photo, `tours/${providerProfile.id}`)),
+    );
+    for (const result of uploadResults) {
+      if (result.status === "fulfilled") {
+        uploadedImages.push({
+          url: result.value.url,
+          fileId: result.value.fileId,
+        });
+      }
+    }
+    const uploadFailure = uploadResults.find(
+      (result): result is PromiseRejectedResult => result.status === "rejected",
+    );
+    if (uploadFailure) throw uploadFailure.reason;
+
+    stage = "database";
+    const updatedTour = await tourRepo.update(tour.id, {
+      ...parsed.data,
+      tagIds,
+      images: [...keptImages, ...uploadedImages],
+      removedDepartureIds: removedDepartures.map((departure) => departure.id),
+    });
+
+    try {
+      const vector = await embedText(
+        buildEmbeddingText(parsed.data, province.fullName, tags),
+      );
+      await upsertTourEmbedding(updatedTour.id, vector, {
+        title: parsed.data.title,
+        provinceId: parsed.data.provinceId,
+        tagIds,
+        status: updatedTour.status,
+        providerProfileId: providerProfile.id,
+      });
+    } catch (error) {
+      console.error("Cập nhật embedding tour thất bại", {
+        tourId: updatedTour.id,
+        error,
+      });
+    }
+  } catch (error) {
+    const cleanupResults = await Promise.allSettled(
+      uploadedImages.map((image) =>
+        retryCleanup(() => deleteImage(image.fileId)),
+      ),
+    );
+
+    console.error("Cập nhật tour thất bại", {
+      stage,
+      tourId,
+      error,
+      cleanupFailures: cleanupResults.filter(
+        (result) => result.status === "rejected",
+      ),
+    });
+
+    return {
+      status: "error",
+      formError:
+        stage === "upload"
+          ? STAGE_ERROR_MESSAGES.upload
+          : "Không thể cập nhật tour. Vui lòng thử lại.",
+    };
+  }
+
+  // Ảnh tạo từ link (seed) có fileId trùng url, không nằm trên ImageKit.
+  const imageCleanupResults = await Promise.allSettled(
+    removedImages
+      .filter((image) => image.fileId !== image.url)
+      .map((image) => retryCleanup(() => deleteImage(image.fileId))),
+  );
+  imageCleanupResults.forEach((result) => {
+    if (result.status === "rejected") {
+      console.error("Xóa ảnh tour cũ thất bại", { tourId, error: result.reason });
+    }
+  });
+
+  revalidatePath("/provider/tours");
+  revalidatePath(`/tours/${slug}`);
+  redirect("/provider/tours");
 }

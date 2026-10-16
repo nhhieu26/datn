@@ -5,10 +5,11 @@ import type {
   TourDeparture,
   TourTag,
 } from "@/generated/prisma/client";
-import type { createTourSchema } from "./schema";
+import type { createTourSchema, updateTourSchema } from "./schema";
 
 export type { Tour, TourDeparture, TourTag };
 export type CreateTourInput = z.infer<typeof createTourSchema>;
+export type UpdateTourInput = z.infer<typeof updateTourSchema>;
 
 export type TourWithRelations = Prisma.TourGetPayload<{
   include: {

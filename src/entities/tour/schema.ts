@@ -6,6 +6,7 @@ export const itineraryDaySchema = z.object({
 });
 
 export const tourDepartureSchema = z.object({
+  id: z.string().optional(),
   departureDate: z.coerce.date({ message: "Ngày khởi hành không hợp lệ" }),
   returnDate: z.coerce.date().nullable(),
   price: z.coerce.number().positive().nullable(),
@@ -33,3 +34,5 @@ export const createTourSchema = z.object({
     .array(tourDepartureSchema)
     .min(1, "Cần ít nhất 1 đợt khởi hành"),
 });
+
+export const updateTourSchema = createTourSchema;

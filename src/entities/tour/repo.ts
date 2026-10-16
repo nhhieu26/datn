@@ -1,7 +1,12 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { type ListFilter, priceOrder, priceRange } from "../list-filter";
-import type { CreateTourInput, Tour, TourWithRelations } from "./type";
+import type {
+  CreateTourInput,
+  Tour,
+  TourWithRelations,
+  UpdateTourInput,
+} from "./type";
 
 export function findBySlug(slug: string): Promise<Tour | null> {
   return prisma.tour.findUnique({ where: { slug } });
@@ -60,6 +65,68 @@ export function create(
         })),
       },
     },
+  });
+}
+
+export function findByIdForProvider(
+  id: string,
+  providerProfileId: string
+): Promise<TourWithRelations | null> {
+  return prisma.tour.findFirst({
+    where: { id, providerProfileId },
+    include: {
+      province: true,
+      tags: { include: { tag: true } },
+      departures: { orderBy: { departureDate: "asc" } },
+    },
+  });
+}
+
+export async function update(
+  id: string,
+  input: UpdateTourInput & {
+    images: { url: string; fileId: string }[];
+    removedDepartureIds: string[];
+  }
+): Promise<Tour> {
+  const { tagIds, departures, itinerary, images, removedDepartureIds, ...rest } =
+    input;
+
+  return prisma.$transaction(async (tx) => {
+    const tour = await tx.tour.update({
+      where: { id },
+      data: { ...rest, images, itinerary },
+    });
+
+    await tx.tourTag.deleteMany({ where: { tourId: id } });
+    await tx.tourTag.createMany({
+      data: tagIds.map((tagId) => ({ tourId: id, tagId })),
+    });
+
+    if (removedDepartureIds.length > 0) {
+      await tx.tourDeparture.deleteMany({
+        where: { id: { in: removedDepartureIds }, tourId: id, bookedSlots: 0 },
+      });
+    }
+
+    for (const departure of departures) {
+      const data = {
+        departureDate: departure.departureDate,
+        returnDate: departure.returnDate,
+        price: departure.price,
+        totalSlots: departure.totalSlots,
+      };
+      if (departure.id) {
+        await tx.tourDeparture.update({
+          where: { id: departure.id, tourId: id },
+          data,
+        });
+      } else {
+        await tx.tourDeparture.create({ data: { ...data, tourId: id } });
+      }
+    }
+
+    return tour;
   });
 }
 

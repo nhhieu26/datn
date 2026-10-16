@@ -62,24 +62,35 @@ function IconAction({
   icon,
   title,
   danger,
+  href,
 }: {
   icon: string;
   title: string;
   danger?: boolean;
+  href?: string;
 }) {
+  const className = `rounded-lg p-1.5 text-slate-400 transition ${
+    danger
+      ? "hover:bg-rose-50 hover:text-rose-600"
+      : "hover:bg-slate-100 hover:text-slate-700"
+  }`;
+  const content = (
+    <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+      {icon}
+    </span>
+  );
+
+  if (href) {
+    return (
+      <Link className={`inline-flex ${className}`} href={href} title={title}>
+        {content}
+      </Link>
+    );
+  }
+
   return (
-    <button
-      className={`rounded-lg p-1.5 text-slate-400 transition ${
-        danger
-          ? "hover:bg-rose-50 hover:text-rose-600"
-          : "hover:bg-slate-100 hover:text-slate-700"
-      }`}
-      title={title}
-      type="button"
-    >
-      <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-        {icon}
-      </span>
+    <button className={className} title={title} type="button">
+      {content}
     </button>
   );
 }
@@ -160,7 +171,11 @@ function TourRow({ tour }: { tour: TourListItem }) {
 
       <td className="px-5 py-5 text-right align-middle whitespace-nowrap">
         <div className="inline-flex items-center justify-end gap-1">
-          <IconAction icon="edit" title="Chỉnh sửa" />
+          <IconAction
+            href={`/provider/tours/${tour.id}/edit`}
+            icon="edit"
+            title="Chỉnh sửa"
+          />
           <IconAction icon="visibility" title="Xem chi tiết" />
           <IconAction icon="calendar_month" title="Lịch khởi hành" />
           <IconAction danger icon="delete" title="Xóa tour" />
@@ -240,15 +255,15 @@ function TourCard({ tour }: { tour: TourListItem }) {
             </span>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <button
+            <Link
               className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-200/80"
-              type="button"
+              href={`/provider/tours/${tour.id}/edit`}
             >
               <span className="material-symbols-outlined text-[16px]">
                 edit
               </span>
               Chỉnh sửa
-            </button>
+            </Link>
             <button
               className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-500 px-3 py-2 text-xs font-bold text-white shadow-sm shadow-brand-500/25 transition hover:bg-brand-600"
               type="button"

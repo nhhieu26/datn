@@ -8,7 +8,10 @@ import {
   useMultiStepForm,
   type StepDefinition,
 } from "@/shared/components/multi-step-form";
-import { createTourAction } from "@/features/provider/tours/actions";
+import {
+  createTourAction,
+  updateTourAction,
+} from "@/features/provider/tours/actions";
 import { TourPreviewCard } from "./tour-preview-card";
 
 const INITIAL_ACTION_STATE = { status: "idle" as const };
@@ -29,16 +32,17 @@ export type ItineraryDay = {
 };
 
 export type TourDepartureDraft = {
+  id?: string;
+  bookedSlots?: number;
   departureDate: string;
   returnDate: string;
   price: string;
   totalSlots: string;
 };
 
-export type TourPhoto = {
-  file: File;
-  previewUrl: string;
-};
+export type TourPhoto =
+  | { kind: "new"; file: File; previewUrl: string }
+  | { kind: "existing"; fileId: string; previewUrl: string };
 
 export type TourFormState = {
   title: string;
@@ -151,17 +155,23 @@ function TagList({
 export function TourForm({
   provinces,
   tags,
+  mode = "create",
+  tourId,
+  initialValues,
 }: {
   provinces: Province[];
   tags: Tag[];
+  mode?: "create" | "edit";
+  tourId?: string;
+  initialValues?: TourFormState;
 }) {
-  const [form, setForm] = useState<TourFormState>(() =>
-    createInitialState(provinces)
+  const [form, setForm] = useState<TourFormState>(
+    () => initialValues ?? createInitialState(provinces)
   );
   const { currentStep, goTo, next, prev, isFirst, isLast } =
     useMultiStepForm(steps.length);
   const [actionState, formAction, isPending] = useActionState(
-    createTourAction,
+    mode === "edit" ? updateTourAction.bind(null, tourId!) : createTourAction,
     INITIAL_ACTION_STATE
   );
 
@@ -191,6 +201,7 @@ export function TourForm({
       "departures",
       JSON.stringify(
         form.departures.map((departure) => ({
+          id: departure.id,
           departureDate: departure.departureDate,
           returnDate: departure.returnDate || null,
           price: departure.price || null,
@@ -198,7 +209,17 @@ export function TourForm({
         }))
       )
     );
-    form.photos.forEach((photo) => fd.append("photos", photo.file));
+    fd.append(
+      "existingImageIds",
+      JSON.stringify(
+        form.photos.flatMap((photo) =>
+          photo.kind === "existing" ? [photo.fileId] : []
+        )
+      )
+    );
+    form.photos.forEach((photo) => {
+      if (photo.kind === "new") fd.append("photos", photo.file);
+    });
 
     startTransition(() => {
       formAction(fd);
@@ -251,7 +272,11 @@ export function TourForm({
     const remaining = MAX_PHOTOS - form.photos.length;
     const next = Array.from(files)
       .slice(0, remaining)
-      .map((file) => ({ file, previewUrl: URL.createObjectURL(file) }));
+      .map((file) => ({
+        kind: "new" as const,
+        file,
+        previewUrl: URL.createObjectURL(file),
+      }));
     update("photos", [...form.photos, ...next]);
   };
 
@@ -274,10 +299,12 @@ export function TourForm({
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
       <section className="space-y-1">
         <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
-          Tạo Tour Mới
+          {mode === "edit" ? "Chỉnh sửa Tour" : "Tạo Tour Mới"}
         </h1>
         <p className="text-sm font-medium text-slate-500">
-          Nhập thông tin chi tiết để giới thiệu tour của bạn tới khách du lịch.
+          {mode === "edit"
+            ? "Cập nhật thông tin, hình ảnh, lịch trình và lịch khởi hành của tour."
+            : "Nhập thông tin chi tiết để giới thiệu tour của bạn tới khách du lịch."}
         </p>
       </section>
 
@@ -699,8 +726,12 @@ export function TourForm({
                               value={row.totalSlots}
                             />
                           </td>
-                          <td className="py-2 text-right">
-                            {form.departures.length > 1 ? (
+                          <td className="py-2 text-right whitespace-nowrap">
+                            {row.bookedSlots ? (
+                              <span className="text-xs font-semibold text-slate-500">
+                                Đã đặt {row.bookedSlots} chỗ
+                              </span>
+                            ) : form.departures.length > 1 ? (
                               <button
                                 className="text-xs font-semibold text-rose-500 hover:text-rose-600"
                                 onClick={() => removeDeparture(index)}
@@ -730,7 +761,15 @@ export function TourForm({
             cancelHref="/provider/tours"
             isFirst={isFirst}
             isLast={isLast}
-            lastLabel={isPending ? "Đang tạo tour..." : "Hoàn tất & Xuất bản Tour"}
+            lastLabel={
+              mode === "edit"
+                ? isPending
+                  ? "Đang lưu..."
+                  : "Lưu thay đổi"
+                : isPending
+                  ? "Đang tạo tour..."
+                  : "Hoàn tất & Xuất bản Tour"
+            }
             nextDisabled={isLast && isPending}
             onBack={prev}
             onNext={isLast ? handleSubmit : next}
