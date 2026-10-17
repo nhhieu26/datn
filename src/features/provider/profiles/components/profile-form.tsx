@@ -2,12 +2,19 @@
 
 import type { BusinessType } from "@/generated/prisma/client";
 import Link from "next/link";
-import { useActionState, useRef, useState } from "react";
+import {
+  useActionState,
+  useRef,
+  useState,
+  type InputHTMLAttributes,
+  type ReactNode,
+} from "react";
 import {
   createProviderProfileAction,
   updateProviderProfileAction,
   type CreateProfileActionState,
 } from "../actions";
+import { ProfileIcon, type ProfileIconName } from "./profile-icon";
 
 const MAX_DESCRIPTION_LENGTH = 1000;
 
@@ -17,13 +24,13 @@ const serviceOptions: {
   value: BusinessType;
   label: string;
   hint: string;
-  icon: string;
+  icon: ProfileIconName;
 }[] = [
   {
     value: "tour",
     label: "Tour du lịch",
     hint: "Trải nghiệm khám phá, lữ hành & tour bản địa",
-    icon: "explore",
+    icon: "map",
   },
   {
     value: "hotel",
@@ -35,36 +42,116 @@ const serviceOptions: {
     value: "restaurant",
     label: "Nhà hàng & Ẩm thực",
     hint: "Quán ăn đặc sản, ẩm thực bản địa & cafe",
-    icon: "restaurant",
+    icon: "utensils",
   },
 ];
 
 const inputClass =
-  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none";
-const iconInputClass = `${inputClass} !pl-9`;
-const labelClass = "block text-xs font-bold text-slate-700 mb-1.5";
-const inputIconClass =
-  "material-symbols-outlined pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[18px] text-slate-400";
-const fieldErrorClass = "mt-1 text-xs font-medium text-rose-500";
+  "block w-full rounded-lg border-layer-line bg-layer px-3 py-2 text-foreground placeholder:text-muted-foreground-1 focus:border-primary-focus focus:ring-primary-focus disabled:pointer-events-none disabled:opacity-50 sm:text-sm";
+const iconInputClass = `${inputClass} ps-10`;
+const labelClass = "mb-2 block text-sm font-medium text-foreground";
 
-const PAYPAL_STATUS_MESSAGES: Record<string, { text: string; className: string }> = {
+const layerButtonClass =
+  "inline-flex items-center justify-center gap-x-2 rounded-lg border border-layer-line bg-layer px-3 py-2 text-sm font-medium text-layer-foreground shadow-2xs hover:bg-layer-hover focus:bg-layer-focus focus:outline-hidden disabled:pointer-events-none disabled:opacity-50";
+
+const primaryButtonClass =
+  "inline-flex items-center justify-center gap-x-2 rounded-lg border border-primary-line bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover focus:bg-primary-focus focus:outline-hidden disabled:pointer-events-none disabled:opacity-50";
+
+const PAYPAL_STATUS_MESSAGES: Record<
+  string,
+  { text: string; icon: ProfileIconName; className: string }
+> = {
   linked: {
     text: "Liên kết PayPal thành công.",
-    className: "bg-emerald-50 text-emerald-700",
+    icon: "check",
+    className: "border-teal-200 bg-teal-50 text-teal-800",
   },
   cancelled: {
     text: "Bạn đã hủy liên kết PayPal.",
-    className: "bg-amber-50 text-amber-700",
+    icon: "alert",
+    className: "border-yellow-200 bg-yellow-50 text-yellow-800",
   },
   unverified: {
     text: "Tài khoản PayPal chưa được xác minh nên không thể liên kết.",
-    className: "bg-rose-50 text-rose-600",
+    icon: "x",
+    className: "border-red-200 bg-red-50 text-red-800",
   },
   error: {
     text: "Không thể liên kết PayPal. Vui lòng thử lại.",
-    className: "bg-rose-50 text-rose-600",
+    icon: "x",
+    className: "border-red-200 bg-red-50 text-red-800",
   },
 };
+
+function Required() {
+  return <span className="text-red-500">*</span>;
+}
+
+function FieldError({ errors }: { errors?: string[] }) {
+  if (!errors?.length) return null;
+  return <p className="mt-2 text-xs text-red-600">{errors[0]}</p>;
+}
+
+function Alert({
+  icon,
+  className,
+  children,
+}: {
+  icon: ProfileIconName;
+  className: string;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={`flex rounded-lg border p-4 text-sm ${className}`}
+      role="alert"
+    >
+      <ProfileIcon name={icon} className="mt-0.5 size-4" />
+      <div className="ms-3">{children}</div>
+    </div>
+  );
+}
+
+function Section({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="space-y-5 rounded-xl border border-card-line bg-card p-4 shadow-2xs sm:p-6">
+      <div>
+        <h2 className="text-base font-semibold text-foreground">{title}</h2>
+        <p className="mt-1 text-sm text-muted-foreground-1">{description}</p>
+      </div>
+      <div className="space-y-5">{children}</div>
+    </div>
+  );
+}
+
+function IconInput({
+  icon,
+  error,
+  ...props
+}: InputHTMLAttributes<HTMLInputElement> & {
+  icon: ProfileIconName;
+  error?: string[];
+}) {
+  return (
+    <>
+      <div className="relative">
+        <div className="pointer-events-none absolute inset-y-0 start-0 z-20 flex items-center ps-3.5">
+          <ProfileIcon name={icon} className="size-4 text-muted-foreground" />
+        </div>
+        <input className={iconInputClass} {...props} />
+      </div>
+      <FieldError errors={error} />
+    </>
+  );
+}
 
 type ProfileFormValues = {
   businessName: string;
@@ -94,487 +181,424 @@ export function ProfileForm({
   paypal: { email: string; linkedAt: string } | null;
   paypalStatus?: string;
 }) {
-  const action =
-    mode === "create"
-      ? createProviderProfileAction
-      : updateProviderProfileAction.bind(null, profileId!);
+  const isEdit = mode === "edit";
+  const action = isEdit
+    ? updateProviderProfileAction.bind(null, profileId!)
+    : createProviderProfileAction;
   const [state, formAction, isPending] = useActionState(action, INITIAL_STATE);
   const [businessType, setBusinessType] = useState<BusinessType>(
-    initialValues?.businessType ?? availableBusinessTypes[0]
+    initialValues?.businessType ?? availableBusinessTypes[0],
   );
-  const [description, setDescription] = useState(
-    initialValues?.description ?? ""
+  const [descriptionLength, setDescriptionLength] = useState(
+    initialValues?.description.length ?? 0,
   );
   const [logoPreview, setLogoPreview] = useState(initialValues?.logo ?? "");
   const [removeLogo, setRemoveLogo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const visibleServiceOptions = serviceOptions.filter((option) =>
-    availableBusinessTypes.includes(option.value)
+    availableBusinessTypes.includes(option.value),
   );
-
-  const descriptionLength = description.length;
   const paypalMessage = paypalStatus
     ? PAYPAL_STATUS_MESSAGES[paypalStatus]
     : undefined;
+  const errors = state.fieldErrors;
   const paypalConnectHref = profileId
     ? `/api/paypal/connect?profileId=${profileId}`
     : "/api/paypal/connect";
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col space-y-6">
+    <div className="mx-auto w-full max-w-340 space-y-4 p-4 sm:space-y-6 sm:p-6">
       {/* Page header */}
-      <section className="space-y-1">
-        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
-          Hồ sơ Doanh nghiệp
-        </h1>
-        <p className="text-sm font-medium text-slate-500">
-          Quản lý và cập nhật thông tin pháp lý, thương hiệu của bạn trên nền
-          tảng Roamly.
-        </p>
-      </section>
+      <div className="grid gap-3 md:flex md:items-center md:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">
+            {isEdit ? "Chỉnh sửa hồ sơ doanh nghiệp" : "Tạo hồ sơ doanh nghiệp"}
+          </h1>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground-1">
+            {isEdit
+              ? "Cập nhật thông tin pháp lý và thương hiệu, sau đó gửi lại để Roamly thẩm định."
+              : "Cung cấp thông tin pháp lý và thương hiệu để Roamly thẩm định trước khi bạn bắt đầu kinh doanh trên nền tảng."}
+          </p>
+        </div>
+        <Link
+          className={`shrink-0 self-start md:self-auto ${layerButtonClass}`}
+          href="/provider/profiles"
+        >
+          <ProfileIcon name="arrowLeft" />
+          Quay lại danh sách
+        </Link>
+      </div>
 
-      {/* Rejection alert (edit mode only) */}
-      {mode === "edit" && rejection ? (
-        <section className="rounded-2xl border border-red-200 bg-red-50/70 p-5 shadow-sm">
-          <div className="flex flex-wrap items-start justify-between gap-4 sm:flex-nowrap">
-            <div className="flex items-start gap-3.5">
-              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600 shadow-2xs">
-                <span className="material-symbols-outlined text-[20px]">
-                  warning
+      {isEdit && rejection ? (
+        <div
+          className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+          role="alert"
+        >
+          <div className="flex">
+            <ProfileIcon name="alert" className="mt-0.5 size-4" />
+            <div className="ms-3">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <h3 className="font-semibold">
+                  Lý do bị từ chối phê duyệt hồ sơ
+                </h3>
+                <span className="inline-flex items-center gap-x-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium">
+                  <ProfileIcon name="clock" className="size-3" />
+                  {rejection.timestamp}
                 </span>
               </div>
-              <div className="space-y-1.5">
-                <div className="flex flex-wrap items-center gap-3">
-                  <h3 className="text-base font-bold leading-tight text-red-700">
-                    Lý do bị từ chối phê duyệt hồ sơ
-                  </h3>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-red-100/70 px-2.5 py-0.5 text-xs font-semibold text-red-500">
-                    <span className="material-symbols-outlined text-[12px]">
-                      schedule
-                    </span>
-                    {rejection.timestamp}
-                  </span>
-                </div>
-                <p className="text-sm font-medium leading-relaxed text-red-600">
-                  {rejection.reason}
-                </p>
-              </div>
+              <p className="mt-1 text-red-700">{rejection.reason}</p>
             </div>
           </div>
-        </section>
+        </div>
       ) : null}
 
-      {/* Main form card */}
-      <form
-        action={formAction}
-        className="space-y-6 rounded-2xl border border-slate-200/80 bg-white p-8 shadow-sm"
-      >
+      <form action={formAction} className="space-y-4 sm:space-y-6">
         {state.status === "error" && state.formError ? (
-          <p className="rounded-xl bg-rose-50 px-4 py-2.5 text-[13px] font-medium text-rose-600">
+          <Alert icon="x" className="border-red-200 bg-red-50 text-red-800">
             {state.formError}
-          </p>
+          </Alert>
         ) : null}
 
-        {/* Tài khoản PayPal */}
-        <div>
-          <label className="mb-2 block text-xs font-bold text-slate-700">
-            Tài khoản nhận tiền PayPal <span className="text-brand-500">*</span>
-          </label>
-          {paypalMessage ? (
-            <p
-              className={`mb-3 rounded-xl px-4 py-2.5 text-[13px] font-medium ${paypalMessage.className}`}
+        <div className="grid items-start gap-4 sm:gap-6 lg:grid-cols-3">
+          <div className="space-y-4 sm:space-y-6 lg:col-span-2">
+            {/* Tài khoản PayPal */}
+            <Section
+              description="Roamly chuyển tiền thanh toán của khách vào tài khoản này. Hãy liên kết trước khi điền thông tin bên dưới."
+              title="Tài khoản nhận tiền"
             >
-              {paypalMessage.text}
-            </p>
-          ) : null}
-          <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-slate-50/50 p-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3.5">
-              <div
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                  paypal
-                    ? "bg-emerald-100 text-emerald-600"
-                    : "bg-slate-100 text-slate-500"
-                }`}
-              >
-                <span className="material-symbols-outlined text-[20px]">
-                  {paypal ? "verified" : "account_balance_wallet"}
-                </span>
-              </div>
-              {paypal ? (
-                <div className="space-y-0.5">
-                  <p className="text-sm font-bold text-slate-800">
-                    {paypal.email}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    Đã liên kết ngày{" "}
-                    {new Date(paypal.linkedAt).toLocaleDateString("vi-VN")}
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-0.5">
-                  <p className="text-sm font-bold text-slate-800">
-                    Chưa liên kết tài khoản PayPal
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    Roamly chuyển tiền thanh toán của khách vào tài khoản này.
-                    Hãy liên kết trước khi điền thông tin bên dưới.
-                  </p>
-                </div>
-              )}
-            </div>
-            {/* Route handler redirect sang PayPal → dùng <a>, không dùng next/link */}
-            <a
-              className={
-                paypal
-                  ? "inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-2xs transition-all hover:bg-slate-100"
-                  : "inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600"
-              }
-              href={paypalConnectHref}
-            >
-              <span className="material-symbols-outlined text-[16px]">link</span>
-              {paypal ? "Đổi tài khoản PayPal" : "Liên kết với PayPal"}
-            </a>
-          </div>
-          {state.fieldErrors?.paypal ? (
-            <p className={fieldErrorClass}>{state.fieldErrors.paypal[0]}</p>
-          ) : null}
-        </div>
-
-        {/* Tên doanh nghiệp */}
-        <div>
-          <label className={labelClass} htmlFor="businessName">
-            Tên công ty / Doanh nghiệp <span className="text-brand-500">*</span>
-          </label>
-          <input
-            className={inputClass}
-            defaultValue={initialValues?.businessName}
-            id="businessName"
-            name="businessName"
-            placeholder="Nhập tên pháp nhân hoặc thương hiệu kinh doanh..."
-            required
-            type="text"
-          />
-          {state.fieldErrors?.businessName ? (
-            <p className={fieldErrorClass}>
-              {state.fieldErrors.businessName[0]}
-            </p>
-          ) : null}
-        </div>
-
-        {/* Loại hình doanh nghiệp */}
-        <div>
-          <label className="mb-2 block text-xs font-bold text-slate-700">
-            Loại hình doanh nghiệp <span className="text-brand-500">*</span>
-          </label>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-[repeat(auto-fit,minmax(0,1fr))]">
-            {visibleServiceOptions.map((option) => {
-              const selected = businessType === option.value;
-              return (
-                <label
-                  className={`relative flex items-center gap-3.5 rounded-xl border-2 p-4 transition-all ${
-                    mode === "edit" ? "cursor-not-allowed opacity-70" : "cursor-pointer"
-                  } ${
-                    selected
-                      ? "border-brand-500 bg-brand-50/50 shadow-2xs"
-                      : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60"
-                  }`}
-                  key={option.value}
+              {paypalMessage ? (
+                <Alert
+                  className={paypalMessage.className}
+                  icon={paypalMessage.icon}
                 >
-                  <input
-                    checked={selected}
-                    className="sr-only"
-                    disabled={mode === "edit"}
-                    name="businessType"
-                    onChange={() => setBusinessType(option.value)}
-                    type="radio"
-                    value={option.value}
-                  />
-                  <div
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                      selected
-                        ? "bg-brand-500 text-white shadow-sm"
-                        : "bg-slate-100 text-slate-600"
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[20px]">
-                      {option.icon}
-                    </span>
-                  </div>
-                  <div className="min-w-0 flex-1">
+                  {paypalMessage.text}
+                </Alert>
+              ) : null}
+              <div>
+                <span className={labelClass}>
+                  Tài khoản PayPal <Required />
+                </span>
+                <div className="flex flex-col gap-4 rounded-lg border border-layer-line bg-layer p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-x-3">
                     <span
-                      className={`block text-sm font-bold ${
-                        selected ? "text-slate-900" : "text-slate-800"
+                      className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${
+                        paypal
+                          ? "bg-teal-100 text-teal-700"
+                          : "bg-surface text-surface-foreground"
                       }`}
                     >
-                      {option.label}
+                      <ProfileIcon
+                        className="size-5"
+                        name={paypal ? "shieldCheck" : "wallet"}
+                      />
                     </span>
-                    <span className="block truncate text-xs text-slate-500">
-                      {option.hint}
-                    </span>
-                  </div>
-                  {selected ? (
-                    <div className="flex h-4 w-4 items-center justify-center rounded-full bg-brand-500 text-[10px] text-white">
-                      <span
-                        className="material-symbols-outlined"
-                        style={{ fontSize: "10px" }}
-                      >
-                        check
-                      </span>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">
+                        {paypal
+                          ? paypal.email
+                          : "Chưa liên kết tài khoản PayPal"}
+                      </p>
+                      <p className="text-xs text-muted-foreground-1">
+                        {paypal
+                          ? `Đã liên kết ngày ${new Date(paypal.linkedAt).toLocaleDateString("vi-VN")}`
+                          : "Bắt buộc để gửi hồ sơ thẩm định."}
+                      </p>
                     </div>
-                  ) : (
-                    <div className="h-4 w-4 rounded-full border border-slate-300" />
-                  )}
-                </label>
-              );
-            })}
-          </div>
-          {state.fieldErrors?.businessType ? (
-            <p className={fieldErrorClass}>
-              {state.fieldErrors.businessType[0]}
-            </p>
-          ) : null}
-        </div>
+                  </div>
+                  {/* Route handler redirect sang PayPal → dùng <a>, không dùng next/link */}
+                  <a
+                    className={`shrink-0 ${paypal ? layerButtonClass : primaryButtonClass}`}
+                    href={paypalConnectHref}
+                  >
+                    <ProfileIcon name="link" />
+                    {paypal ? "Đổi tài khoản PayPal" : "Liên kết với PayPal"}
+                  </a>
+                </div>
+                <FieldError errors={errors?.paypal} />
+              </div>
+            </Section>
 
-        {/* MST + Địa chỉ */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div>
-            <label className={labelClass} htmlFor="taxCode">
-              Mã số thuế (MST) <span className="text-brand-500">*</span>
-            </label>
-            <div className="relative">
-              <span className={inputIconClass}>receipt</span>
-              <input
-                className={iconInputClass}
-                defaultValue={initialValues?.taxCode}
-                id="taxCode"
-                name="taxCode"
-                placeholder="VD: 0101234567"
-                required
-                type="text"
-              />
-            </div>
-            {state.fieldErrors?.taxCode ? (
-              <p className={fieldErrorClass}>{state.fieldErrors.taxCode[0]}</p>
-            ) : null}
-          </div>
-          <div>
-            <label className={labelClass} htmlFor="address">
-              Địa chỉ trụ sở / kinh doanh{" "}
-              <span className="text-brand-500">*</span>
-            </label>
-            <div className="relative">
-              <span className={inputIconClass}>location_on</span>
-              <input
-                className={iconInputClass}
-                defaultValue={initialValues?.address}
-                id="address"
-                name="address"
-                placeholder="Nhập địa chỉ đăng ký kinh doanh..."
-                required
-                type="text"
-              />
-            </div>
-            {state.fieldErrors?.address ? (
-              <p className={fieldErrorClass}>{state.fieldErrors.address[0]}</p>
-            ) : null}
-          </div>
-        </div>
-
-        {/* Mô tả */}
-        <div>
-          <div className="mb-1.5 flex items-center justify-between">
-            <label className="block text-xs font-bold text-slate-700" htmlFor="description">
-              Mô tả giới thiệu doanh nghiệp{" "}
-              <span className="text-brand-500">*</span>
-            </label>
-            <span className="text-[11px] font-semibold text-slate-400">
-              {descriptionLength} / {MAX_DESCRIPTION_LENGTH} ký tự
-            </span>
-          </div>
-          <textarea
-            className="w-full resize-y rounded-xl border border-slate-200 bg-white p-3.5 text-sm font-medium leading-relaxed text-slate-800 transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
-            defaultValue={initialValues?.description}
-            id="description"
-            maxLength={MAX_DESCRIPTION_LENGTH}
-            name="description"
-            onChange={(event) => setDescription(event.target.value)}
-            placeholder="Viết đoạn giới thiệu hấp dẫn về doanh nghiệp của bạn, các giá trị cốt lõi và thế mạnh dịch vụ..."
-            required
-            rows={5}
-          />
-          {state.fieldErrors?.description ? (
-            <p className={fieldErrorClass}>
-              {state.fieldErrors.description[0]}
-            </p>
-          ) : null}
-        </div>
-
-        {/* Link hồ sơ + Website */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div>
-            <label className={labelClass} htmlFor="legalDocUrl">
-              Liên kết hồ sơ pháp lý / năng lực
-            </label>
-            <div className="relative">
-              <span className={inputIconClass}>link</span>
-              <input
-                aria-describedby="legalDocUrlHint"
-                className={iconInputClass}
-                defaultValue={initialValues?.legalDocUrl}
-                id="legalDocUrl"
-                name="legalDocUrl"
-                placeholder="https://drive.google.com/... hoặc https://dropbox.com/..."
-                type="url"
-              />
-            </div>
-            <p
-              className="mt-1.5 text-[11px] leading-relaxed text-slate-500"
-              id="legalDocUrlHint"
+            {/* Thông tin doanh nghiệp */}
+            <Section
+              description="Thông tin pháp nhân hiển thị với khách hàng và dùng cho việc đối soát thuế."
+              title="Thông tin doanh nghiệp"
             >
-              Dán liên kết Google Drive, Dropbox hoặc dịch vụ lưu trữ khác và
-              bật quyền xem cho bất kỳ ai có liên kết.
-            </p>
-            {state.fieldErrors?.licenseUrl ? (
-              <p className={fieldErrorClass}>
-                {state.fieldErrors.licenseUrl[0]}
-              </p>
-            ) : null}
-          </div>
-          <div>
-            <label className={labelClass} htmlFor="websiteUrl">
-              Website chính thức
-            </label>
-            <div className="relative">
-              <span className={inputIconClass}>language</span>
-              <input
-                className={iconInputClass}
-                defaultValue={initialValues?.websiteUrl}
-                id="websiteUrl"
-                name="websiteUrl"
-                placeholder="https://baliexplorer.co"
-                type="url"
-              />
-            </div>
-            {state.fieldErrors?.website ? (
-              <p className={fieldErrorClass}>{state.fieldErrors.website[0]}</p>
-            ) : null}
-          </div>
-        </div>
-
-        {/* Ảnh đại diện */}
-        <div className="pt-2">
-          <label className="mb-2 block text-xs font-bold text-slate-700">
-            Ảnh đại diện / Logo doanh nghiệp
-          </label>
-          <div className="flex flex-col items-center gap-6 rounded-xl border border-slate-200 bg-slate-50/50 p-5 sm:flex-row">
-            {logoPreview ? (
-              <div className="group relative h-36 w-full shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-inner sm:w-60">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  alt="Ảnh đại diện"
-                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  src={logoPreview}
-                />
-                <button
-                  className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-lg bg-white/90 text-rose-600 shadow-sm transition-colors hover:bg-white"
-                  onClick={() => {
-                    setLogoPreview("");
-                    setRemoveLogo(true);
-                    if (fileInputRef.current) fileInputRef.current.value = "";
-                  }}
-                  title="Xóa hình ảnh này"
-                  type="button"
-                >
-                  <span className="material-symbols-outlined text-[16px]">
-                    delete
-                  </span>
-                </button>
-              </div>
-            ) : (
-              <div className="flex h-36 w-full shrink-0 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-100 sm:w-60">
-                <span className="material-symbols-outlined text-[40px] text-slate-300">
-                  image
-                </span>
-              </div>
-            )}
-            <div className="w-full space-y-2.5 text-center sm:text-left">
               <div>
-                <p className="text-xs font-bold text-slate-800">
-                  {logoPreview
-                    ? "Ảnh đại diện doanh nghiệp đang hoạt động"
-                    : "Chưa có ảnh đại diện"}
-                </p>
-                <p className="mt-0.5 text-xs text-slate-500">
-                  Khuyến nghị tỷ lệ tiêu chuẩn: 1200 × 630 px hoặc ảnh vuông sắc
-                  nét (định dạng JPG, PNG dưới 5MB).
-                </p>
-                {state.fieldErrors?.logo ? (
-                  <p className={fieldErrorClass}>{state.fieldErrors.logo[0]}</p>
-                ) : null}
-              </div>
-              <div className="flex items-center justify-center gap-2.5 pt-1 sm:justify-start">
-                <label
-                  className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-2xs transition-all hover:bg-slate-100"
-                  title="Tải hình ảnh lên"
-                >
-                  <span className="material-symbols-outlined text-[16px] text-slate-500">
-                    upload
-                  </span>
-                  <span>
-                    {logoPreview ? "Thay đổi hình ảnh" : "Tải hình ảnh lên"}
-                  </span>
-                  <input
-                    accept="image/png,image/jpeg"
-                    className="hidden"
-                    name="logo"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) {
-                        setLogoPreview(URL.createObjectURL(file));
-                        setRemoveLogo(false);
-                      }
-                    }}
-                    ref={fileInputRef}
-                    type="file"
-                  />
+                <label className={labelClass} htmlFor="businessName">
+                  Tên công ty / Doanh nghiệp <Required />
                 </label>
+                <input
+                  className={inputClass}
+                  defaultValue={initialValues?.businessName}
+                  id="businessName"
+                  name="businessName"
+                  placeholder="Nhập tên pháp nhân hoặc thương hiệu kinh doanh..."
+                  required
+                  type="text"
+                />
+                <FieldError errors={errors?.businessName} />
               </div>
-            </div>
-          </div>
-          <input
-            name="removeLogo"
-            type="hidden"
-            value={removeLogo ? "true" : ""}
-          />
-        </div>
 
-        {/* Footer actions */}
-        <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
-          <div className="flex items-center gap-3">
-            <button
-              className="inline-flex items-center gap-2 rounded-2xl bg-brand-500 px-6 py-3 text-sm font-bold text-white shadow-md shadow-brand-500/25 transition-all hover:bg-brand-600 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isPending || !paypal}
-              type="submit"
+              <div>
+                <span className={labelClass}>
+                  Loại hình doanh nghiệp <Required />
+                </span>
+                <div className="grid gap-3 sm:grid-cols-[repeat(auto-fit,minmax(0,1fr))]">
+                  {visibleServiceOptions.map((option) => {
+                    const selected = businessType === option.value;
+                    return (
+                      <label
+                        className={`flex w-full gap-x-3 rounded-lg border bg-layer p-3 text-sm ${
+                          isEdit ? "cursor-not-allowed" : "cursor-pointer"
+                        } ${
+                          selected
+                            ? "border-primary ring-1 ring-primary"
+                            : "border-layer-line hover:bg-layer-hover"
+                        }`}
+                        htmlFor={`businessType-${option.value}`}
+                        key={option.value}
+                      >
+                        <span
+                          className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${
+                            selected
+                              ? "bg-primary-100 text-primary-700"
+                              : "bg-surface text-surface-foreground"
+                          }`}
+                        >
+                          <ProfileIcon name={option.icon} />
+                        </span>
+                        <span className="min-w-0 grow">
+                          <span className="block font-semibold text-foreground">
+                            {option.label}
+                          </span>
+                          <span className="block text-xs text-muted-foreground-1">
+                            {option.hint}
+                          </span>
+                        </span>
+                        <input
+                          checked={selected}
+                          className="mt-0.5 shrink-0 rounded-full border-line-3 bg-transparent text-primary checked:border-primary checked:bg-primary-checked focus:ring-primary-focus"
+                          disabled={isEdit}
+                          id={`businessType-${option.value}`}
+                          name="businessType"
+                          onChange={() => setBusinessType(option.value)}
+                          type="radio"
+                          value={option.value}
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+                {isEdit ? (
+                  <p className="mt-2 text-xs text-muted-foreground-1">
+                    Không thể thay đổi loại hình của hồ sơ đã tạo.
+                  </p>
+                ) : null}
+                <FieldError errors={errors?.businessType} />
+              </div>
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <label className={labelClass} htmlFor="taxCode">
+                    Mã số thuế (MST) <Required />
+                  </label>
+                  <IconInput
+                    error={errors?.taxCode}
+                    defaultValue={initialValues?.taxCode}
+                    icon="receipt"
+                    id="taxCode"
+                    name="taxCode"
+                    placeholder="VD: 0101234567"
+                    required
+                    type="text"
+                  />
+                </div>
+                <div>
+                  <label className={labelClass} htmlFor="address">
+                    Địa chỉ trụ sở / kinh doanh <Required />
+                  </label>
+                  <IconInput
+                    error={errors?.address}
+                    defaultValue={initialValues?.address}
+                    icon="mapPin"
+                    id="address"
+                    name="address"
+                    placeholder="Nhập địa chỉ đăng ký kinh doanh..."
+                    required
+                    type="text"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-2 flex items-center justify-between gap-x-2">
+                  <label
+                    className="block text-sm font-medium text-foreground"
+                    htmlFor="description"
+                  >
+                    Mô tả giới thiệu doanh nghiệp <Required />
+                  </label>
+                  <span className="text-xs text-muted-foreground-1">
+                    {descriptionLength} / {MAX_DESCRIPTION_LENGTH}
+                  </span>
+                </div>
+                <textarea
+                  className={inputClass}
+                  defaultValue={initialValues?.description}
+                  id="description"
+                  maxLength={MAX_DESCRIPTION_LENGTH}
+                  name="description"
+                  onChange={(event) =>
+                    setDescriptionLength(event.target.value.length)
+                  }
+                  placeholder="Viết đoạn giới thiệu hấp dẫn về doanh nghiệp của bạn, các giá trị cốt lõi và thế mạnh dịch vụ..."
+                  required
+                  rows={5}
+                />
+                <FieldError errors={errors?.description} />
+              </div>
+            </Section>
+
+            {/* Pháp lý & liên kết */}
+            <Section
+              description="Tài liệu giúp đội ngũ Roamly xác minh năng lực kinh doanh nhanh hơn."
+              title="Pháp lý & liên kết"
             >
-              <span className="material-symbols-outlined text-[18px]">
-                send
-              </span>
-              <span>
+              <div>
+                <label className={labelClass} htmlFor="legalDocUrl">
+                  Liên kết hồ sơ pháp lý / năng lực
+                </label>
+                <IconInput
+                  aria-describedby="legalDocUrlHint"
+                  defaultValue={initialValues?.legalDocUrl}
+                  error={errors?.licenseUrl}
+                  icon="link"
+                  id="legalDocUrl"
+                  name="legalDocUrl"
+                  placeholder="https://drive.google.com/..."
+                  type="url"
+                />
+                <p
+                  className="mt-2 text-xs text-muted-foreground-1"
+                  id="legalDocUrlHint"
+                >
+                  Dán liên kết Google Drive, Dropbox hoặc dịch vụ lưu trữ khác
+                  và bật quyền xem cho bất kỳ ai có liên kết.
+                </p>
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="websiteUrl">
+                  Website chính thức
+                </label>
+                <IconInput
+                  defaultValue={initialValues?.websiteUrl}
+                  error={errors?.website}
+                  icon="globe"
+                  id="websiteUrl"
+                  name="websiteUrl"
+                  placeholder="https://baliexplorer.co"
+                  type="url"
+                />
+              </div>
+            </Section>
+          </div>
+
+          <div className="space-y-4 sm:space-y-6 lg:sticky lg:top-6">
+            {/* Ảnh đại diện */}
+            <Section
+              description="Hiển thị trên trang dịch vụ và kết quả tìm kiếm của khách hàng."
+              title="Ảnh đại diện / Logo"
+            >
+              <div className="space-y-4">
+                {logoPreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    alt="Ảnh đại diện"
+                    className="aspect-square w-full rounded-lg border border-layer-line object-cover"
+                    src={logoPreview}
+                  />
+                ) : (
+                  <div className="flex aspect-square w-full items-center justify-center rounded-lg border-2 border-dashed border-line-2 bg-surface text-muted-foreground-2">
+                    <ProfileIcon name="image" className="size-10" />
+                  </div>
+                )}
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      {logoPreview
+                        ? "Ảnh đại diện doanh nghiệp"
+                        : "Chưa có ảnh đại diện"}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground-1">
+                      Khuyến nghị 1200 × 630 px hoặc ảnh vuông sắc nét (JPG, PNG
+                      dưới 5MB).
+                    </p>
+                    <FieldError errors={errors?.logo} />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className={`cursor-pointer ${layerButtonClass}`}>
+                      <ProfileIcon name="upload" />
+                      {logoPreview ? "Thay đổi ảnh" : "Tải ảnh lên"}
+                      <input
+                        accept="image/png,image/jpeg"
+                        className="hidden"
+                        name="logo"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (file) {
+                            setLogoPreview(URL.createObjectURL(file));
+                            setRemoveLogo(false);
+                          }
+                        }}
+                        ref={fileInputRef}
+                        type="file"
+                      />
+                      <input
+                        name="removeLogo"
+                        type="hidden"
+                        value={removeLogo ? "true" : ""}
+                      />
+                    </label>
+                    {logoPreview ? (
+                      <button
+                        className="inline-flex items-center gap-x-2 rounded-lg border border-transparent px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 focus:bg-red-50 focus:outline-hidden"
+                        onClick={() => {
+                          setLogoPreview("");
+                          setRemoveLogo(true);
+                          if (fileInputRef.current)
+                            fileInputRef.current.value = "";
+                        }}
+                        type="button"
+                      >
+                        <ProfileIcon name="trash" />
+                        Xóa ảnh
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            </Section>
+
+            {/* Actions */}
+            <div className="flex flex-col gap-3 rounded-xl border border-card-line bg-card p-4 shadow-2xs sm:p-6">
+              <button
+                className={primaryButtonClass}
+                disabled={isPending || !paypal}
+                type="submit"
+              >
+                <ProfileIcon name="send" />
                 {isPending
                   ? "Đang xử lý..."
-                  : mode === "create"
-                    ? "Lưu & Gửi thẩm định"
-                    : "Lưu & Gửi thẩm định lại"}
-              </span>
-            </button>
+                  : isEdit
+                    ? "Lưu & Gửi thẩm định lại"
+                    : "Lưu & Gửi thẩm định"}
+              </button>
+              <Link className={layerButtonClass} href="/provider/profiles">
+                Hủy bỏ
+              </Link>
+            </div>
           </div>
-          <Link
-            className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:text-slate-900 active:scale-95"
-            href="/provider/profiles"
-          >
-            Hủy bỏ
-          </Link>
         </div>
       </form>
     </div>

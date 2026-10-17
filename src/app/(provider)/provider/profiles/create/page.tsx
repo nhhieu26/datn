@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { PENDING_COOKIE, readPendingLink } from "@/lib/paypal-pending";
 import { providerProfileRepo } from "@/entities/provider-profile";
-import { ProfileForm } from "@/features/provider/profiles";
+import { ProfileForm, ProfileIcon } from "@/features/provider/profiles";
 import type { BusinessType } from "@/generated/prisma/client";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
@@ -31,26 +31,29 @@ export default async function CreateProfilePage({
 
   if (availableBusinessTypes.length === 0) {
     return (
-      <main className="flex-1 overflow-y-auto px-8 py-7">
-        <div className="mx-auto flex w-full max-w-2xl flex-col items-center space-y-4 rounded-2xl border border-slate-200/80 bg-white p-10 text-center shadow-sm">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-50 text-brand-500">
-            <span className="material-symbols-outlined text-[28px]">
-              check_circle
-            </span>
+      <main className="flex-1 overflow-y-auto bg-background-1 font-inter text-foreground">
+        <div className="mx-auto w-full max-w-340 p-4 sm:p-6">
+          <div className="flex flex-col rounded-xl border border-card-line bg-card shadow-2xs">
+            <div className="flex min-h-80 flex-col items-center justify-center p-4 text-center md:p-5">
+              <span className="flex size-12 items-center justify-center rounded-full bg-teal-100 text-teal-700">
+                <ProfileIcon name="check" className="size-6" />
+              </span>
+              <h1 className="mt-4 text-base font-semibold text-foreground">
+                Bạn đã tạo hồ sơ cho tất cả loại hình kinh doanh
+              </h1>
+              <p className="mt-1 max-w-sm text-sm text-muted-foreground-1">
+                Mỗi tài khoản chỉ có thể tạo một hồ sơ cho mỗi loại hình dịch
+                vụ. Quay lại danh sách để theo dõi trạng thái thẩm định.
+              </p>
+              <Link
+                className="mt-5 inline-flex items-center gap-x-2 rounded-lg border border-primary-line bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover focus:bg-primary-focus focus:outline-hidden"
+                href="/provider/profiles"
+              >
+                <ProfileIcon name="arrowLeft" />
+                Quay lại danh sách hồ sơ
+              </Link>
+            </div>
           </div>
-          <h1 className="text-xl font-bold text-slate-900">
-            Bạn đã tạo hồ sơ cho tất cả loại hình kinh doanh
-          </h1>
-          <p className="text-sm text-slate-500">
-            Mỗi tài khoản chỉ có thể tạo một hồ sơ cho mỗi loại hình dịch vụ.
-            Quay lại danh sách để theo dõi trạng thái thẩm định.
-          </p>
-          <Link
-            className="inline-flex items-center gap-2 rounded-2xl bg-brand-500 px-6 py-3 text-sm font-bold text-white shadow-md shadow-brand-500/25 transition-all hover:bg-brand-600 active:scale-95"
-            href="/provider/profiles"
-          >
-            Quay lại danh sách hồ sơ
-          </Link>
         </div>
       </main>
     );
@@ -63,7 +66,7 @@ export default async function CreateProfilePage({
   );
 
   return (
-    <main className="flex-1 overflow-y-auto px-8 py-7">
+    <main className="flex-1 overflow-y-auto bg-background-1 font-inter text-foreground">
       <ProfileForm
         availableBusinessTypes={availableBusinessTypes}
         mode="create"

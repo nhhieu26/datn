@@ -97,6 +97,7 @@ function CopyButton({ value }: { value: string }) {
 function RowActions({ profile }: { profile: ProviderProfile }) {
   const dropdownId = `hs-profile-actions-${profile.id}`;
   const editHref = `/provider/profiles/${profile.id}/edit`;
+  const isRejected = profile.approvalStatus === "rejected";
 
   return (
     <div className="hs-dropdown relative inline-flex [--placement:bottom-right]">
@@ -118,6 +119,16 @@ function RowActions({ profile }: { profile: ProviderProfile }) {
         aria-labelledby={dropdownId}
       >
         <div className="space-y-0.5 p-1">
+          {isRejected ? (
+            <Link
+              className="flex w-full items-center gap-x-3 rounded-lg px-3 py-2 text-start text-sm text-primary-700 hover:bg-primary-50 focus:bg-primary-50 focus:outline-hidden"
+              href={editHref}
+              title="Cập nhật và nộp lại hồ sơ"
+            >
+              <ProfileIcon name="resubmit" />
+              Cập nhật &amp; Gửi lại
+            </Link>
+          ) : null}
           <Link className={dropdownItemClass} href={editHref}>
             <ProfileIcon name="edit" />
             Sửa hồ sơ
@@ -206,19 +217,7 @@ function ProfileRow({ profile }: { profile: ProviderProfile }) {
       </td>
 
       <td className={`${cell} text-end whitespace-nowrap`}>
-        <div className="inline-flex items-center gap-x-2">
-          {isRejected ? (
-            <Link
-              className="inline-flex items-center gap-x-2 rounded-lg border border-transparent bg-primary-100 px-3 py-2 text-sm font-medium text-primary-800 hover:bg-primary-200 focus:bg-primary-200 focus:outline-hidden"
-              href={`/provider/profiles/${profile.id}/edit`}
-              title="Cập nhật và nộp lại hồ sơ"
-            >
-              <ProfileIcon name="resubmit" />
-              Cập nhật &amp; Gửi lại
-            </Link>
-          ) : null}
-          <RowActions profile={profile} />
-        </div>
+        <RowActions profile={profile} />
       </td>
     </tr>
   );
