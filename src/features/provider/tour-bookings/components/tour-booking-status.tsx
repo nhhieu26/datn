@@ -113,11 +113,13 @@ function StatusModal({
   const meta = statusBadge[target];
   const label = getBookingStatusMeta(target).label;
 
+  // Portal ra body nằm ngoài .provider-shell nên phải gắn lại class để
+  // dùng token --foreground của Preline thay vì biến cùng tên của site
   return (
     <div
       aria-labelledby="hs-booking-status-modal-label"
       aria-modal="true"
-      className="fixed inset-0 z-80 flex items-center justify-center overflow-y-auto bg-gray-900/50 p-4 font-inter"
+      className="provider-shell fixed inset-0 z-80 flex items-center justify-center overflow-y-auto bg-gray-900/50 p-4 font-inter"
       onClick={() => {
         if (!isPending) onClose();
       }}

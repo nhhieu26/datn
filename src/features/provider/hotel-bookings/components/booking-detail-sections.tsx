@@ -4,6 +4,7 @@ import {
 } from "@/features/provider/tour-bookings/components/booking-icon";
 import {
   buildSteps,
+  type TimelineInfo,
   type TimelineStep,
 } from "@/features/provider/tour-bookings/components/booking-timeline";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
@@ -50,7 +51,7 @@ const stepStyle: Record<
 export function HotelBookingTimeline({
   booking,
 }: {
-  booking: HotelBookingDetailView;
+  booking: TimelineInfo;
 }) {
   const steps = buildSteps(booking, true);
   return (
@@ -188,7 +189,10 @@ const contactLinkClass =
 export function HotelBookingCustomer({
   booking: b,
 }: {
-  booking: HotelBookingDetailView;
+  booking: Pick<
+    HotelBookingDetailView,
+    "contactName" | "contactEmail" | "contactPhone" | "accountName"
+  >;
 }) {
   const initial = b.contactName.trim().charAt(0).toUpperCase() || "?";
   return (
@@ -226,7 +230,7 @@ export function HotelBookingCustomer({
 export function HotelBookingNotes({
   booking: b,
 }: {
-  booking: HotelBookingDetailView;
+  booking: Pick<HotelBookingDetailView, "note" | "cancelReason">;
 }) {
   const notes = [
     b.note && {
