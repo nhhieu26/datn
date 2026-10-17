@@ -39,7 +39,7 @@ export default async function EditRestaurantPage({
   if (!restaurant) notFound();
 
   return (
-    <main className="flex-1 overflow-y-auto px-8 py-7">
+    <main className="flex-1 overflow-y-auto bg-background-1 font-inter text-foreground">
       <RestaurantForm
         initialValues={mapRestaurantToFormValues(restaurant)}
         mode="edit"
