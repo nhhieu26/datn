@@ -671,7 +671,8 @@ export function TourForm({
                         <tr className="border-b border-slate-100" key={index}>
                           <td className="py-2 pr-2">
                             <input
-                              className={inputClass}
+                              className={`${inputClass} disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500`}
+                              disabled={Boolean(row.bookedSlots)}
                               onChange={(event) =>
                                 updateDeparture(
                                   index,
@@ -685,7 +686,8 @@ export function TourForm({
                           </td>
                           <td className="py-2 pr-2">
                             <input
-                              className={inputClass}
+                              className={`${inputClass} disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500`}
+                              disabled={Boolean(row.bookedSlots)}
                               onChange={(event) =>
                                 updateDeparture(
                                   index,
@@ -699,7 +701,8 @@ export function TourForm({
                           </td>
                           <td className="py-2 pr-2">
                             <input
-                              className={inputClass}
+                              className={`${inputClass} disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500`}
+                              disabled={Boolean(row.bookedSlots)}
                               onChange={(event) =>
                                 updateDeparture(
                                   index,
@@ -714,7 +717,8 @@ export function TourForm({
                           </td>
                           <td className="py-2 pr-2">
                             <input
-                              className={inputClass}
+                              className={`${inputClass} disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500`}
+                              disabled={Boolean(row.bookedSlots)}
                               onChange={(event) =>
                                 updateDeparture(
                                   index,
@@ -731,7 +735,7 @@ export function TourForm({
                               <span className="text-xs font-semibold text-slate-500">
                                 Đã đặt {row.bookedSlots} chỗ
                               </span>
-                            ) : form.departures.length > 1 ? (
+                            ) : (
                               <button
                                 className="text-xs font-semibold text-rose-500 hover:text-rose-600"
                                 onClick={() => removeDeparture(index)}
@@ -739,7 +743,7 @@ export function TourForm({
                               >
                                 Xóa
                               </button>
-                            ) : null}
+                            )}
                           </td>
                         </tr>
                       ))}

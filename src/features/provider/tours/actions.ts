@@ -11,6 +11,7 @@ import { deleteTourEmbedding, upsertTourEmbedding } from "@/lib/pinecone";
 import { slugify } from "@/lib/utils";
 import {
   createTourSchema,
+  updateTourSchema,
   tourRepo,
   type CreateTourInput,
   type Tour,
@@ -55,8 +56,11 @@ function parseJsonField<T>(formData: FormData, key: string, fallback: T): T {
   }
 }
 
-function parseTourFormData(formData: FormData) {
-  return createTourSchema.safeParse({
+function parseTourFormData(
+  formData: FormData,
+  schema: typeof createTourSchema | typeof updateTourSchema = createTourSchema,
+) {
+  return schema.safeParse({
     title: formData.get("title"),
     provinceId: formData.get("provinceId"),
     tagIds: parseJsonField<string[]>(formData, "tagIds", []),
@@ -70,6 +74,15 @@ function parseTourFormData(formData: FormData) {
     departures: parseJsonField(formData, "departures", []),
   });
 }
+
+function hasPastDeparture(
+  departures: { departureDate: Date }[],
+  now: Date,
+): boolean {
+  return departures.some((departure) => departure.departureDate <= now);
+}
+
+const PAST_DEPARTURE_ERROR = "Ngày khởi hành phải ở tương lai.";
 
 function buildEmbeddingText(
   data: CreateTourInput,
@@ -248,6 +261,13 @@ export async function createTourAction(
           string,
           string[]
         >,
+      };
+    }
+
+    if (hasPastDeparture(parsed.data.departures, new Date())) {
+      return {
+        status: "error",
+        fieldErrors: { departures: [PAST_DEPARTURE_ERROR] },
       };
     }
 
@@ -498,7 +518,7 @@ export async function updateTourAction(
     slug = tour.slug;
 
     stage = "validation";
-    const parsed = parseTourFormData(formData);
+    const parsed = parseTourFormData(formData, updateTourSchema);
     if (!parsed.success) {
       return {
         status: "error",
@@ -543,42 +563,41 @@ export async function updateTourAction(
       };
     }
 
+    // Đợt đã diễn ra (bị ẩn khỏi form) hoặc đã có người đặt thì giữ nguyên, bỏ qua dữ liệu gửi lên
+    const now = new Date();
     const existingDepartures = new Map(
       tour.departures.map((departure) => [departure.id, departure]),
     );
+    const isLocked = (departure: { departureDate: Date; bookedSlots: number }) =>
+      departure.departureDate <= now || departure.bookedSlots > 0;
     const submittedDepartureIds = new Set<string>();
+    const departures: typeof parsed.data.departures = [];
     for (const departure of parsed.data.departures) {
-      if (!departure.id) continue;
-      const existing = existingDepartures.get(departure.id);
-      if (!existing) {
-        return {
-          status: "error",
-          fieldErrors: { departures: ["Đợt khởi hành không hợp lệ."] },
-        };
+      if (departure.id) {
+        const existing = existingDepartures.get(departure.id);
+        if (!existing) {
+          return {
+            status: "error",
+            fieldErrors: { departures: ["Đợt khởi hành không hợp lệ."] },
+          };
+        }
+        submittedDepartureIds.add(departure.id);
+        if (isLocked(existing)) continue;
       }
-      if (departure.totalSlots < existing.bookedSlots) {
-        return {
-          status: "error",
-          fieldErrors: {
-            departures: [
-              `Tổng chỗ không được nhỏ hơn số chỗ đã đặt (${existing.bookedSlots}).`,
-            ],
-          },
-        };
-      }
-      submittedDepartureIds.add(departure.id);
+      departures.push(departure);
     }
-    const removedDepartures = tour.departures.filter(
-      (departure) => !submittedDepartureIds.has(departure.id),
-    );
-    if (removedDepartures.some((departure) => departure.bookedSlots > 0)) {
+    if (hasPastDeparture(departures, now)) {
       return {
         status: "error",
-        fieldErrors: {
-          departures: ["Không thể xóa đợt khởi hành đã có khách đặt chỗ."],
-        },
+        fieldErrors: { departures: [PAST_DEPARTURE_ERROR] },
       };
     }
+    const removedDepartureIds = tour.departures
+      .filter(
+        (departure) =>
+          !isLocked(departure) && !submittedDepartureIds.has(departure.id),
+      )
+      .map((departure) => departure.id);
 
     const tagIds = [...new Set(parsed.data.tagIds)];
     const [province, tags] = await Promise.all([
@@ -618,9 +637,10 @@ export async function updateTourAction(
     stage = "database";
     const updatedTour = await tourRepo.update(tour.id, {
       ...parsed.data,
+      departures,
       tagIds,
       images: [...keptImages, ...uploadedImages],
-      removedDepartureIds: removedDepartures.map((departure) => departure.id),
+      removedDepartureIds,
     });
 
     try {

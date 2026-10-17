@@ -19,7 +19,7 @@ export function findPublishedDetailBySlug(slug: string) {
       province: true,
       tags: { include: { tag: true } },
       departures: {
-        where: { status: "scheduled" },
+        where: { status: "scheduled", departureDate: { gt: new Date() } },
         orderBy: { departureDate: "asc" },
       },
     },
@@ -103,9 +103,16 @@ export async function update(
       data: tagIds.map((tagId) => ({ tourId: id, tagId })),
     });
 
+    // Đợt đã có người đặt hoặc đã diễn ra thì giữ nguyên, kể cả khi khách vừa đặt lúc đang lưu
+    const now = new Date();
     if (removedDepartureIds.length > 0) {
       await tx.tourDeparture.deleteMany({
-        where: { id: { in: removedDepartureIds }, tourId: id, bookedSlots: 0 },
+        where: {
+          id: { in: removedDepartureIds },
+          tourId: id,
+          bookedSlots: 0,
+          departureDate: { gt: now },
+        },
       });
     }
 
@@ -117,8 +124,13 @@ export async function update(
         totalSlots: departure.totalSlots,
       };
       if (departure.id) {
-        await tx.tourDeparture.update({
-          where: { id: departure.id, tourId: id },
+        await tx.tourDeparture.updateMany({
+          where: {
+            id: departure.id,
+            tourId: id,
+            bookedSlots: 0,
+            departureDate: { gt: now },
+          },
           data,
         });
       } else {
@@ -139,7 +151,13 @@ export function findRecent(take: number) {
     where: { status: "published" },
     include: {
       province: true,
-      _count: { select: { departures: { where: { status: "scheduled" } } } },
+      _count: {
+        select: {
+          departures: {
+            where: { status: "scheduled", departureDate: { gt: new Date() } },
+          },
+        },
+      },
     },
     orderBy: { createdAt: "desc" },
     take,
@@ -150,6 +168,7 @@ export async function findPaged(
   filter: ListFilter & { from?: Date; to?: Date }
 ) {
   const price = priceRange(filter);
+  const now = new Date();
   const hasDate = filter.from || filter.to;
   const where: Prisma.TourWhereInput = {
     status: "published",
@@ -166,7 +185,7 @@ export async function findPaged(
       departures: {
         some: {
           status: "scheduled",
-          departureDate: { gte: filter.from, lte: filter.to },
+          departureDate: { gt: now, gte: filter.from, lte: filter.to },
         },
       },
     }),
@@ -178,7 +197,11 @@ export async function findPaged(
       include: {
         province: true,
         _count: {
-          select: { departures: { where: { status: "scheduled" } } },
+          select: {
+            departures: {
+              where: { status: "scheduled", departureDate: { gt: now } },
+            },
+          },
         },
       },
       orderBy: order ? { basePrice: order } : { createdAt: "desc" },

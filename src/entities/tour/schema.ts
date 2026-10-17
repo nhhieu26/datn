@@ -35,4 +35,7 @@ export const createTourSchema = z.object({
     .min(1, "Cần ít nhất 1 đợt khởi hành"),
 });
 
-export const updateTourSchema = createTourSchema;
+// Khi sửa có thể không còn đợt nào chỉnh được (đã qua hoặc đã có người đặt)
+export const updateTourSchema = createTourSchema.extend({
+  departures: z.array(tourDepartureSchema),
+});

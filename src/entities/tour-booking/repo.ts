@@ -69,17 +69,18 @@ export function createHeld(customerId: string, input: CreateTourBookingInput) {
       Prisma.sql`t."customerId" = ${customerId} AND t."tourDepartureId" = ${input.departureId}`
     );
 
+    const now = new Date();
     const departure = await tx.tourDeparture.findFirst({
       where: {
         id: input.departureId,
         status: "scheduled",
+        departureDate: { gt: now },
         tour: { status: "published" },
       },
       include: { tour: true },
     });
     if (!departure) throw new NotFoundError("Lịch khởi hành không còn mở bán.");
 
-    const now = new Date();
     const reserved = await tx.$executeRaw`
       UPDATE "TourDeparture"
       SET "bookedSlots" = "bookedSlots" + ${input.guests}, "updatedAt" = ${now}

@@ -66,6 +66,7 @@ function toDateInputValue(date: Date | null): string {
 }
 
 export function mapTourToFormValues(tour: TourWithRelations): TourFormState {
+  const now = new Date();
   const images = Array.isArray(tour.images)
     ? (tour.images as { url?: unknown; fileId?: unknown }[])
     : [];
@@ -90,13 +91,16 @@ export function mapTourToFormValues(tour: TourWithRelations): TourFormState {
     itinerary:
       itinerary.length > 0 ? itinerary : [{ title: "", description: "" }],
     basePrice: String(Number(tour.basePrice)),
-    departures: tour.departures.map((departure) => ({
-      id: departure.id,
-      bookedSlots: departure.bookedSlots,
-      departureDate: toDateInputValue(departure.departureDate),
-      returnDate: toDateInputValue(departure.returnDate),
-      price: departure.price === null ? "" : String(Number(departure.price)),
-      totalSlots: String(departure.totalSlots),
-    })),
+    // Đợt đã diễn ra không hiện trong form; server giữ nguyên
+    departures: tour.departures
+      .filter((departure) => departure.departureDate > now)
+      .map((departure) => ({
+        id: departure.id,
+        bookedSlots: departure.bookedSlots,
+        departureDate: toDateInputValue(departure.departureDate),
+        returnDate: toDateInputValue(departure.returnDate),
+        price: departure.price === null ? "" : String(Number(departure.price)),
+        totalSlots: String(departure.totalSlots),
+      })),
   };
 }
