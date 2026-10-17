@@ -1,89 +1,180 @@
 "use client";
 
 import { signOut } from "next-auth/react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ADMIN_SIDEBAR_ID } from "./admin-sidebar";
 
-const sectionLabels: Record<string, string> = {
+const crumbLabels: Record<string, string> = {
+  "/admin": "Quản trị",
   "/admin/profile-approval": "Duyệt hồ sơ đối tác",
-  "/admin/destinations/create": "Tạo địa điểm du lịch",
+  "/admin/destinations": "Quản lý địa điểm",
+  "/admin/destinations/create": "Tạo mới",
 };
 
-function currentSection(pathname: string) {
-  const match = Object.keys(sectionLabels)
-    .filter((href) => pathname.startsWith(href))
-    .sort((a, b) => b.length - a.length)[0];
-  return match ? sectionLabels[match] : "Quản trị";
+function buildCrumbs(pathname: string) {
+  const parts = pathname.split("/").filter(Boolean);
+  return parts
+    .map((_, index) => `/${parts.slice(0, index + 1).join("/")}`)
+    .filter((href) => href in crumbLabels)
+    .map((href) => ({ href, label: crumbLabels[href] }));
 }
 
-export function AdminHeader() {
+export function AdminHeader({
+  user,
+}: {
+  user: { name?: string | null; email?: string | null };
+}) {
   const pathname = usePathname();
+  const crumbs = buildCrumbs(pathname);
+  const name = user.name || "Admin Roamly";
 
   return (
-    <header className="z-20 flex h-16 shrink-0 items-center justify-between border-b border-slate-200/80 bg-white px-5 sm:px-8">
-      <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-        <span className="material-symbols-outlined text-[20px] text-brand-500 xl:hidden">
-          shield_person
-        </span>
-        <span className="hidden sm:inline">Quản trị</span>
-        <span className="hidden text-slate-300 sm:inline">/</span>
-        <span className="font-bold text-slate-900">
-          {currentSection(pathname)}
-        </span>
-      </div>
+    <header className="z-48 flex w-full shrink-0 border-b border-navbar-line bg-navbar py-2.5 text-sm">
+      <nav className="mx-auto flex w-full basis-full items-center gap-x-3 px-4 sm:px-6">
+        <button
+          type="button"
+          className="inline-flex size-8 items-center justify-center gap-x-2 rounded-lg border border-layer-line bg-layer text-layer-foreground hover:bg-layer-hover focus:bg-layer-focus focus:outline-hidden lg:hidden"
+          aria-haspopup="dialog"
+          aria-expanded="false"
+          aria-controls={ADMIN_SIDEBAR_ID}
+          aria-label="Mở menu"
+          data-hs-overlay={`#${ADMIN_SIDEBAR_ID}`}
+        >
+          <svg
+            className="size-4 shrink-0"
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect width="18" height="18" x="3" y="3" rx="2" />
+            <path d="M15 3v18" />
+            <path d="m8 9 3 3-3 3" />
+          </svg>
+        </button>
 
-      <div className="flex items-center gap-3">
-        <button
-          className="relative rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
-          type="button"
-          aria-label="Thông báo"
-        >
-          <svg
-            className="h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        <ol className="flex items-center whitespace-nowrap">
+          {crumbs.map((crumb, index) =>
+            index === crumbs.length - 1 ? (
+              <li
+                key={crumb.href}
+                className="inline-flex items-center truncate text-sm font-semibold text-foreground"
+                aria-current="page"
+              >
+                {crumb.label}
+              </li>
+            ) : (
+              <li key={crumb.href} className="inline-flex items-center">
+                <Link
+                  className="flex items-center text-sm text-muted-foreground-1 hover:text-primary-focus focus:text-primary-focus focus:outline-hidden"
+                  href={crumb.href}
+                >
+                  {crumb.label}
+                </Link>
+                <svg
+                  className="mx-2 size-4 shrink-0 text-muted-foreground"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </li>
+            )
+          )}
+        </ol>
+
+        <div className="ms-auto flex flex-row items-center justify-end gap-1">
+          <button
+            type="button"
+            className="relative inline-flex size-9.5 items-center justify-center gap-x-2 rounded-full border border-transparent text-sm font-semibold text-foreground hover:bg-muted-hover focus:bg-muted-focus focus:outline-hidden"
+            aria-label="Thông báo"
           >
-            <path
-              d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+            <svg
+              className="size-4 shrink-0"
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              strokeWidth="2"
-            />
-          </svg>
-          <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-brand-500 ring-2 ring-white" />
-        </button>
-        <button
-          className="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-brand-600"
-          onClick={() => signOut({ callbackUrl: "/admin/sign-in" })}
-          type="button"
-          aria-label="Đăng xuất"
-          title="Đăng xuất"
-        >
-          <svg
-            className="h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-            />
-          </svg>
-        </button>
-        <div className="h-6 w-px bg-slate-200" />
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-500 text-xs font-bold text-white shadow-sm ring-2 ring-brand-100">
-            AD
-          </div>
-          <div className="hidden text-left sm:block">
-            <p className="text-xs font-bold text-slate-900">Admin Roamly</p>
-            <p className="text-[10px] text-slate-500">Quản trị viên</p>
+            >
+              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+              <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+            </svg>
+            <span className="absolute end-2 top-2 size-2 rounded-full bg-red-500 ring-2 ring-navbar" />
+          </button>
+
+          <div className="hs-dropdown relative inline-flex [--placement:bottom-right]">
+            <button
+              id="hs-admin-account-dropdown"
+              type="button"
+              className="inline-flex size-9.5 items-center justify-center gap-x-2 rounded-full border border-transparent text-sm font-semibold text-foreground focus:outline-hidden"
+              aria-haspopup="menu"
+              aria-expanded="false"
+              aria-label="Tài khoản"
+            >
+              <span className="inline-flex size-9.5 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+                {name.charAt(0).toUpperCase()}
+              </span>
+            </button>
+
+            <div
+              className="hs-dropdown-menu duration z-10 mt-2 hidden min-w-60 rounded-lg border border-dropdown-line bg-dropdown opacity-0 shadow-md transition-[opacity,margin] hs-dropdown-open:opacity-100"
+              role="menu"
+              aria-orientation="vertical"
+              aria-labelledby="hs-admin-account-dropdown"
+            >
+              <div className="rounded-t-lg bg-muted px-5 py-3">
+                <p className="text-sm text-muted-foreground-1">Quản trị viên</p>
+                <p className="truncate text-sm font-medium text-foreground">
+                  {user.email || name}
+                </p>
+              </div>
+              <div className="space-y-0.5 p-1.5">
+                <button
+                  className="flex w-full items-center gap-x-3 rounded-lg px-3 py-2 text-start text-sm text-dropdown-item-foreground hover:bg-dropdown-item-hover focus:bg-dropdown-item-focus focus:outline-hidden"
+                  onClick={() => signOut({ callbackUrl: "/admin/sign-in" })}
+                  type="button"
+                >
+                  <svg
+                    className="size-4 shrink-0"
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" x2="9" y1="12" y2="12" />
+                  </svg>
+                  Đăng xuất
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </nav>
     </header>
   );
 }

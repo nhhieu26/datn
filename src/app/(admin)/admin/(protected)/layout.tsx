@@ -1,5 +1,6 @@
 import { AdminHeader, AdminSidebar } from "@/features/admin";
 import { auth } from "@/lib/auth";
+import { PrelineScript } from "@/shared/components/preline-script";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
@@ -20,10 +21,11 @@ export default async function AdminLayout({
   return (
     <div className="admin-shell flex h-dvh w-full overflow-hidden bg-slate-50 font-sans text-slate-800 antialiased">
       <AdminSidebar />
-      <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
-        <AdminHeader />
+      <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden lg:ps-64">
+        <AdminHeader user={session.user} />
         {children}
       </div>
+      <PrelineScript />
     </div>
   );
 }

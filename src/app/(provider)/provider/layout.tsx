@@ -1,5 +1,6 @@
 import { ProviderHeader, ProviderSidebar } from "@/features/provider";
 import { auth } from "@/lib/auth";
+import { PrelineScript } from "@/shared/components/preline-script";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
@@ -19,11 +20,12 @@ export default async function ProviderLayout({
 
   return (
     <div className="provider-shell flex h-dvh w-full overflow-hidden bg-[#F8FAFC] font-sans text-slate-800 antialiased">
-      <ProviderSidebar user={session.user} />
-      <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
+      <ProviderSidebar />
+      <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden lg:ps-64">
         <ProviderHeader user={session.user} />
         {children}
       </div>
+      <PrelineScript />
     </div>
   );
 }

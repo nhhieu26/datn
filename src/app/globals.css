@@ -1,4 +1,10 @@
 @import "tailwindcss";
+
+/* Preline UI */
+@source "../../node_modules/preline/dist/*.js";
+@import "preline/variants.css";
+@import "preline/theme.css";
+
 @plugin "@tailwindcss/forms";
 
 :root {
@@ -178,6 +184,13 @@ body {
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+/* Token --background/--foreground của Preline trùng tên với biến của site */
+.provider-shell,
+.admin-shell {
+  --background: var(--color-white);
+  --foreground: var(--color-gray-800);
 }
 
 .provider-shell ::-webkit-scrollbar {
