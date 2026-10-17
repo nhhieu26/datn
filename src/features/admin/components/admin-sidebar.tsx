@@ -120,7 +120,7 @@ export function AdminSidebar() {
   return (
     <div
       id={ADMIN_SIDEBAR_ID}
-      className="hs-overlay fixed inset-y-0 start-0 z-60 hidden h-full w-64 -translate-x-full transform border-e border-sidebar-line bg-sidebar transition-all duration-300 [--auto-close:lg] hs-overlay-open:translate-x-0 lg:end-auto lg:bottom-0 lg:block lg:translate-x-0"
+      className="hs-overlay font-inter fixed inset-y-0 start-0 z-60 hidden h-full w-64 -translate-x-full transform border-e border-sidebar-line bg-sidebar transition-all duration-300 [--auto-close:lg] hs-overlay-open:translate-x-0 lg:end-auto lg:bottom-0 lg:block lg:translate-x-0"
       role="dialog"
       tabIndex={-1}
       aria-label="Menu quản trị"

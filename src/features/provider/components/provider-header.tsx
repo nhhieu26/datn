@@ -47,7 +47,7 @@ export function ProviderHeader({
   const name = user.name || user.email || "Đối tác";
 
   return (
-    <header className="z-48 flex w-full shrink-0 border-b border-navbar-line bg-navbar py-2.5 text-sm">
+    <header className="z-48 flex font-inter w-full shrink-0 border-b border-navbar-line bg-navbar py-2.5 text-sm">
       <nav className="mx-auto flex w-full basis-full items-center gap-x-3 px-4 sm:px-6">
         <button
           type="button"

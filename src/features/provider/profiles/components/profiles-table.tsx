@@ -6,109 +6,172 @@ import type {
   ProviderProfile,
 } from "@/generated/prisma/client";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getServiceMeta, getStatusMeta } from "../../utils";
 import { formatDate, formatEntityCode, formatUpdatedLabel } from "@/lib/utils";
+import { ProfileIcon, type ProfileIconName } from "./profile-icon";
+
+type HSWindow = Window & {
+  HSDropdown?: { autoInit: () => void };
+};
+
+const serviceIcons: Record<BusinessType, ProfileIconName> = {
+  tour: "map",
+  hotel: "bed",
+  restaurant: "utensils",
+};
+
+const statusStyles: Record<
+  ApprovalStatus,
+  { icon: ProfileIconName; className: string }
+> = {
+  approved: { icon: "check", className: "bg-teal-100 text-teal-800" },
+  pending: { icon: "clock", className: "bg-yellow-100 text-yellow-800" },
+  rejected: { icon: "x", className: "bg-red-100 text-red-800" },
+  not_submitted: {
+    icon: "draft",
+    className: "bg-surface text-surface-foreground",
+  },
+};
+
+const inputClass =
+  "block rounded-lg border-layer-line bg-layer py-2 text-foreground placeholder:text-muted-foreground-1 focus:border-primary-focus focus:ring-primary-focus sm:text-sm";
+
+const layerButtonClass =
+  "inline-flex items-center justify-center gap-x-2 rounded-lg border border-layer-line bg-layer text-sm font-medium text-layer-foreground shadow-2xs hover:bg-layer-hover focus:bg-layer-focus focus:outline-hidden disabled:pointer-events-none disabled:opacity-50";
+
+const primaryButtonClass =
+  "inline-flex items-center gap-x-2 rounded-lg border border-primary-line bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover focus:bg-primary-focus focus:outline-hidden disabled:pointer-events-none disabled:opacity-50";
+
+const dropdownItemClass =
+  "flex w-full items-center gap-x-3 rounded-lg px-3 py-2 text-start text-sm text-dropdown-item-foreground hover:bg-dropdown-item-hover focus:bg-dropdown-item-focus focus:outline-hidden";
 
 function ServiceBadge({ type }: { type: BusinessType }) {
-  const meta = getServiceMeta(type);
   return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap ${meta.className}`}
-    >
-      <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>
-        {meta.icon}
-      </span>
-      {meta.label}
+    <span className="inline-flex items-center gap-x-1.5 rounded-md border border-line-2 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-foreground">
+      <ProfileIcon
+        name={serviceIcons[type]}
+        className="size-3 text-muted-foreground-1"
+      />
+      {getServiceMeta(type).label}
     </span>
   );
 }
 
 function StatusBadge({ status }: { status: ApprovalStatus }) {
-  const meta = getStatusMeta(status);
+  const style = statusStyles[status];
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold shadow-xs ${meta.className}`}
+      className={`inline-flex items-center gap-x-1.5 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${style.className}`}
     >
-      <span
-        className="material-symbols-outlined"
-        style={{
-          fontSize: "15px",
-          fontVariationSettings: meta.filled ? "'FILL' 1" : undefined,
-        }}
-      >
-        {meta.icon}
-      </span>
-      {meta.label}
+      <ProfileIcon name={style.icon} className="size-3" />
+      {getStatusMeta(status).label}
     </span>
   );
 }
 
-function IconAction({
-  icon,
-  title,
-  danger,
-}: {
-  icon: string;
-  title: string;
-  danger?: boolean;
-}) {
+function CopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
   return (
     <button
-      className={`rounded-lg p-2 text-slate-400 transition ${
-        danger
-          ? "hover:bg-rose-50 hover:text-rose-600"
-          : "hover:bg-slate-100 hover:text-slate-700"
-      }`}
-      title={title}
+      className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-muted-hover hover:text-foreground focus:bg-muted-focus focus:outline-hidden"
+      onClick={handleCopy}
+      title={copied ? "Đã sao chép" : "Sao chép MST"}
       type="button"
     >
-      <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-        {icon}
-      </span>
+      <ProfileIcon
+        name={copied ? "tick" : "copy"}
+        className={`size-3.5 ${copied ? "text-teal-600" : ""}`}
+      />
     </button>
+  );
+}
+
+function RowActions({ profile }: { profile: ProviderProfile }) {
+  const dropdownId = `hs-profile-actions-${profile.id}`;
+  const editHref = `/provider/profiles/${profile.id}/edit`;
+
+  return (
+    <div className="hs-dropdown relative inline-flex [--placement:bottom-right]">
+      <button
+        id={dropdownId}
+        type="button"
+        className={`hs-dropdown-toggle size-8 ${layerButtonClass}`}
+        aria-haspopup="menu"
+        aria-expanded="false"
+        aria-label="Thao tác"
+      >
+        <ProfileIcon name="more" />
+      </button>
+
+      <div
+        className="hs-dropdown-menu duration z-20 hidden min-w-44 rounded-xl border border-dropdown-line bg-dropdown opacity-0 shadow-xl transition-[opacity,margin] hs-dropdown-open:opacity-100"
+        role="menu"
+        aria-orientation="vertical"
+        aria-labelledby={dropdownId}
+      >
+        <div className="space-y-0.5 p-1">
+          <Link className={dropdownItemClass} href={editHref}>
+            <ProfileIcon name="edit" />
+            Sửa hồ sơ
+          </Link>
+          <button className={dropdownItemClass} type="button">
+            <ProfileIcon name="eye" />
+            Xem chi tiết
+          </button>
+        </div>
+        <div className="space-y-0.5 border-t border-dropdown-divider p-1">
+          <button
+            className="flex w-full items-center gap-x-3 rounded-lg px-3 py-2 text-start text-sm text-red-600 hover:bg-red-50 focus:bg-red-50 focus:outline-hidden"
+            type="button"
+          >
+            <ProfileIcon name="trash" />
+            Xóa hồ sơ
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
 function ProfileRow({ profile }: { profile: ProviderProfile }) {
   const isRejected = profile.approvalStatus === "rejected";
-  const cell = isRejected
-    ? "px-6 pt-6 pb-5 align-top"
-    : "px-6 py-5 align-middle";
+  const cell = `px-6 py-4 ${isRejected ? "align-top" : "align-middle"}`;
 
   return (
-    <tr
-      className={`transition-colors hover:bg-slate-50/70 ${
-        isRejected ? "bg-rose-50/20" : ""
-      }`}
-    >
+    <tr className={isRejected ? "bg-red-50/40" : "hover:bg-layer-hover"}>
       <td className={`${cell} whitespace-nowrap`}>
-        <span className="inline-block rounded-lg border border-slate-200/80 bg-slate-100 px-2.5 py-1 font-mono text-xs font-semibold text-slate-700">
+        <span className="inline-flex rounded-md bg-surface px-2 py-0.5 font-mono text-xs font-medium text-surface-foreground">
           {formatEntityCode("PR", profile.id)}
         </span>
       </td>
 
-      <td className={`min-w-[280px] ${cell}`}>
-        <div
-          className={`flex ${isRejected ? "items-start" : "items-center"} gap-3.5`}
-        >
+      <td className={`min-w-70 ${cell}`}>
+        <div className="flex items-center gap-x-3">
           {profile.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               alt={profile.businessName}
-              className="h-11 w-11 shrink-0 rounded-xl object-cover shadow-sm ring-1 ring-slate-200/80"
+              className="size-9.5 shrink-0 rounded-lg object-cover"
               src={profile.photoUrl}
             />
           ) : (
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-sm font-bold text-slate-500 ring-1 ring-slate-200/80">
+            <span className="inline-flex size-9.5 shrink-0 items-center justify-center rounded-lg bg-surface text-sm font-semibold text-surface-foreground">
               {profile.businessName.charAt(0).toUpperCase()}
-            </div>
+            </span>
           )}
-          <div className="flex flex-col">
-            <span className="text-sm font-bold whitespace-nowrap text-slate-900">
+          <div className="grow">
+            <span className="block text-sm font-semibold whitespace-nowrap text-foreground">
               {profile.businessName}
             </span>
-            <div className="mt-1.5">
+            <div className="mt-1">
               <ServiceBadge type={profile.businessType} />
             </div>
           </div>
@@ -116,75 +179,45 @@ function ProfileRow({ profile }: { profile: ProviderProfile }) {
       </td>
 
       <td className={`${cell} whitespace-nowrap`}>
-        <div className="flex items-center gap-1.5 font-mono text-sm font-bold text-slate-800">
-          <span>{profile.taxCode ?? "—"}</span>
-          {profile.taxCode ? (
-            <button
-              className="text-slate-400 transition hover:text-slate-700"
-              title="Sao chép MST"
-            >
-              <span className="material-symbols-outlined text-[14px]">
-                content_copy
-              </span>
-            </button>
-          ) : null}
+        <div className="flex items-center gap-x-1">
+          <span className="font-mono text-sm text-foreground">
+            {profile.taxCode ?? "—"}
+          </span>
+          {profile.taxCode ? <CopyButton value={profile.taxCode} /> : null}
         </div>
       </td>
 
       <td className={`${cell} whitespace-nowrap`}>
-        <div className="flex flex-col">
-          <span className="text-sm font-medium text-slate-800">
-            {formatDate(profile.createdAt)}
-          </span>
-          <span className="mt-0.5 text-xs text-slate-400">
-            {formatUpdatedLabel(profile.updatedAt)}
-          </span>
-        </div>
+        <span className="block text-sm text-foreground">
+          {formatDate(profile.createdAt)}
+        </span>
+        <span className="block text-xs text-muted-foreground-1">
+          {formatUpdatedLabel(profile.updatedAt)}
+        </span>
       </td>
 
       <td className={cell}>
-        <div className="flex flex-col items-start gap-1.5">
-          <StatusBadge status={profile.approvalStatus} />
-          {isRejected && profile.rejectionReason ? (
-            <p className="max-w-[220px] text-xs leading-relaxed text-rose-600">
-              {profile.rejectionReason}
-            </p>
-          ) : null}
-        </div>
+        <StatusBadge status={profile.approvalStatus} />
+        {isRejected && profile.rejectionReason ? (
+          <p className="mt-2 max-w-60 text-xs text-red-600">
+            {profile.rejectionReason}
+          </p>
+        ) : null}
       </td>
 
-      <td className={`${cell} text-right whitespace-nowrap`}>
-        <div className="inline-flex items-center justify-end gap-1.5">
+      <td className={`${cell} text-end whitespace-nowrap`}>
+        <div className="inline-flex items-center gap-x-2">
           {isRejected ? (
             <Link
-              className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3.5 py-2 text-xs font-semibold text-brand-600 shadow-2xs transition hover:bg-brand-500 hover:text-white"
+              className="inline-flex items-center gap-x-2 rounded-lg border border-transparent bg-primary-100 px-3 py-2 text-sm font-medium text-primary-800 hover:bg-primary-200 focus:bg-primary-200 focus:outline-hidden"
               href={`/provider/profiles/${profile.id}/edit`}
               title="Cập nhật và nộp lại hồ sơ"
             >
-              <span
-                className="material-symbols-outlined"
-                style={{ fontSize: "18px" }}
-              >
-                replay
-              </span>
-              <span>Cập nhật &amp; Gửi lại</span>
+              <ProfileIcon name="resubmit" />
+              Cập nhật &amp; Gửi lại
             </Link>
-          ) : (
-            <Link
-              className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-              href={`/provider/profiles/${profile.id}/edit`}
-              title="Sửa hồ sơ"
-            >
-              <span
-                className="material-symbols-outlined"
-                style={{ fontSize: "18px" }}
-              >
-                edit
-              </span>
-            </Link>
-          )}
-          <IconAction icon="visibility" title="Xem chi tiết" />
-          <IconAction danger icon="delete" title="Xóa hồ sơ" />
+          ) : null}
+          <RowActions profile={profile} />
         </div>
       </td>
     </tr>
@@ -211,64 +244,58 @@ function ProfilesToolbar({
   onReset,
 }: ToolbarProps) {
   return (
-    <div className="flex flex-col items-center justify-between gap-3 border-b border-slate-200/80 p-4 md:flex-row">
-      <div className="relative w-full md:w-96">
-        <span className="material-symbols-outlined absolute top-1/2 left-3.5 -translate-y-1/2 text-[20px] text-slate-400">
-          search
-        </span>
+    <div className="grid gap-3 border-b border-card-line px-6 py-4 md:flex md:items-center md:justify-between">
+      <div className="relative w-full md:max-w-sm">
+        <div className="pointer-events-none absolute inset-y-0 start-0 z-20 flex items-center ps-3.5">
+          <ProfileIcon name="search" className="size-4 text-muted-foreground" />
+        </div>
+        <label className="sr-only" htmlFor="hs-profiles-search">
+          Tìm kiếm hồ sơ
+        </label>
         <input
-          className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pr-4 pl-10 text-sm text-slate-800 transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none"
+          className={`${inputClass} w-full ps-10 pe-4`}
+          id="hs-profiles-search"
           onChange={(event) => onSearchChange(event.target.value)}
           placeholder="Tìm kiếm theo tên đơn vị, MST..."
           type="text"
           value={search}
         />
       </div>
-      <div className="flex w-full flex-wrap items-center justify-start gap-2.5 md:w-auto md:justify-end">
-        <div className="relative">
-          <select
-            className="cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2.5 pr-8 pl-3.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100/70 focus:border-brand-500 focus:outline-none"
-            onChange={(event) =>
-              onTypeChange(event.target.value as BusinessType | "all")
-            }
-            value={typeFilter}
-          >
-            <option value="all">Tất cả dịch vụ</option>
-            <option value="tour">Tour du lịch</option>
-            <option value="hotel">Khách sạn &amp; Lưu trú</option>
-            <option value="restaurant">Nhà hàng &amp; Ẩm thực</option>
-          </select>
-          <span className="material-symbols-outlined pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-[18px] text-slate-400">
-            expand_more
-          </span>
-        </div>
-        <div className="relative">
-          <select
-            className="cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2.5 pr-8 pl-3.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100/70 focus:border-brand-500 focus:outline-none"
-            onChange={(event) =>
-              onStatusChange(event.target.value as ApprovalStatus | "all")
-            }
-            value={statusFilter}
-          >
-            <option value="all">Tất cả trạng thái</option>
-            <option value="approved">Đã duyệt</option>
-            <option value="pending">Chờ thẩm định</option>
-            <option value="rejected">Bị từ chối</option>
-            <option value="not_submitted">Chưa nộp</option>
-          </select>
-          <span className="material-symbols-outlined pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-[18px] text-slate-400">
-            expand_more
-          </span>
-        </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          aria-label="Lọc theo dịch vụ"
+          className={`${inputClass} ps-3 pe-9`}
+          onChange={(event) =>
+            onTypeChange(event.target.value as BusinessType | "all")
+          }
+          value={typeFilter}
+        >
+          <option value="all">Tất cả dịch vụ</option>
+          <option value="tour">Tour du lịch</option>
+          <option value="hotel">Khách sạn &amp; Lưu trú</option>
+          <option value="restaurant">Nhà hàng &amp; Ẩm thực</option>
+        </select>
+        <select
+          aria-label="Lọc theo trạng thái"
+          className={`${inputClass} ps-3 pe-9`}
+          onChange={(event) =>
+            onStatusChange(event.target.value as ApprovalStatus | "all")
+          }
+          value={statusFilter}
+        >
+          <option value="all">Tất cả trạng thái</option>
+          <option value="approved">Đã duyệt</option>
+          <option value="pending">Chờ thẩm định</option>
+          <option value="rejected">Bị từ chối</option>
+          <option value="not_submitted">Chưa nộp</option>
+        </select>
         <button
-          className="flex items-center justify-center self-stretch rounded-xl border border-slate-200 px-2.5 text-slate-500 shadow-sm transition hover:bg-slate-100 hover:text-slate-800"
+          className={`px-3 py-2 ${layerButtonClass}`}
           onClick={onReset}
-          title="Đặt lại bộ lọc"
           type="button"
         >
-          <span className="material-symbols-outlined block text-[18px]">
-            refresh
-          </span>
+          <ProfileIcon name="reset" />
+          Đặt lại
         </button>
       </div>
     </div>
@@ -277,26 +304,26 @@ function ProfilesToolbar({
 
 function ProfilesEmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-200/80 bg-white p-12 text-center shadow-sm">
-      <span className="material-symbols-outlined text-[40px] text-slate-300">
-        description
-      </span>
-      <h3 className="text-base font-bold text-slate-900">
-        Bạn chưa có hồ sơ doanh nghiệp nào
-      </h3>
-      <p className="max-w-sm text-sm text-slate-500">
-        Tạo hồ sơ đầu tiên để bắt đầu kinh doanh dịch vụ Tour, Khách sạn hoặc
-        Nhà hàng trên Roamly.
-      </p>
-      <Link
-        className="mt-1 inline-flex items-center gap-2 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600"
-        href="/provider/profiles/create"
-      >
-        <span className="material-symbols-outlined text-[20px]">
-          add_circle
+    <div className="flex flex-col rounded-xl border border-card-line bg-card shadow-2xs">
+      <div className="flex min-h-80 flex-col items-center justify-center p-4 text-center md:p-5">
+        <span className="flex size-12 items-center justify-center rounded-full bg-surface text-muted-foreground-2">
+          <ProfileIcon name="file" className="size-6" />
         </span>
-        Thêm hồ sơ mới
-      </Link>
+        <h3 className="mt-4 text-base font-semibold text-foreground">
+          Bạn chưa có hồ sơ doanh nghiệp nào
+        </h3>
+        <p className="mt-1 max-w-sm text-sm text-muted-foreground-1">
+          Tạo hồ sơ đầu tiên để bắt đầu kinh doanh dịch vụ Tour, Khách sạn hoặc
+          Nhà hàng trên Roamly.
+        </p>
+        <Link
+          className={`mt-5 ${primaryButtonClass}`}
+          href="/provider/profiles/create"
+        >
+          <ProfileIcon name="plus" />
+          Thêm hồ sơ mới
+        </Link>
+      </div>
     </div>
   );
 }
@@ -323,6 +350,11 @@ export function ProfilesTable({ profiles }: { profiles: ProviderProfile[] }) {
     });
   }, [profiles, search, typeFilter, statusFilter]);
 
+  // Dòng mới hiện ra sau khi lọc cần được Preline khởi tạo dropdown
+  useEffect(() => {
+    (window as HSWindow).HSDropdown?.autoInit();
+  }, [filteredProfiles]);
+
   const handleReset = () => {
     setSearch("");
     setTypeFilter("all");
@@ -334,7 +366,7 @@ export function ProfilesTable({ profiles }: { profiles: ProviderProfile[] }) {
   }
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+    <div className="flex flex-col overflow-hidden rounded-xl border border-card-line bg-card shadow-2xs">
       <ProfilesToolbar
         onReset={handleReset}
         onSearchChange={setSearch}
@@ -344,38 +376,39 @@ export function ProfilesTable({ profiles }: { profiles: ProviderProfile[] }) {
         statusFilter={statusFilter}
         typeFilter={typeFilter}
       />
-      <div className="w-full overflow-x-auto">
-        <table className="w-full min-w-[1050px] border-collapse text-left">
-          <thead>
-            <tr className="border-b border-slate-200/70 bg-slate-50/80 text-[11px] font-bold tracking-wider text-slate-500 uppercase">
-              <th className="px-6 py-4" scope="col">
-                Mã hồ sơ
-              </th>
-              <th
-                className="min-w-[280px] px-6 py-4 whitespace-nowrap"
-                scope="col"
-              >
-                Doanh nghiệp &amp; Loại hình
-              </th>
-              <th className="px-6 py-4" scope="col">
-                Mã số thuế (MST)&nbsp;
-              </th>
-              <th className="px-6 py-4" scope="col">
-                Ngày nộp
-              </th>
-              <th className="px-6 py-4" scope="col">
-                Trạng thái
-              </th>
-              <th className="px-6 py-4 text-right" scope="col">
-                Thao tác
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-table-line">
+          <thead className="bg-muted">
+            <tr>
+              {[
+                "Mã hồ sơ",
+                "Doanh nghiệp & Loại hình",
+                "Mã số thuế (MST)",
+                "Ngày nộp",
+                "Trạng thái",
+              ].map((label) => (
+                <th
+                  key={label}
+                  className="px-6 py-3 text-start whitespace-nowrap"
+                  scope="col"
+                >
+                  <span className="text-xs font-semibold text-foreground uppercase">
+                    {label}
+                  </span>
+                </th>
+              ))}
+              <th className="px-6 py-3 text-end" scope="col">
+                <span className="text-xs font-semibold text-foreground uppercase">
+                  Thao tác
+                </span>
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 text-sm">
+          <tbody className="divide-y divide-table-line">
             {filteredProfiles.length === 0 ? (
               <tr>
                 <td
-                  className="px-6 py-10 text-center text-sm text-slate-500"
+                  className="px-6 py-10 text-center text-sm text-muted-foreground-1"
                   colSpan={6}
                 >
                   Không tìm thấy hồ sơ phù hợp với bộ lọc.
@@ -388,6 +421,15 @@ export function ProfilesTable({ profiles }: { profiles: ProviderProfile[] }) {
             )}
           </tbody>
         </table>
+      </div>
+      <div className="border-t border-card-line px-6 py-4">
+        <p className="text-sm text-muted-foreground-1">
+          Hiển thị{" "}
+          <span className="font-semibold text-foreground">
+            {filteredProfiles.length}
+          </span>{" "}
+          / {profiles.length} hồ sơ
+        </p>
       </div>
     </div>
   );

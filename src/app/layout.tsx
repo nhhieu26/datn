@@ -1,10 +1,23 @@
 import type { Metadata } from "next";
-import { Caveat, DM_Sans, Kaushan_Script, Plus_Jakarta_Sans } from "next/font/google";
+import {
+  Caveat,
+  DM_Sans,
+  Inter,
+  Kaushan_Script,
+  Plus_Jakarta_Sans,
+} from "next/font/google";
 import "./globals.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin", "latin-ext", "vietnamese"],
   variable: "--font-plus-jakarta",
+  display: "swap",
+});
+
+// Font mặc định của Preline, dùng cho khu vực đối tác/quản trị
+const inter = Inter({
+  subsets: ["latin", "latin-ext", "vietnamese"],
+  variable: "--font-inter-sans",
   display: "swap",
 });
 
@@ -37,7 +50,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="vi"
-      className={`${plusJakarta.variable} ${caveat.variable} ${dmSans.variable} ${kaushan.variable} h-full antialiased`}
+      className={`${plusJakarta.variable} ${inter.variable} ${caveat.variable} ${dmSans.variable} ${kaushan.variable} h-full antialiased`}
     >
       <link
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"

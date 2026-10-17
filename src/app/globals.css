@@ -51,6 +51,7 @@
   --font-sans: var(--font-plus-jakarta), ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-handwriting: var(--font-caveat), cursive;
+  --font-inter: var(--font-inter-sans), ui-sans-serif, system-ui, sans-serif;
 
   --color-brand-orange: #ff5c39;
   --color-brand-coral: #ff4d42;
