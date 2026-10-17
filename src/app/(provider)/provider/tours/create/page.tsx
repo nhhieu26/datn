@@ -20,7 +20,7 @@ export default async function CreateTourPage() {
   ]);
 
   return (
-    <main className="flex-1 overflow-y-auto px-8 py-7">
+    <main className="flex-1 overflow-y-auto bg-background-1 font-inter text-foreground">
       <TourForm provinces={provinces} tags={tags} />
     </main>
   );

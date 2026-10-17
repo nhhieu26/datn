@@ -80,6 +80,46 @@ const paths = {
   ),
   chevronLeft: <path d="m15 18-6-6 6-6" />,
   chevronRight: <path d="m9 18 6-6-6-6" />,
+  x: (
+    <>
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </>
+  ),
+  tick: <path d="M20 6 9 17l-5-5" />,
+  mapPin: (
+    <>
+      <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" />
+      <circle cx="12" cy="10" r="3" />
+    </>
+  ),
+  clock: (
+    <>
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </>
+  ),
+  image: (
+    <>
+      <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+      <circle cx="9" cy="9" r="2" />
+      <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+    </>
+  ),
+  upload: (
+    <>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="17 8 12 3 7 8" />
+      <line x1="12" x2="12" y1="3" y2="15" />
+    </>
+  ),
+  alert: (
+    <>
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" x2="12" y1="8" y2="12" />
+      <line x1="12" x2="12.01" y1="16" y2="16" />
+    </>
+  ),
 } satisfies Record<string, ReactNode>;
 
 export type TourIconName = keyof typeof paths;

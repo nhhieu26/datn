@@ -1,10 +1,15 @@
 "use client";
 
 import type { Province, Tag } from "@/generated/prisma/client";
-import { startTransition, useActionState, useMemo, useState } from "react";
 import {
-  StepFooter,
-  StepperNav,
+  startTransition,
+  useActionState,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import Link from "next/link";
+import {
   useMultiStepForm,
   type StepDefinition,
 } from "@/shared/components/multi-step-form";
@@ -12,7 +17,8 @@ import {
   createTourAction,
   updateTourAction,
 } from "@/features/provider/tours/actions";
-import { TourPreviewCard } from "./tour-preview-card";
+import { TourDetailPreview } from "./tour-detail-preview";
+import { TourIcon } from "./tour-icon";
 
 const INITIAL_ACTION_STATE = { status: "idle" as const };
 
@@ -24,6 +30,7 @@ const steps: StepDefinition[] = [
   { id: 2, title: "Hình ảnh", subtitle: "Tối đa 5 ảnh" },
   { id: 3, title: "Lịch trình", subtitle: "Chi tiết theo ngày" },
   { id: 4, title: "Giá & Khởi hành", subtitle: "Đợt khởi hành" },
+  { id: 5, title: "Xem trước", subtitle: "Trang chi tiết tour" },
 ];
 
 export type ItineraryDay = {
@@ -60,10 +67,111 @@ export type TourFormState = {
 };
 
 const inputClass =
-  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none";
-const labelClass = "block text-xs font-bold text-slate-700 mb-1.5";
-const cardClass =
-  "space-y-5 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm";
+  "block w-full rounded-lg border-layer-line bg-layer px-3 py-2 text-foreground placeholder:text-muted-foreground-1 focus:border-primary-focus focus:ring-primary-focus disabled:pointer-events-none disabled:opacity-50 sm:text-sm";
+const selectClass = `${inputClass} pe-9`;
+const textareaClass = `${inputClass} resize-y py-2.5 leading-relaxed`;
+const labelClass = "mb-2 block text-sm font-medium text-foreground";
+const requiredMark = <span className="text-red-500">*</span>;
+
+const layerButtonClass =
+  "inline-flex items-center justify-center gap-x-2 rounded-lg border border-layer-line bg-layer px-3 py-2 text-sm font-medium text-layer-foreground shadow-2xs hover:bg-layer-hover focus:bg-layer-focus focus:outline-hidden disabled:pointer-events-none disabled:opacity-50";
+const primaryButtonClass =
+  "inline-flex items-center justify-center gap-x-2 rounded-lg border border-primary-line bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover focus:bg-primary-focus focus:outline-hidden disabled:pointer-events-none disabled:opacity-50";
+const dashedButtonClass =
+  "inline-flex w-full items-center justify-center gap-x-2 rounded-lg border border-dashed border-layer-line bg-layer px-3 py-2 text-sm font-medium text-muted-foreground-1 hover:border-primary-line hover:text-primary focus:outline-hidden";
+const destructiveTextButtonClass =
+  "inline-flex items-center gap-x-1.5 rounded-lg text-sm font-medium text-red-600 hover:text-red-800 focus:text-red-800 focus:outline-hidden";
+
+function Card({
+  title,
+  description,
+  action,
+  children,
+}: {
+  title: string;
+  description?: string;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col rounded-xl border border-card-line bg-card shadow-2xs">
+      <div className="flex items-center justify-between gap-x-3 border-b border-card-divider px-4 py-3 md:px-5">
+        <div>
+          <h2 className="font-semibold text-foreground">{title}</h2>
+          {description ? (
+            <p className="text-sm text-muted-foreground-1">{description}</p>
+          ) : null}
+        </div>
+        {action}
+      </div>
+      <div className="space-y-5 p-4 md:p-5">{children}</div>
+    </div>
+  );
+}
+
+// Stepper theo phong cách Preline, điều khiển bằng state React
+function Stepper({
+  currentStep,
+  onStepClick,
+}: {
+  currentStep: number;
+  onStepClick: (step: number) => void;
+}) {
+  return (
+    <ul className="relative flex flex-col gap-3 md:flex-row md:gap-x-2">
+      {steps.map((step) => {
+        const isDone = step.id < currentStep;
+        const isActive = step.id === currentStep;
+
+        return (
+          <li
+            className="group flex flex-1 shrink basis-0 items-center gap-x-2"
+            key={step.id}
+          >
+            <button
+              className="inline-flex min-h-7 min-w-7 shrink-0 items-center gap-x-2 text-start align-middle focus:outline-hidden"
+              onClick={() => onStepClick(step.id)}
+              type="button"
+            >
+              <span
+                className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
+                  isDone
+                    ? "bg-teal-500 text-white"
+                    : isActive
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-surface text-surface-foreground"
+                }`}
+              >
+                {isDone ? <TourIcon className="size-3.5" name="tick" /> : step.id}
+              </span>
+              <span className="block">
+                <span
+                  className={`block text-sm font-medium ${
+                    isActive || isDone
+                      ? "text-foreground"
+                      : "text-muted-foreground-1"
+                  }`}
+                >
+                  {step.title}
+                </span>
+                {step.subtitle ? (
+                  <span className="block text-xs text-muted-foreground-1">
+                    {step.subtitle}
+                  </span>
+                ) : null}
+              </span>
+            </button>
+            <div
+              className={`hidden h-px w-full flex-1 group-last:hidden md:block ${
+                isDone ? "bg-teal-500" : "bg-line-2"
+              }`}
+            />
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
 function createInitialState(provinces: Province[]): TourFormState {
   return {
@@ -109,24 +217,27 @@ function TagList({
   return (
     <div>
       <label className={labelClass}>{label}</label>
-      <ul className="mb-2 space-y-1.5">
-        {items.map((item, index) => (
-          <li
-            className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-2 text-sm font-medium text-slate-700"
-            key={`${item}-${index}`}
-          >
-            <span>{item}</span>
-            <button
-              className="text-slate-400 transition hover:text-rose-500"
-              onClick={() => onRemove(index)}
-              type="button"
+      {items.length > 0 ? (
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {items.map((item, index) => (
+            <span
+              className="inline-flex items-center gap-x-1.5 rounded-full bg-surface py-1.5 ps-3 pe-2 text-xs font-medium text-surface-foreground"
+              key={`${item}-${index}`}
             >
-              ✕
-            </button>
-          </li>
-        ))}
-      </ul>
-      <div className="flex gap-2">
+              {item}
+              <button
+                aria-label={`Xóa ${item}`}
+                className="inline-flex size-4 shrink-0 items-center justify-center rounded-full text-muted-foreground-1 hover:bg-surface-hover hover:text-foreground focus:outline-hidden"
+                onClick={() => onRemove(index)}
+                type="button"
+              >
+                <TourIcon className="size-3" name="x" />
+              </button>
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <div className="flex gap-x-2">
         <input
           className={inputClass}
           onChange={(event) => setDraft(event.target.value)}
@@ -141,10 +252,11 @@ function TagList({
           value={draft}
         />
         <button
-          className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+          className={`${layerButtonClass} shrink-0`}
           onClick={submit}
           type="button"
         >
+          <TourIcon name="plus" />
           Thêm
         </button>
       </div>
@@ -295,295 +407,345 @@ export function TourForm({
     );
   };
 
+  const isPreviewStep = currentStep === steps.length;
+  const selectedTagNames = tags
+    .filter((tag) => form.tagIds.includes(tag.id))
+    .map((tag) => tag.name);
+
+  const lastLabel =
+    mode === "edit"
+      ? isPending
+        ? "Đang lưu..."
+        : "Lưu thay đổi"
+      : isPending
+        ? "Đang tạo tour..."
+        : "Hoàn tất & Xuất bản Tour";
+
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
-      <section className="space-y-1">
-        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
-          {mode === "edit" ? "Chỉnh sửa Tour" : "Tạo Tour Mới"}
-        </h1>
-        <p className="text-sm font-medium text-slate-500">
-          {mode === "edit"
-            ? "Cập nhật thông tin, hình ảnh, lịch trình và lịch khởi hành của tour."
-            : "Nhập thông tin chi tiết để giới thiệu tour của bạn tới khách du lịch."}
-        </p>
-      </section>
-
-      {actionState.status === "error" && actionState.formError ? (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600">
-          {actionState.formError}
+    <div className="mx-auto w-full max-w-340 space-y-4 p-4 sm:space-y-6 sm:p-6">
+      <div className="grid gap-3 md:flex md:items-center md:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">
+            {mode === "edit" ? "Chỉnh sửa Tour" : "Tạo Tour Mới"}
+          </h1>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground-1">
+            {mode === "edit"
+              ? "Cập nhật thông tin, hình ảnh, lịch trình và lịch khởi hành của tour."
+              : "Nhập thông tin chi tiết để giới thiệu tour của bạn tới khách du lịch."}
+          </p>
         </div>
-      ) : null}
-      {actionState.status === "error" && actionState.fieldErrors ? (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600">
-          <ul className="list-inside list-disc space-y-1">
-            {Object.entries(actionState.fieldErrors).map(([field, messages]) => (
-              <li key={field}>{messages.join(", ")}</li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
-        <StepperNav currentStep={currentStep} onStepClick={goTo} steps={steps} />
+        <Link
+          className={`${layerButtonClass} self-start md:self-auto`}
+          href="/provider/tours"
+        >
+          <TourIcon name="chevronLeft" />
+          Danh sách tour
+        </Link>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        <div className="space-y-6 lg:col-span-7">
-          {currentStep === 1 ? (
-            <>
-              <div className={cardClass}>
-                <h2 className="text-base font-bold text-slate-900">
-                  Thông tin cơ bản & Địa điểm
-                </h2>
+      {actionState.status === "error" &&
+      (actionState.formError || actionState.fieldErrors) ? (
+        <div
+          className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+          role="alert"
+        >
+          <div className="flex gap-x-3">
+            <TourIcon className="mt-0.5 size-4" name="alert" />
+            <div className="space-y-1">
+              {actionState.formError ? (
+                <h3 className="font-semibold">{actionState.formError}</h3>
+              ) : null}
+              {actionState.fieldErrors ? (
+                <ul className="list-inside list-disc space-y-1">
+                  {Object.entries(actionState.fieldErrors).map(
+                    ([field, messages]) => (
+                      <li key={field}>{messages.join(", ")}</li>
+                    )
+                  )}
+                </ul>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
+      <div className="rounded-xl border border-card-line bg-card p-4 shadow-2xs md:p-5">
+        <Stepper currentStep={currentStep} onStepClick={goTo} />
+      </div>
+
+      <div className="space-y-4 sm:space-y-6">
+        {currentStep === 1 ? (
+          <>
+            <Card title="Thông tin cơ bản & Địa điểm">
+              <div>
+                <label className={labelClass} htmlFor="title">
+                  Tiêu đề Tour {requiredMark}
+                </label>
+                <input
+                  className={inputClass}
+                  id="title"
+                  onChange={(event) => update("title", event.target.value)}
+                  placeholder="VD: Khám phá vịnh Hạ Long 3 ngày 2 đêm"
+                  type="text"
+                  value={form.title}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div>
-                  <label className={labelClass} htmlFor="title">
-                    Tiêu đề Tour <span className="text-brand-500">*</span>
+                  <label className={labelClass} htmlFor="provinceId">
+                    Tỉnh / Thành {requiredMark}
                   </label>
-                  <input
-                    className={inputClass}
-                    id="title"
-                    onChange={(event) => update("title", event.target.value)}
-                    placeholder="VD: Khám phá vịnh Hạ Long 3 ngày 2 đêm"
-                    type="text"
-                    value={form.title}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  <div>
-                    <label className={labelClass} htmlFor="provinceId">
-                      Tỉnh / Thành <span className="text-brand-500">*</span>
-                    </label>
-                    <select
-                      className={inputClass}
-                      id="provinceId"
-                      onChange={(event) =>
-                        update("provinceId", event.target.value)
-                      }
-                      value={form.provinceId}
-                    >
-                      {provinces.map((province) => (
-                        <option key={province.id} value={province.id}>
-                          {province.fullName}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className={labelClass} htmlFor="durationDays">
-                      Số ngày <span className="text-brand-500">*</span>
-                    </label>
-                    <select
-                      className={inputClass}
-                      id="durationDays"
-                      onChange={(event) =>
-                        update("durationDays", event.target.value)
-                      }
-                      value={form.durationDays}
-                    >
-                      {Array.from({ length: 7 }, (_, i) => i + 1).map((day) => (
-                        <option key={day} value={day}>
-                          {day} ngày
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className={labelClass} htmlFor="durationNights">
-                      Số đêm <span className="text-brand-500">*</span>
-                    </label>
-                    <select
-                      className={inputClass}
-                      id="durationNights"
-                      onChange={(event) =>
-                        update("durationNights", event.target.value)
-                      }
-                      value={form.durationNights}
-                    >
-                      {Array.from({ length: 7 }, (_, i) => i).map((night) => (
-                        <option key={night} value={night}>
-                          {night} đêm
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className={labelClass}>Thẻ / Tag phân loại</label>
-                  <div className="flex flex-wrap gap-2">
-                    {tags.map((tag) => {
-                      const selected = form.tagIds.includes(tag.id);
-                      return (
-                        <button
-                          className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold transition ${
-                            selected
-                              ? "border-brand-500 bg-brand-50 text-brand-600"
-                              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
-                          }`}
-                          key={tag.id}
-                          onClick={() => toggleTag(tag.id)}
-                          type="button"
-                        >
-                          {tag.name}
-                        </button>
-                      );
-                    })}
-                    {tags.length === 0 ? (
-                      <p className="text-xs font-medium text-slate-400">
-                        Chưa có tag nào trong hệ thống.
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="mb-1.5 flex items-center justify-between">
-                    <label className={labelClass} htmlFor="description">
-                      Mô tả chi tiết Tour{" "}
-                      <span className="text-brand-500">*</span>
-                    </label>
-                    <span className="text-[11px] font-semibold text-slate-400">
-                      {form.description.length} / {MAX_DESCRIPTION_LENGTH} ký
-                      tự
-                    </span>
-                  </div>
-                  <textarea
-                    className="w-full resize-y rounded-xl border border-slate-200 bg-white p-3.5 text-sm font-medium leading-relaxed text-slate-800 transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
-                    id="description"
-                    maxLength={MAX_DESCRIPTION_LENGTH}
+                  <select
+                    className={selectClass}
+                    id="provinceId"
                     onChange={(event) =>
-                      update("description", event.target.value)
+                      update("provinceId", event.target.value)
                     }
-                    placeholder="Mô tả hành trình, điểm nổi bật, trải nghiệm..."
-                    rows={6}
-                    value={form.description}
-                  />
+                    value={form.provinceId}
+                  >
+                    {provinces.map((province) => (
+                      <option key={province.id} value={province.id}>
+                        {province.fullName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelClass} htmlFor="durationDays">
+                    Số ngày {requiredMark}
+                  </label>
+                  <select
+                    className={selectClass}
+                    id="durationDays"
+                    onChange={(event) =>
+                      update("durationDays", event.target.value)
+                    }
+                    value={form.durationDays}
+                  >
+                    {Array.from({ length: 7 }, (_, i) => i + 1).map((day) => (
+                      <option key={day} value={day}>
+                        {day} ngày
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelClass} htmlFor="durationNights">
+                    Số đêm {requiredMark}
+                  </label>
+                  <select
+                    className={selectClass}
+                    id="durationNights"
+                    onChange={(event) =>
+                      update("durationNights", event.target.value)
+                    }
+                    value={form.durationNights}
+                  >
+                    {Array.from({ length: 7 }, (_, i) => i).map((night) => (
+                      <option key={night} value={night}>
+                        {night} đêm
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
-              <div className={cardClass}>
-                <h2 className="text-base font-bold text-slate-900">
-                  Dịch vụ & Tiện ích Tour
-                </h2>
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                  <TagList
-                    items={form.includeServices}
-                    label="Dịch vụ bao gồm"
-                    onAdd={(value) =>
-                      update("includeServices", [
-                        ...form.includeServices,
-                        value,
-                      ])
-                    }
-                    onRemove={(index) =>
-                      update(
-                        "includeServices",
-                        form.includeServices.filter((_, i) => i !== index)
-                      )
-                    }
-                    placeholder="VD: Xe đưa đón, hướng dẫn viên..."
-                  />
-                  <TagList
-                    items={form.excludeServices}
-                    label="Dịch vụ KHÔNG bao gồm"
-                    onAdd={(value) =>
-                      update("excludeServices", [
-                        ...form.excludeServices,
-                        value,
-                      ])
-                    }
-                    onRemove={(index) =>
-                      update(
-                        "excludeServices",
-                        form.excludeServices.filter((_, i) => i !== index)
-                      )
-                    }
-                    placeholder="VD: Chi phí cá nhân, đồ uống..."
-                  />
+              <div>
+                <label className={labelClass}>Thẻ / Tag phân loại</label>
+                <div className="flex flex-wrap gap-2">
+                  {tags.map((tag) => {
+                    const selected = form.tagIds.includes(tag.id);
+                    return (
+                      <button
+                        aria-pressed={selected}
+                        className={`inline-flex items-center gap-x-1.5 rounded-full border px-3 py-1.5 text-xs font-medium focus:outline-hidden ${
+                          selected
+                            ? "border-primary-line bg-primary-50 text-primary-700"
+                            : "border-layer-line bg-layer text-layer-foreground hover:bg-layer-hover"
+                        }`}
+                        key={tag.id}
+                        onClick={() => toggleTag(tag.id)}
+                        type="button"
+                      >
+                        {selected ? (
+                          <TourIcon className="size-3" name="tick" />
+                        ) : null}
+                        {tag.name}
+                      </button>
+                    );
+                  })}
+                  {tags.length === 0 ? (
+                    <p className="text-sm text-muted-foreground-1">
+                      Chưa có tag nào trong hệ thống.
+                    </p>
+                  ) : null}
                 </div>
               </div>
-            </>
-          ) : null}
 
-          {currentStep === 2 ? (
-            <div className={cardClass}>
-              <h2 className="text-base font-bold text-slate-900">
-                Hình ảnh Tour
-              </h2>
-              <p className="text-xs font-semibold text-slate-400">
-                Đã tải {form.photos.length}/{MAX_PHOTOS} ảnh
-              </p>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5">
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <label
+                    className="block text-sm font-medium text-foreground"
+                    htmlFor="description"
+                  >
+                    Mô tả chi tiết Tour {requiredMark}
+                  </label>
+                  <span className="text-xs text-muted-foreground-1">
+                    {form.description.length} / {MAX_DESCRIPTION_LENGTH} ký
+                    tự
+                  </span>
+                </div>
+                <textarea
+                  className={textareaClass}
+                  id="description"
+                  maxLength={MAX_DESCRIPTION_LENGTH}
+                  onChange={(event) =>
+                    update("description", event.target.value)
+                  }
+                  placeholder="Mô tả hành trình, điểm nổi bật, trải nghiệm..."
+                  rows={6}
+                  value={form.description}
+                />
+              </div>
+            </Card>
+
+            <Card title="Dịch vụ & Tiện ích Tour">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                <TagList
+                  items={form.includeServices}
+                  label="Dịch vụ bao gồm"
+                  onAdd={(value) =>
+                    update("includeServices", [
+                      ...form.includeServices,
+                      value,
+                    ])
+                  }
+                  onRemove={(index) =>
+                    update(
+                      "includeServices",
+                      form.includeServices.filter((_, i) => i !== index)
+                    )
+                  }
+                  placeholder="VD: Xe đưa đón, hướng dẫn viên..."
+                />
+                <TagList
+                  items={form.excludeServices}
+                  label="Dịch vụ KHÔNG bao gồm"
+                  onAdd={(value) =>
+                    update("excludeServices", [
+                      ...form.excludeServices,
+                      value,
+                    ])
+                  }
+                  onRemove={(index) =>
+                    update(
+                      "excludeServices",
+                      form.excludeServices.filter((_, i) => i !== index)
+                    )
+                  }
+                  placeholder="VD: Chi phí cá nhân, đồ uống..."
+                />
+              </div>
+            </Card>
+          </>
+        ) : null}
+
+        {currentStep === 2 ? (
+          <Card
+            action={
+              <span className="inline-flex items-center rounded-full bg-surface px-2.5 py-1 text-xs font-medium text-surface-foreground">
+                {form.photos.length}/{MAX_PHOTOS} ảnh
+              </span>
+            }
+            description="Ảnh đầu tiên sẽ được dùng làm ảnh bìa. Hỗ trợ PNG, JPG."
+            title="Hình ảnh Tour"
+          >
+            {form.photos.length < MAX_PHOTOS ? (
+              <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-layer-line bg-layer p-8 text-center hover:border-primary-line">
+                <span className="flex size-12 items-center justify-center rounded-full bg-surface text-muted-foreground-2">
+                  <TourIcon className="size-5" name="upload" />
+                </span>
+                <span className="mt-3 text-sm text-foreground">
+                  <span className="font-medium text-primary">
+                    Chọn ảnh tải lên
+                  </span>{" "}
+                  hoặc kéo thả vào đây
+                </span>
+                <span className="mt-1 text-xs text-muted-foreground-1">
+                  Còn lại {MAX_PHOTOS - form.photos.length} ảnh
+                </span>
+                <input
+                  accept="image/png,image/jpeg"
+                  className="hidden"
+                  multiple
+                  onChange={(event) => handlePhotoSelect(event.target.files)}
+                  type="file"
+                />
+              </label>
+            ) : null}
+            {form.photos.length > 0 ? (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
                 {form.photos.map((photo, index) => (
                   <div
-                    className="group relative aspect-square overflow-hidden rounded-xl border border-slate-200"
+                    className="group relative aspect-square overflow-hidden rounded-lg border border-layer-line"
                     key={photo.previewUrl}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       alt={`Ảnh tour ${index + 1}`}
-                      className="h-full w-full object-cover"
+                      className="size-full object-cover"
                       src={photo.previewUrl}
                     />
+                    {index === 0 ? (
+                      <span className="absolute start-1.5 bottom-1.5 inline-flex rounded-full bg-primary px-2 py-0.5 text-[10px] font-medium text-primary-foreground">
+                        Ảnh bìa
+                      </span>
+                    ) : null}
                     <button
-                      className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-lg bg-white/90 text-rose-600 opacity-0 shadow-sm transition group-hover:opacity-100"
+                      aria-label={`Xóa ảnh ${index + 1}`}
+                      className="absolute end-1.5 top-1.5 inline-flex size-6 items-center justify-center rounded-full border border-layer-line bg-layer text-red-600 opacity-0 shadow-2xs group-hover:opacity-100 hover:bg-layer-hover focus:opacity-100 focus:outline-hidden"
                       onClick={() => removePhoto(index)}
                       type="button"
                     >
-                      ✕
+                      <TourIcon className="size-3.5" name="x" />
                     </button>
                   </div>
                 ))}
-                {form.photos.length < MAX_PHOTOS ? (
-                  <label className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-slate-400 transition hover:border-brand-400 hover:text-brand-500">
-                    <span className="text-2xl leading-none">+</span>
-                    <span className="text-[11px] font-semibold">Thêm ảnh</span>
-                    <input
-                      accept="image/png,image/jpeg"
-                      className="hidden"
-                      multiple
-                      onChange={(event) =>
-                        handlePhotoSelect(event.target.files)
-                      }
-                      type="file"
-                    />
-                  </label>
-                ) : null}
               </div>
-            </div>
-          ) : null}
+            ) : null}
+          </Card>
+        ) : null}
 
-          {currentStep === 3 ? (
-            <div className={cardClass}>
-              <h2 className="text-base font-bold text-slate-900">
-                Lịch trình chi tiết
-              </h2>
-              <div className="space-y-4">
-                {form.itinerary.map((day, index) => (
-                  <div
-                    className="space-y-3 rounded-xl border border-slate-200 p-4"
-                    key={index}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-50 text-xs font-bold text-brand-600">
-                        {index + 1}
-                      </span>
+        {currentStep === 3 ? (
+          <Card title="Lịch trình chi tiết">
+            <div>
+              {form.itinerary.map((day, index) => (
+                <div className="group relative flex gap-x-4" key={index}>
+                  <div className="relative after:absolute after:start-3.5 after:top-8 after:bottom-0 after:w-px after:-translate-x-[0.5px] after:bg-line-2 group-last:after:hidden">
+                    <span className="relative z-10 flex size-7 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700">
+                      {index + 1}
+                    </span>
+                  </div>
+                  <div className="grow space-y-3 pb-6 group-last:pb-0">
+                    <div className="flex min-h-7 items-center justify-between">
+                      <h3 className="text-sm font-semibold text-foreground">
+                        Ngày {index + 1}
+                      </h3>
                       {form.itinerary.length > 1 ? (
                         <button
-                          className="text-xs font-semibold text-rose-500 hover:text-rose-600"
+                          className={destructiveTextButtonClass}
                           onClick={() => removeItineraryDay(index)}
                           type="button"
                         >
+                          <TourIcon className="size-3.5" name="trash" />
                           Xóa chặng này
                         </button>
                       ) : null}
                     </div>
                     <div>
                       <label className={labelClass}>
-                        Tên chặng / Tiêu đề ngày{" "}
-                        <span className="text-brand-500">*</span>
+                        Tên chặng / Tiêu đề ngày {requiredMark}
                       </label>
                       <input
                         className={inputClass}
@@ -597,11 +759,10 @@ export function TourForm({
                     </div>
                     <div>
                       <label className={labelClass}>
-                        Mô tả chi tiết hoạt động{" "}
-                        <span className="text-brand-500">*</span>
+                        Mô tả chi tiết hoạt động {requiredMark}
                       </label>
                       <textarea
-                        className="w-full resize-y rounded-xl border border-slate-200 bg-white p-3.5 text-sm font-medium leading-relaxed text-slate-800 transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+                        className={textareaClass}
                         onChange={(event) =>
                           updateItineraryDay(
                             index,
@@ -615,31 +776,30 @@ export function TourForm({
                       />
                     </div>
                   </div>
-                ))}
-              </div>
-              <button
-                className="w-full rounded-xl border border-dashed border-slate-300 py-2.5 text-sm font-semibold text-slate-500 transition hover:border-brand-400 hover:text-brand-600"
-                onClick={addItineraryDay}
-                type="button"
-              >
-                + Thêm ngày lịch trình
-              </button>
+                </div>
+              ))}
             </div>
-          ) : null}
+            <button
+              className={dashedButtonClass}
+              onClick={addItineraryDay}
+              type="button"
+            >
+              <TourIcon name="plus" />
+              Thêm ngày lịch trình
+            </button>
+          </Card>
+        ) : null}
 
-          {currentStep === 4 ? (
-            <>
-              <div className={cardClass}>
-                <h2 className="text-base font-bold text-slate-900">
-                  Giá cơ bản niêm yết
-                </h2>
-                <div>
-                  <label className={labelClass} htmlFor="basePrice">
-                    Giá khởi điểm / Người (VND){" "}
-                    <span className="text-brand-500">*</span>
-                  </label>
+        {currentStep === 4 ? (
+          <>
+            <Card title="Giá cơ bản niêm yết">
+              <div>
+                <label className={labelClass} htmlFor="basePrice">
+                  Giá khởi điểm / Người {requiredMark}
+                </label>
+                <div className="relative">
                   <input
-                    className={inputClass}
+                    className={`${inputClass} pe-16`}
                     id="basePrice"
                     onChange={(event) =>
                       update("basePrice", event.target.value)
@@ -648,157 +808,173 @@ export function TourForm({
                     type="number"
                     value={form.basePrice}
                   />
+                  <div className="pointer-events-none absolute inset-y-0 end-0 z-20 flex items-center pe-4">
+                    <span className="text-sm text-muted-foreground-1">
+                      VND
+                    </span>
+                  </div>
                 </div>
               </div>
+            </Card>
 
-              <div className={cardClass}>
-                <h2 className="text-base font-bold text-slate-900">
+            <div className="flex flex-col overflow-hidden rounded-xl border border-card-line bg-card shadow-2xs">
+              <div className="border-b border-card-divider px-4 py-3 md:px-5">
+                <h2 className="font-semibold text-foreground">
                   Lịch khởi hành theo từng đợt
                 </h2>
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[640px] text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-200 text-left text-xs font-bold text-slate-500">
-                        <th className="pb-2 pr-2">Ngày bắt đầu</th>
-                        <th className="pb-2 pr-2">Ngày kết thúc</th>
-                        <th className="pb-2 pr-2">Giá đợt</th>
-                        <th className="pb-2 pr-2">Tổng chỗ</th>
-                        <th className="pb-2" />
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-160 w-full divide-y divide-table-line">
+                  <thead className="bg-surface">
+                    <tr>
+                      {["Ngày bắt đầu", "Ngày kết thúc", "Giá đợt", "Tổng chỗ"].map(
+                        (heading) => (
+                          <th
+                            className="px-3 py-3 text-start text-xs font-medium tracking-wide text-muted-foreground-1 uppercase first:ps-4 md:first:ps-5"
+                            key={heading}
+                            scope="col"
+                          >
+                            {heading}
+                          </th>
+                        )
+                      )}
+                      <th className="px-3 py-3 pe-4 md:pe-5" scope="col" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-table-line">
+                    {form.departures.map((row, index) => (
+                      <tr key={index}>
+                        <td className="px-3 py-3 ps-4 md:ps-5">
+                          <input
+                            className={inputClass}
+                            disabled={Boolean(row.bookedSlots)}
+                            onChange={(event) =>
+                              updateDeparture(
+                                index,
+                                "departureDate",
+                                event.target.value
+                              )
+                            }
+                            type="date"
+                            value={row.departureDate}
+                          />
+                        </td>
+                        <td className="px-3 py-3">
+                          <input
+                            className={inputClass}
+                            disabled={Boolean(row.bookedSlots)}
+                            onChange={(event) =>
+                              updateDeparture(
+                                index,
+                                "returnDate",
+                                event.target.value
+                              )
+                            }
+                            type="date"
+                            value={row.returnDate}
+                          />
+                        </td>
+                        <td className="px-3 py-3">
+                          <input
+                            className={inputClass}
+                            disabled={Boolean(row.bookedSlots)}
+                            onChange={(event) =>
+                              updateDeparture(
+                                index,
+                                "price",
+                                event.target.value
+                              )
+                            }
+                            placeholder={form.basePrice || "Mặc định"}
+                            type="number"
+                            value={row.price}
+                          />
+                        </td>
+                        <td className="px-3 py-3">
+                          <input
+                            className={inputClass}
+                            disabled={Boolean(row.bookedSlots)}
+                            onChange={(event) =>
+                              updateDeparture(
+                                index,
+                                "totalSlots",
+                                event.target.value
+                              )
+                            }
+                            type="number"
+                            value={row.totalSlots}
+                          />
+                        </td>
+                        <td className="px-3 py-3 pe-4 text-end whitespace-nowrap md:pe-5">
+                          {row.bookedSlots ? (
+                            <span className="inline-flex items-center rounded-full bg-teal-100 px-2.5 py-1 text-xs font-medium text-teal-800">
+                              Đã đặt {row.bookedSlots} chỗ
+                            </span>
+                          ) : (
+                            <button
+                              aria-label="Xóa đợt khởi hành"
+                              className="inline-flex size-8 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 focus:bg-red-50 focus:outline-hidden"
+                              onClick={() => removeDeparture(index)}
+                              type="button"
+                            >
+                              <TourIcon name="trash" />
+                            </button>
+                          )}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {form.departures.map((row, index) => (
-                        <tr className="border-b border-slate-100" key={index}>
-                          <td className="py-2 pr-2">
-                            <input
-                              className={`${inputClass} disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500`}
-                              disabled={Boolean(row.bookedSlots)}
-                              onChange={(event) =>
-                                updateDeparture(
-                                  index,
-                                  "departureDate",
-                                  event.target.value
-                                )
-                              }
-                              type="date"
-                              value={row.departureDate}
-                            />
-                          </td>
-                          <td className="py-2 pr-2">
-                            <input
-                              className={`${inputClass} disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500`}
-                              disabled={Boolean(row.bookedSlots)}
-                              onChange={(event) =>
-                                updateDeparture(
-                                  index,
-                                  "returnDate",
-                                  event.target.value
-                                )
-                              }
-                              type="date"
-                              value={row.returnDate}
-                            />
-                          </td>
-                          <td className="py-2 pr-2">
-                            <input
-                              className={`${inputClass} disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500`}
-                              disabled={Boolean(row.bookedSlots)}
-                              onChange={(event) =>
-                                updateDeparture(
-                                  index,
-                                  "price",
-                                  event.target.value
-                                )
-                              }
-                              placeholder={form.basePrice || "Mặc định"}
-                              type="number"
-                              value={row.price}
-                            />
-                          </td>
-                          <td className="py-2 pr-2">
-                            <input
-                              className={`${inputClass} disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500`}
-                              disabled={Boolean(row.bookedSlots)}
-                              onChange={(event) =>
-                                updateDeparture(
-                                  index,
-                                  "totalSlots",
-                                  event.target.value
-                                )
-                              }
-                              type="number"
-                              value={row.totalSlots}
-                            />
-                          </td>
-                          <td className="py-2 text-right whitespace-nowrap">
-                            {row.bookedSlots ? (
-                              <span className="text-xs font-semibold text-slate-500">
-                                Đã đặt {row.bookedSlots} chỗ
-                              </span>
-                            ) : (
-                              <button
-                                className="text-xs font-semibold text-rose-500 hover:text-rose-600"
-                                onClick={() => removeDeparture(index)}
-                                type="button"
-                              >
-                                Xóa
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="border-t border-card-divider p-4 md:p-5">
                 <button
-                  className="w-full rounded-xl border border-dashed border-slate-300 py-2.5 text-sm font-semibold text-slate-500 transition hover:border-brand-400 hover:text-brand-600"
+                  className={dashedButtonClass}
                   onClick={addDeparture}
                   type="button"
                 >
-                  + Thêm đợt khởi hành mới
+                  <TourIcon name="plus" />
+                  Thêm đợt khởi hành mới
                 </button>
               </div>
-            </>
-          ) : null}
+            </div>
+          </>
+        ) : null}
 
-          <StepFooter
-            cancelHref="/provider/tours"
-            isFirst={isFirst}
-            isLast={isLast}
-            lastLabel={
-              mode === "edit"
-                ? isPending
-                  ? "Đang lưu..."
-                  : "Lưu thay đổi"
-                : isPending
-                  ? "Đang tạo tour..."
-                  : "Hoàn tất & Xuất bản Tour"
-            }
-            nextDisabled={isLast && isPending}
-            onBack={prev}
-            onNext={isLast ? handleSubmit : next}
+        {isPreviewStep ? (
+          <TourDetailPreview
+            form={form}
+            provinceName={selectedProvince?.name}
+            tagNames={selectedTagNames}
           />
-        </div>
+        ) : null}
 
-        <div className="lg:col-span-5">
-          <div className="sticky top-6">
-            <TourPreviewCard
-              basePrice={form.basePrice}
-              departures={form.departures}
-              description={form.description}
-              durationDays={form.durationDays}
-              durationNights={form.durationNights}
-              includeServices={form.includeServices}
-              itinerary={form.itinerary}
-              photoCount={form.photos.length}
-              photoUrl={form.photos[0]?.previewUrl}
-              provinceName={selectedProvince?.fullName}
-              tagNames={tags
-                .filter((tag) => form.tagIds.includes(tag.id))
-                .map((tag) => tag.name)}
-              title={form.title}
-            />
-          </div>
+        <div className="flex items-center justify-between gap-x-2 rounded-xl border border-card-line bg-card px-4 py-3 shadow-2xs md:px-5">
+          {isFirst ? (
+            <Link className={layerButtonClass} href="/provider/tours">
+              Hủy thao tác
+            </Link>
+          ) : (
+            <button className={layerButtonClass} onClick={prev} type="button">
+              <TourIcon name="chevronLeft" />
+              Quay lại bước trước
+            </button>
+          )}
+          <button
+            className={primaryButtonClass}
+            disabled={isLast && isPending}
+            onClick={isLast ? handleSubmit : next}
+            type="button"
+          >
+            {isLast && isPending ? (
+              <span
+                aria-label="loading"
+                className="inline-block size-4 animate-spin rounded-full border-3 border-current border-t-transparent"
+                role="status"
+              />
+            ) : null}
+            {isLast ? lastLabel : "Tiếp tục"}
+            {isLast ? null : <TourIcon name="chevronRight" />}
+          </button>
         </div>
       </div>
     </div>

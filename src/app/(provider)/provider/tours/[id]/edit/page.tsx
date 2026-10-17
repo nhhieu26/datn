@@ -36,7 +36,7 @@ export default async function EditTourPage({
   if (!tour) notFound();
 
   return (
-    <main className="flex-1 overflow-y-auto px-8 py-7">
+    <main className="flex-1 overflow-y-auto bg-background-1 font-inter text-foreground">
       <TourForm
         initialValues={mapTourToFormValues(tour)}
         mode="edit"
