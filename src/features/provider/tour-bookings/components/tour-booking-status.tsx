@@ -89,7 +89,7 @@ export function PrelinePaymentBadge({ state }: { state: PaymentState }) {
   );
 }
 
-function StatusModal({
+export function PrelineStatusModal({
   booking,
   config,
   target,
@@ -362,7 +362,7 @@ export function PrelineBookingActions({
 
       {target
         ? createPortal(
-            <StatusModal
+            <PrelineStatusModal
               booking={booking}
               config={config}
               onClose={() => setTarget(null)}

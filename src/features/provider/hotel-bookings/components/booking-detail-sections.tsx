@@ -50,10 +50,12 @@ const stepStyle: Record<
 /** Timeline dọc theo mẫu Timeline của Preline. */
 export function HotelBookingTimeline({
   booking,
+  withPayment = true,
 }: {
   booking: TimelineInfo;
+  withPayment?: boolean;
 }) {
-  const steps = buildSteps(booking, true);
+  const steps = buildSteps(booking, withPayment);
   return (
     <div className="p-4 md:p-5">
       {steps.map((step) => {

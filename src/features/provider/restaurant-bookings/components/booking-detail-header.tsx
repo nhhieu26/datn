@@ -1,55 +1,75 @@
+import {
+  BookingIcon,
+  type BookingIconName,
+} from "@/features/provider/tour-bookings/components/booking-icon";
 import { formatDate } from "@/lib/utils";
 import type { RestaurantBookingDetailView } from "../types";
 import { formatTimeRange } from "../utils";
-import { RestaurantBookingStatusMenu } from "./restaurant-booking-status-menu";
 
+/** Thẻ tổng quan đơn đặt bàn theo phong cách Preline. */
 export function RestaurantBookingDetailHeader({
   booking,
 }: {
   booking: RestaurantBookingDetailView;
 }) {
+  const location = booking.address ?? booking.provinceName;
   return (
-    <div className="flex flex-col gap-5 sm:flex-row">
+    <div className="flex flex-col gap-4 p-4 sm:flex-row sm:gap-5 md:p-5">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         alt={booking.restaurantName}
-        className="h-32 w-full shrink-0 rounded-xl object-cover ring-1 ring-slate-200/80 sm:w-48"
+        className="aspect-video w-full shrink-0 rounded-lg border border-card-line object-cover sm:aspect-4/3 sm:w-44"
         src={booking.imageUrl}
       />
-      <div className="flex min-w-0 flex-col justify-center gap-2">
-        <span className="text-[11px] font-bold tracking-wider text-brand-600 uppercase">
-          Mã đơn: {booking.code}
-        </span>
-        <h2 className="text-xl font-extrabold text-slate-900">
+      <div className="flex min-w-0 grow flex-col">
+        <h2 className="text-lg font-semibold text-foreground">
           {booking.restaurantName}
         </h2>
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-slate-600">
-          <Meta icon="calendar_month">{formatDate(booking.reservationDate)}</Meta>
-          <Meta icon="schedule">
+        {booking.provinceName && (
+          <p className="text-sm text-muted-foreground-1">
+            {booking.provinceName}
+          </p>
+        )}
+
+        <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+          <Meta icon="calendar" label="Ngày đặt bàn">
+            {formatDate(booking.reservationDate)}
+          </Meta>
+          <Meta icon="clock" label="Khung giờ">
             {formatTimeRange(booking.startTime, booking.endTime)}
           </Meta>
-          <Meta icon="group">{booking.guests} khách</Meta>
-          {(booking.address || booking.provinceName) && (
-            <Meta icon="location_on">
-              {booking.address ?? booking.provinceName}
+          <Meta icon="users" label="Số khách">
+            {booking.guests} khách
+          </Meta>
+          {location && (
+            <Meta icon="mapPin" label="Địa chỉ">
+              {location}
             </Meta>
           )}
-        </div>
-        <div className="mt-1 flex flex-wrap gap-2">
-          <RestaurantBookingStatusMenu booking={booking} />
-        </div>
+        </dl>
       </div>
     </div>
   );
 }
 
-function Meta({ icon, children }: { icon: string; children: React.ReactNode }) {
+function Meta({
+  icon,
+  label,
+  children,
+}: {
+  icon: BookingIconName;
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className="material-symbols-outlined text-[18px] text-brand-600">
-        {icon}
+    <div className="flex gap-x-3">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-surface text-surface-foreground">
+        <BookingIcon name={icon} />
       </span>
-      {children}
-    </span>
+      <div className="min-w-0">
+        <dt className="text-xs text-muted-foreground-1">{label}</dt>
+        <dd className="text-sm font-medium text-foreground">{children}</dd>
+      </div>
+    </div>
   );
 }

@@ -1,50 +1,28 @@
 import { providerProfileRepo } from "@/entities/provider-profile";
 import { restaurantBookingRepo } from "@/entities/restaurant-booking";
 import {
+  HotelBookingCustomer,
+  HotelBookingNotes,
+  HotelBookingTimeline,
+  PrelineCard,
+} from "@/features/provider/hotel-bookings";
+import {
   RestaurantBookingDetailHeader,
+  RestaurantBookingDetailTable,
+  RestaurantBookingStatusActions,
   mapRestaurantBookingToDetail,
 } from "@/features/provider/restaurant-bookings";
-import {
-  BookingCustomerCard,
-  BookingTimeline,
-} from "@/features/provider/tour-bookings";
+import { BookingIcon } from "@/features/provider/tour-bookings/components/booking-icon";
+import { PrelineStatusBadge } from "@/features/provider/tour-bookings/components/tour-booking-status";
 import { auth } from "@/lib/auth";
+import { formatDateTime } from "@/lib/utils";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
   title: "Roamly - Chi tiết đơn đặt bàn | Kênh Đối tác",
 };
-
-function Card({
-  title,
-  icon,
-  children,
-  flush,
-}: {
-  title?: string;
-  icon?: string;
-  children: ReactNode;
-  flush?: boolean;
-}) {
-  return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
-      {title && (
-        <h3 className="flex items-center gap-2 px-6 pt-5 text-lg font-extrabold text-slate-900">
-          {icon && (
-            <span className="material-symbols-outlined text-brand-600">
-              {icon}
-            </span>
-          )}
-          {title}
-        </h3>
-      )}
-      <div className={flush ? "pt-4" : "p-6"}>{children}</div>
-    </section>
-  );
-}
 
 export default async function ProviderRestaurantBookingDetailPage({
   params,
@@ -69,53 +47,74 @@ export default async function ProviderRestaurantBookingDetailPage({
   if (!record) notFound();
 
   const booking = mapRestaurantBookingToDetail(record);
-  const note = [
-    booking.note && { label: "Ghi chú của khách", text: booking.note },
-    booking.cancelReason && { label: "Lý do hủy", text: booking.cancelReason },
-  ].filter((n): n is { label: string; text: string } => Boolean(n));
-
   return (
-    <main className="flex-1 overflow-y-auto px-8 py-7">
-      <div className="mx-auto flex w-full max-w-7xl flex-col space-y-6">
-        <Link
-          className="inline-flex w-fit items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-brand-600"
-          href="/provider/bookings/restaurants"
-        >
-          <span className="material-symbols-outlined text-[18px]">
-            arrow_back
-          </span>
-          Quay lại đơn đặt bàn
-        </Link>
+    <main className="flex-1 overflow-y-auto bg-background-1 font-inter text-foreground">
+      <div className="mx-auto w-full max-w-340 space-y-4 p-4 sm:space-y-6 sm:p-6">
+        <div className="space-y-3">
+          <ol className="flex items-center whitespace-nowrap">
+            <li className="inline-flex items-center">
+              <Link
+                className="flex items-center text-sm text-muted-foreground-1 hover:text-primary-focus focus:text-primary-focus focus:outline-hidden"
+                href="/provider/bookings/restaurants"
+              >
+                Đơn đặt bàn
+              </Link>
+              <BookingIcon
+                name="chevronRight"
+                className="mx-2 size-4 text-muted-foreground-1"
+              />
+            </li>
+            <li
+              aria-current="page"
+              className="inline-flex items-center truncate text-sm font-semibold text-foreground"
+            >
+              {booking.code}
+            </li>
+          </ol>
 
-        <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
-          <div className="flex flex-col gap-6">
-            <Card>
-              <div className="flex flex-col gap-6">
-                <RestaurantBookingDetailHeader booking={booking} />
-                <div className="border-t border-slate-100 pt-5">
-                  <BookingTimeline booking={booking} withPayment={false} />
-                </div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-semibold text-foreground">
+                  Đơn {booking.code}
+                </h1>
+                <PrelineStatusBadge status={booking.status} />
               </div>
-            </Card>
+              <p className="mt-1 text-sm text-muted-foreground-1">
+                Tạo lúc {formatDateTime(booking.createdAt)}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                className="inline-flex w-fit items-center gap-x-2 rounded-lg border border-layer-line bg-layer px-3 py-2 text-sm font-medium text-layer-foreground shadow-2xs hover:bg-layer-hover focus:bg-layer-focus focus:outline-hidden"
+                href="/provider/bookings/restaurants"
+              >
+                <BookingIcon name="arrowLeft" />
+                Quay lại danh sách
+              </Link>
+              <RestaurantBookingStatusActions booking={booking} />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-[1fr_340px]">
+          <div className="flex min-w-0 flex-col gap-4 sm:gap-6">
+            <PrelineCard icon="receipt" title="Thông tin đặt bàn">
+              <RestaurantBookingDetailHeader booking={booking} />
+            </PrelineCard>
+            <PrelineCard icon="utensils" title="Chi tiết đặt bàn">
+              <RestaurantBookingDetailTable booking={booking} />
+            </PrelineCard>
           </div>
 
-          <div className="flex flex-col gap-6">
-            <Card title="Thông tin khách hàng">
-              <BookingCustomerCard booking={booking} />
-            </Card>
-            {note.map((n) => (
-              <div
-                className="rounded-2xl border border-amber-200 bg-amber-50 p-5"
-                key={n.label}
-              >
-                <p className="mb-2 text-xs font-bold tracking-wider text-amber-700 uppercase">
-                  {n.label}
-                </p>
-                <p className="text-sm leading-relaxed whitespace-pre-line text-amber-900">
-                  {n.text}
-                </p>
-              </div>
-            ))}
+          <div className="flex flex-col gap-4 sm:gap-6">
+            <PrelineCard icon="user" title="Thông tin khách hàng">
+              <HotelBookingCustomer booking={booking} />
+            </PrelineCard>
+            <HotelBookingNotes booking={booking} />
+            <PrelineCard icon="clock" title="Tiến trình đơn">
+              <HotelBookingTimeline booking={booking} withPayment={false} />
+            </PrelineCard>
           </div>
         </div>
       </div>
