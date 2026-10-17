@@ -1,19 +1,26 @@
 "use client";
 
 import type { Province, Tag } from "@/generated/prisma/client";
-import { startTransition, useActionState, useMemo, useState } from "react";
 import {
-  StepFooter,
-  StepperNav,
+  startTransition,
+  useActionState,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import Link from "next/link";
+import {
   useMultiStepForm,
   type StepDefinition,
 } from "@/shared/components/multi-step-form";
+import { PrelineStepper } from "@/shared/components/preline-stepper";
 import {
   createHotelAction,
   updateHotelAction,
 } from "@/features/provider/hotels/actions";
-import { HotelPreviewCard } from "./hotel-preview-card";
 import { LocationPicker, type LatLng } from "@/shared/components/location-picker";
+import { HotelDetailPreview } from "./hotel-detail-preview";
+import { HotelIcon } from "./hotel-icon";
 
 const INITIAL_ACTION_STATE = { status: "idle" as const };
 
@@ -24,6 +31,7 @@ const steps: StepDefinition[] = [
   { id: 1, title: "Thông tin cơ bản", subtitle: "Nội dung chính" },
   { id: 2, title: "Hình ảnh", subtitle: "Tối đa 5 ảnh" },
   { id: 3, title: "Danh sách phòng", subtitle: "Loại phòng & giá" },
+  { id: 4, title: "Xem trước", subtitle: "Trang chi tiết khách sạn" },
 ];
 
 export type HotelPhoto =
@@ -55,10 +63,49 @@ export type HotelFormState = {
 };
 
 const inputClass =
-  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none";
-const labelClass = "block text-xs font-bold text-slate-700 mb-1.5";
-const cardClass =
-  "space-y-5 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm";
+  "block w-full rounded-lg border-layer-line bg-layer px-3 py-2 text-foreground placeholder:text-muted-foreground-1 focus:border-primary-focus focus:ring-primary-focus disabled:pointer-events-none disabled:opacity-50 sm:text-sm";
+const selectClass = `${inputClass} pe-9`;
+const textareaClass = `${inputClass} resize-y py-2.5 leading-relaxed`;
+const labelClass = "mb-2 block text-sm font-medium text-foreground";
+const requiredMark = <span className="text-red-500">*</span>;
+
+const layerButtonClass =
+  "inline-flex items-center justify-center gap-x-2 rounded-lg border border-layer-line bg-layer px-3 py-2 text-sm font-medium text-layer-foreground shadow-2xs hover:bg-layer-hover focus:bg-layer-focus focus:outline-hidden disabled:pointer-events-none disabled:opacity-50";
+const primaryButtonClass =
+  "inline-flex items-center justify-center gap-x-2 rounded-lg border border-primary-line bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover focus:bg-primary-focus focus:outline-hidden disabled:pointer-events-none disabled:opacity-50";
+const dashedButtonClass =
+  "inline-flex w-full items-center justify-center gap-x-2 rounded-lg border border-dashed border-layer-line bg-layer px-3 py-2 text-sm font-medium text-muted-foreground-1 hover:border-primary-line hover:text-primary focus:outline-hidden";
+const destructiveTextButtonClass =
+  "inline-flex items-center gap-x-1.5 rounded-lg text-sm font-medium text-red-600 hover:text-red-800 focus:text-red-800 focus:outline-hidden";
+const countBadgeClass =
+  "inline-flex items-center rounded-full bg-surface px-2.5 py-1 text-xs font-medium text-surface-foreground";
+
+function Card({
+  title,
+  description,
+  action,
+  children,
+}: {
+  title: string;
+  description?: string;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col rounded-xl border border-card-line bg-card shadow-2xs">
+      <div className="flex items-center justify-between gap-x-3 border-b border-card-divider px-4 py-3 md:px-5">
+        <div>
+          <h2 className="font-semibold text-foreground">{title}</h2>
+          {description ? (
+            <p className="text-sm text-muted-foreground-1">{description}</p>
+          ) : null}
+        </div>
+        {action}
+      </div>
+      <div className="space-y-5 p-4 md:p-5">{children}</div>
+    </div>
+  );
+}
 
 function createInitialRoom(): RoomDraft {
   return {
@@ -111,24 +158,27 @@ function TagList({
   return (
     <div>
       <label className={labelClass}>{label}</label>
-      <ul className="mb-2 space-y-1.5">
-        {items.map((item, index) => (
-          <li
-            className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-2 text-sm font-medium text-slate-700"
-            key={`${item}-${index}`}
-          >
-            <span>{item}</span>
-            <button
-              className="text-slate-400 transition hover:text-rose-500"
-              onClick={() => onRemove(index)}
-              type="button"
+      {items.length > 0 ? (
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {items.map((item, index) => (
+            <span
+              className="inline-flex items-center gap-x-1.5 rounded-full bg-surface py-1.5 ps-3 pe-2 text-xs font-medium text-surface-foreground"
+              key={`${item}-${index}`}
             >
-              ✕
-            </button>
-          </li>
-        ))}
-      </ul>
-      <div className="flex gap-2">
+              {item}
+              <button
+                aria-label={`Xóa ${item}`}
+                className="inline-flex size-4 shrink-0 items-center justify-center rounded-full text-muted-foreground-1 hover:bg-surface-hover hover:text-foreground focus:outline-hidden"
+                onClick={() => onRemove(index)}
+                type="button"
+              >
+                <HotelIcon className="size-3" name="x" />
+              </button>
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <div className="flex gap-x-2">
         <input
           className={inputClass}
           onChange={(event) => setDraft(event.target.value)}
@@ -143,10 +193,11 @@ function TagList({
           value={draft}
         />
         <button
-          className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+          className={`${layerButtonClass} shrink-0`}
           onClick={submit}
           type="button"
         >
+          <HotelIcon name="plus" />
           Thêm
         </button>
       </div>
@@ -166,31 +217,19 @@ function PhotoPicker({
   altPrefix: string;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5">
-      {photos.map((photo, index) => (
-        <div
-          className="group relative aspect-square overflow-hidden rounded-xl border border-slate-200"
-          key={photo.previewUrl}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            alt={`${altPrefix} ${index + 1}`}
-            className="h-full w-full object-cover"
-            src={photo.previewUrl}
-          />
-          <button
-            className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-lg bg-white/90 text-rose-600 opacity-0 shadow-sm transition group-hover:opacity-100"
-            onClick={() => onRemove(index)}
-            type="button"
-          >
-            ✕
-          </button>
-        </div>
-      ))}
+    <>
       {photos.length < MAX_PHOTOS ? (
-        <label className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-slate-400 transition hover:border-brand-400 hover:text-brand-500">
-          <span className="text-2xl leading-none">+</span>
-          <span className="text-[11px] font-semibold">Thêm ảnh</span>
+        <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-layer-line bg-layer p-8 text-center hover:border-primary-line">
+          <span className="flex size-12 items-center justify-center rounded-full bg-surface text-muted-foreground-2">
+            <HotelIcon className="size-5" name="upload" />
+          </span>
+          <span className="mt-3 text-sm text-foreground">
+            <span className="font-medium text-primary">Chọn ảnh tải lên</span>{" "}
+            hoặc kéo thả vào đây
+          </span>
+          <span className="mt-1 text-xs text-muted-foreground-1">
+            Còn lại {MAX_PHOTOS - photos.length} ảnh
+          </span>
           <input
             accept="image/png,image/jpeg"
             className="hidden"
@@ -200,7 +239,37 @@ function PhotoPicker({
           />
         </label>
       ) : null}
-    </div>
+      {photos.length > 0 ? (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+          {photos.map((photo, index) => (
+            <div
+              className="group relative aspect-square overflow-hidden rounded-lg border border-layer-line"
+              key={photo.previewUrl}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                alt={`${altPrefix} ${index + 1}`}
+                className="size-full object-cover"
+                src={photo.previewUrl}
+              />
+              {index === 0 ? (
+                <span className="absolute start-1.5 bottom-1.5 inline-flex rounded-full bg-primary px-2 py-0.5 text-[10px] font-medium text-primary-foreground">
+                  Ảnh bìa
+                </span>
+              ) : null}
+              <button
+                aria-label={`Xóa ảnh ${index + 1}`}
+                className="absolute end-1.5 top-1.5 inline-flex size-6 items-center justify-center rounded-full border border-layer-line bg-layer text-red-600 opacity-0 shadow-2xs group-hover:opacity-100 hover:bg-layer-hover focus:opacity-100 focus:outline-hidden"
+                onClick={() => onRemove(index)}
+                type="button"
+              >
+                <HotelIcon className="size-3.5" name="x" />
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -217,8 +286,8 @@ export function HotelForm({
   hotelId?: string;
   initialValues?: HotelFormState;
 }) {
-  const [form, setForm] = useState<HotelFormState>(() =>
-    initialValues ?? createInitialState(provinces)
+  const [form, setForm] = useState<HotelFormState>(
+    () => initialValues ?? createInitialState(provinces)
   );
   const { currentStep, goTo, next, prev, isFirst, isLast } =
     useMultiStepForm(steps.length);
@@ -364,49 +433,83 @@ export function HotelForm({
     });
   };
 
+  const isPreviewStep = currentStep === steps.length;
+  const selectedTagNames = tags
+    .filter((tag) => form.tagIds.includes(tag.id))
+    .map((tag) => tag.name);
+
+  const lastLabel =
+    mode === "edit"
+      ? isPending
+        ? "Đang lưu..."
+        : "Lưu thay đổi"
+      : isPending
+        ? "Đang tạo khách sạn..."
+        : "Hoàn tất & Xuất bản Khách sạn";
+
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
-      <section className="space-y-1">
-        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
-          {mode === "edit" ? "Chỉnh sửa Khách sạn" : "Tạo Khách Sạn Mới"}
-        </h1>
-        <p className="text-sm font-medium text-slate-500">
-          {mode === "edit"
-            ? "Cập nhật thông tin, hình ảnh và danh sách phòng của khách sạn."
-            : "Nhập thông tin chi tiết để giới thiệu khách sạn của bạn tới khách du lịch."}
-        </p>
-      </section>
-
-      {actionState.status === "error" && actionState.formError ? (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600">
-          {actionState.formError}
+    <div className="mx-auto w-full max-w-340 space-y-4 p-4 sm:space-y-6 sm:p-6">
+      <div className="grid gap-3 md:flex md:items-center md:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">
+            {mode === "edit" ? "Chỉnh sửa Khách sạn" : "Tạo Khách Sạn Mới"}
+          </h1>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground-1">
+            {mode === "edit"
+              ? "Cập nhật thông tin, hình ảnh và danh sách phòng của khách sạn."
+              : "Nhập thông tin chi tiết để giới thiệu khách sạn của bạn tới khách du lịch."}
+          </p>
         </div>
-      ) : null}
-      {actionState.status === "error" && actionState.fieldErrors ? (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600">
-          <ul className="list-inside list-disc space-y-1">
-            {Object.entries(actionState.fieldErrors).map(([field, messages]) => (
-              <li key={field}>{messages.join(", ")}</li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
-        <StepperNav currentStep={currentStep} onStepClick={goTo} steps={steps} />
+        <Link
+          className={`${layerButtonClass} self-start md:self-auto`}
+          href="/provider/hotels"
+        >
+          <HotelIcon name="chevronLeft" />
+          Danh sách khách sạn
+        </Link>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        <div className="space-y-6 lg:col-span-7">
-          {currentStep === 1 ? (
-            <div className={cardClass}>
-              <h2 className="text-base font-bold text-slate-900">
-                Thông tin cơ bản & Địa điểm
-              </h2>
+      {actionState.status === "error" &&
+      (actionState.formError || actionState.fieldErrors) ? (
+        <div
+          className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+          role="alert"
+        >
+          <div className="flex gap-x-3">
+            <HotelIcon className="mt-0.5 size-4" name="alert" />
+            <div className="space-y-1">
+              {actionState.formError ? (
+                <h3 className="font-semibold">{actionState.formError}</h3>
+              ) : null}
+              {actionState.fieldErrors ? (
+                <ul className="list-inside list-disc space-y-1">
+                  {Object.entries(actionState.fieldErrors).map(
+                    ([field, messages]) => (
+                      <li key={field}>{messages.join(", ")}</li>
+                    )
+                  )}
+                </ul>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
+      <div className="rounded-xl border border-card-line bg-card p-4 shadow-2xs md:p-5">
+        <PrelineStepper
+          currentStep={currentStep}
+          onStepClick={goTo}
+          steps={steps}
+        />
+      </div>
+
+      <div className="space-y-4 sm:space-y-6">
+        {currentStep === 1 ? (
+          <>
+            <Card title="Thông tin cơ bản & Địa điểm">
               <div>
                 <label className={labelClass} htmlFor="name">
-                  Tên khách sạn <span className="text-brand-500">*</span>
+                  Tên khách sạn {requiredMark}
                 </label>
                 <input
                   className={inputClass}
@@ -421,10 +524,10 @@ export function HotelForm({
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label className={labelClass} htmlFor="provinceId">
-                    Tỉnh / Thành <span className="text-brand-500">*</span>
+                    Tỉnh / Thành {requiredMark}
                   </label>
                   <select
-                    className={inputClass}
+                    className={selectClass}
                     id="provinceId"
                     onChange={(event) =>
                       update("provinceId", event.target.value)
@@ -440,7 +543,7 @@ export function HotelForm({
                 </div>
                 <div>
                   <label className={labelClass} htmlFor="address">
-                    Địa chỉ <span className="text-brand-500">*</span>
+                    Địa chỉ {requiredMark}
                   </label>
                   <input
                     className={inputClass}
@@ -458,6 +561,7 @@ export function HotelForm({
               <LocationPicker
                 onChange={(value) => update("location", value)}
                 value={form.location}
+                variant="preline"
               />
 
               <div>
@@ -467,21 +571,25 @@ export function HotelForm({
                     const selected = form.tagIds.includes(tag.id);
                     return (
                       <button
-                        className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold transition ${
+                        aria-pressed={selected}
+                        className={`inline-flex items-center gap-x-1.5 rounded-full border px-3 py-1.5 text-xs font-medium focus:outline-hidden ${
                           selected
-                            ? "border-brand-500 bg-brand-50 text-brand-600"
-                            : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                            ? "border-primary-line bg-primary-50 text-primary-700"
+                            : "border-layer-line bg-layer text-layer-foreground hover:bg-layer-hover"
                         }`}
                         key={tag.id}
                         onClick={() => toggleTag(tag.id)}
                         type="button"
                       >
+                        {selected ? (
+                          <HotelIcon className="size-3" name="tick" />
+                        ) : null}
                         {tag.name}
                       </button>
                     );
                   })}
                   {tags.length === 0 ? (
-                    <p className="text-xs font-medium text-slate-400">
+                    <p className="text-sm text-muted-foreground-1">
                       Chưa có tag nào trong hệ thống.
                     </p>
                   ) : null}
@@ -489,16 +597,20 @@ export function HotelForm({
               </div>
 
               <div>
-                <div className="mb-1.5 flex items-center justify-between">
-                  <label className={labelClass} htmlFor="description">
+                <div className="mb-2 flex items-center justify-between">
+                  <label
+                    className="block text-sm font-medium text-foreground"
+                    htmlFor="description"
+                  >
                     Mô tả chi tiết khách sạn
                   </label>
-                  <span className="text-[11px] font-semibold text-slate-400">
-                    {form.description.length} / {MAX_DESCRIPTION_LENGTH} ký tự
+                  <span className="text-xs text-muted-foreground-1">
+                    {form.description.length} / {MAX_DESCRIPTION_LENGTH} ký
+                    tự
                   </span>
                 </div>
                 <textarea
-                  className="w-full resize-y rounded-xl border border-slate-200 bg-white p-3.5 text-sm font-medium leading-relaxed text-slate-800 transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+                  className={textareaClass}
                   id="description"
                   maxLength={MAX_DESCRIPTION_LENGTH}
                   onChange={(event) =>
@@ -509,10 +621,12 @@ export function HotelForm({
                   value={form.description}
                 />
               </div>
+            </Card>
 
+            <Card title="Tiện ích khách sạn">
               <TagList
                 items={form.amenities}
-                label="Tiện ích khách sạn"
+                label="Danh sách tiện ích"
                 onAdd={(value) =>
                   update("amenities", [...form.amenities, value])
                 }
@@ -524,216 +638,217 @@ export function HotelForm({
                 }
                 placeholder="VD: Hồ bơi, Wifi miễn phí, Bãi đỗ xe..."
               />
-            </div>
-          ) : null}
+            </Card>
+          </>
+        ) : null}
 
-          {currentStep === 2 ? (
-            <div className={cardClass}>
-              <h2 className="text-base font-bold text-slate-900">
-                Hình ảnh khách sạn
-              </h2>
-              <p className="text-xs font-semibold text-slate-400">
-                Đã tải {form.photos.length}/{MAX_PHOTOS} ảnh
-              </p>
-              <PhotoPicker
-                altPrefix="Ảnh khách sạn"
-                onRemove={removePhoto}
-                onSelect={handlePhotoSelect}
-                photos={form.photos}
-              />
-            </div>
-          ) : null}
+        {currentStep === 2 ? (
+          <Card
+            action={
+              <span className={countBadgeClass}>
+                {form.photos.length}/{MAX_PHOTOS} ảnh
+              </span>
+            }
+            description="Ảnh đầu tiên sẽ được dùng làm ảnh bìa. Hỗ trợ PNG, JPG."
+            title="Hình ảnh khách sạn"
+          >
+            <PhotoPicker
+              altPrefix="Ảnh khách sạn"
+              onRemove={removePhoto}
+              onSelect={handlePhotoSelect}
+              photos={form.photos}
+            />
+          </Card>
+        ) : null}
 
-          {currentStep === 3 ? (
-            <div className={cardClass}>
-              <h2 className="text-base font-bold text-slate-900">
-                Danh sách loại phòng
-              </h2>
-              <div className="space-y-4">
-                {form.rooms.map((room, index) => (
-                  <div
-                    className="space-y-4 rounded-xl border border-slate-200 p-4"
-                    key={index}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-50 text-xs font-bold text-brand-600">
-                        {index + 1}
-                      </span>
-                      {room.bookedCount ? (
-                        <span className="text-xs font-semibold text-slate-500">
-                          Đã có khách đặt
-                        </span>
-                      ) : form.rooms.length > 1 ? (
-                        <button
-                          className="text-xs font-semibold text-rose-500 hover:text-rose-600"
-                          onClick={() => removeRoom(index)}
-                          type="button"
-                        >
-                          Xóa phòng này
-                        </button>
-                      ) : null}
-                    </div>
+        {currentStep === 3 ? (
+          <>
+            {form.rooms.map((room, index) => (
+              <Card
+                action={
+                  room.bookedCount ? (
+                    <span className="inline-flex items-center rounded-full bg-teal-100 px-2.5 py-1 text-xs font-medium text-teal-800">
+                      Đã có khách đặt
+                    </span>
+                  ) : form.rooms.length > 1 ? (
+                    <button
+                      className={destructiveTextButtonClass}
+                      onClick={() => removeRoom(index)}
+                      type="button"
+                    >
+                      <HotelIcon className="size-3.5" name="trash" />
+                      Xóa phòng này
+                    </button>
+                  ) : null
+                }
+                key={index}
+                title={`Loại phòng ${index + 1}${room.name ? ` · ${room.name}` : ""}`}
+              >
+                <div>
+                  <label className={labelClass}>
+                    Tên loại phòng {requiredMark}
+                  </label>
+                  <input
+                    className={inputClass}
+                    onChange={(event) =>
+                      updateRoom(index, "name", event.target.value)
+                    }
+                    placeholder="VD: Phòng Deluxe hướng biển"
+                    type="text"
+                    value={room.name}
+                  />
+                </div>
 
-                    <div>
-                      <label className={labelClass}>
-                        Tên loại phòng <span className="text-brand-500">*</span>
-                      </label>
-                      <input
-                        className={inputClass}
-                        onChange={(event) =>
-                          updateRoom(index, "name", event.target.value)
-                        }
-                        placeholder="VD: Phòng Deluxe hướng biển"
-                        type="text"
-                        value={room.name}
-                      />
-                    </div>
+                <div>
+                  <label className={labelClass}>Mô tả phòng</label>
+                  <textarea
+                    className={textareaClass}
+                    onChange={(event) =>
+                      updateRoom(index, "description", event.target.value)
+                    }
+                    placeholder="Mô tả nội thất, view, diện tích..."
+                    rows={3}
+                    value={room.description}
+                  />
+                </div>
 
-                    <div>
-                      <label className={labelClass}>Mô tả phòng</label>
-                      <textarea
-                        className="w-full resize-y rounded-xl border border-slate-200 bg-white p-3.5 text-sm font-medium leading-relaxed text-slate-800 transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
-                        onChange={(event) =>
-                          updateRoom(index, "description", event.target.value)
-                        }
-                        placeholder="Mô tả nội thất, view, diện tích..."
-                        rows={3}
-                        value={room.description}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                      <div>
-                        <label className={labelClass}>
-                          Sức chứa (khách){" "}
-                          <span className="text-brand-500">*</span>
-                        </label>
-                        <input
-                          className={inputClass}
-                          min={1}
-                          onChange={(event) =>
-                            updateRoom(index, "capacity", event.target.value)
-                          }
-                          type="number"
-                          value={room.capacity}
-                        />
-                      </div>
-                      <div>
-                        <label className={labelClass}>
-                          Số lượng phòng{" "}
-                          <span className="text-brand-500">*</span>
-                        </label>
-                        <input
-                          className={inputClass}
-                          min={1}
-                          onChange={(event) =>
-                            updateRoom(index, "quantity", event.target.value)
-                          }
-                          type="number"
-                          value={room.quantity}
-                        />
-                      </div>
-                      <div>
-                        <label className={labelClass}>
-                          Giá / đêm (VND){" "}
-                          <span className="text-brand-500">*</span>
-                        </label>
-                        <input
-                          className={inputClass}
-                          min={0}
-                          onChange={(event) =>
-                            updateRoom(index, "basePrice", event.target.value)
-                          }
-                          placeholder="VD: 800000"
-                          type="number"
-                          value={room.basePrice}
-                        />
-                      </div>
-                    </div>
-
-                    <TagList
-                      items={room.amenities}
-                      label="Tiện ích phòng"
-                      onAdd={(value) =>
-                        updateRoom(index, "amenities", [
-                          ...room.amenities,
-                          value,
-                        ])
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <div>
+                    <label className={labelClass}>
+                      Sức chứa (khách) {requiredMark}
+                    </label>
+                    <input
+                      className={inputClass}
+                      min={1}
+                      onChange={(event) =>
+                        updateRoom(index, "capacity", event.target.value)
                       }
-                      onRemove={(amenityIndex) =>
-                        updateRoom(
-                          index,
-                          "amenities",
-                          room.amenities.filter((_, i) => i !== amenityIndex)
-                        )
-                      }
-                      placeholder="VD: Điều hòa, Minibar, Bồn tắm..."
+                      type="number"
+                      value={room.capacity}
                     />
-
-                    <div>
-                      <label className={labelClass}>Ảnh phòng</label>
-                      <p className="mb-2 text-xs font-semibold text-slate-400">
-                        Đã tải {room.photos.length}/{MAX_PHOTOS} ảnh
-                      </p>
-                      <PhotoPicker
-                        altPrefix={`Ảnh ${room.name || "phòng"}`}
-                        onRemove={(photoIndex) =>
-                          removeRoomPhoto(index, photoIndex)
+                  </div>
+                  <div>
+                    <label className={labelClass}>
+                      Số lượng phòng {requiredMark}
+                    </label>
+                    <input
+                      className={inputClass}
+                      min={1}
+                      onChange={(event) =>
+                        updateRoom(index, "quantity", event.target.value)
+                      }
+                      type="number"
+                      value={room.quantity}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>
+                      Giá / đêm {requiredMark}
+                    </label>
+                    <div className="relative">
+                      <input
+                        className={`${inputClass} pe-16`}
+                        min={0}
+                        onChange={(event) =>
+                          updateRoom(index, "basePrice", event.target.value)
                         }
-                        onSelect={(files) =>
-                          handleRoomPhotoSelect(index, files)
-                        }
-                        photos={room.photos}
+                        placeholder="VD: 800000"
+                        type="number"
+                        value={room.basePrice}
                       />
+                      <div className="pointer-events-none absolute inset-y-0 end-0 z-20 flex items-center pe-4">
+                        <span className="text-sm text-muted-foreground-1">
+                          VND
+                        </span>
+                      </div>
                     </div>
                   </div>
-                ))}
-              </div>
-              <button
-                className="w-full rounded-xl border border-dashed border-slate-300 py-2.5 text-sm font-semibold text-slate-500 transition hover:border-brand-400 hover:text-brand-600"
-                onClick={addRoom}
-                type="button"
-              >
-                + Thêm loại phòng mới
-              </button>
-            </div>
-          ) : null}
+                </div>
 
-          <StepFooter
-            cancelHref={mode === "edit" ? "/provider/hotels" : "/provider/profiles"}
-            isFirst={isFirst}
-            isLast={isLast}
-            lastLabel={
-              mode === "edit"
-                ? isPending
-                  ? "Đang lưu..."
-                  : "Lưu thay đổi"
-                : isPending
-                  ? "Đang tạo khách sạn..."
-                  : "Hoàn tất & Xuất bản Khách sạn"
-            }
-            nextDisabled={isLast && isPending}
-            onBack={prev}
-            onNext={isLast ? handleSubmit : next}
+                <TagList
+                  items={room.amenities}
+                  label="Tiện ích phòng"
+                  onAdd={(value) =>
+                    updateRoom(index, "amenities", [...room.amenities, value])
+                  }
+                  onRemove={(amenityIndex) =>
+                    updateRoom(
+                      index,
+                      "amenities",
+                      room.amenities.filter((_, i) => i !== amenityIndex)
+                    )
+                  }
+                  placeholder="VD: Điều hòa, Minibar, Bồn tắm..."
+                />
+
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="block text-sm font-medium text-foreground">
+                      Ảnh phòng
+                    </span>
+                    <span className={countBadgeClass}>
+                      {room.photos.length}/{MAX_PHOTOS} ảnh
+                    </span>
+                  </div>
+                  <div className="space-y-3">
+                    <PhotoPicker
+                      altPrefix={`Ảnh ${room.name || "phòng"}`}
+                      onRemove={(photoIndex) =>
+                        removeRoomPhoto(index, photoIndex)
+                      }
+                      onSelect={(files) => handleRoomPhotoSelect(index, files)}
+                      photos={room.photos}
+                    />
+                  </div>
+                </div>
+              </Card>
+            ))}
+            <button
+              className={dashedButtonClass}
+              onClick={addRoom}
+              type="button"
+            >
+              <HotelIcon name="plus" />
+              Thêm loại phòng mới
+            </button>
+          </>
+        ) : null}
+
+        {isPreviewStep ? (
+          <HotelDetailPreview
+            form={form}
+            provinceName={selectedProvince?.name}
+            tagNames={selectedTagNames}
           />
-        </div>
+        ) : null}
 
-        <div className="lg:col-span-5">
-          <div className="sticky top-6">
-            <HotelPreviewCard
-              address={form.address}
-              amenities={form.amenities}
-              description={form.description}
-              name={form.name}
-              photoCount={form.photos.length}
-              photoUrl={form.photos[0]?.previewUrl}
-              provinceName={selectedProvince?.fullName}
-              rooms={form.rooms}
-              tagNames={tags
-                .filter((tag) => form.tagIds.includes(tag.id))
-                .map((tag) => tag.name)}
-            />
-          </div>
+        <div className="flex items-center justify-between gap-x-2 rounded-xl border border-card-line bg-card px-4 py-3 shadow-2xs md:px-5">
+          {isFirst ? (
+            <Link className={layerButtonClass} href="/provider/hotels">
+              Hủy thao tác
+            </Link>
+          ) : (
+            <button className={layerButtonClass} onClick={prev} type="button">
+              <HotelIcon name="chevronLeft" />
+              Quay lại bước trước
+            </button>
+          )}
+          <button
+            className={primaryButtonClass}
+            disabled={isLast && isPending}
+            onClick={isLast ? handleSubmit : next}
+            type="button"
+          >
+            {isLast && isPending ? (
+              <span
+                aria-label="loading"
+                className="inline-block size-4 animate-spin rounded-full border-3 border-current border-t-transparent"
+                role="status"
+              />
+            ) : null}
+            {isLast ? lastLabel : "Tiếp tục"}
+            {isLast ? null : <HotelIcon name="chevronRight" />}
+          </button>
         </div>
       </div>
     </div>

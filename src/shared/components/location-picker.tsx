@@ -12,9 +12,61 @@ const TILE_URL =
 const TILE_ATTRIBUTION =
   "Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012";
 
-const inputClass =
-  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none";
-const labelClass = "block text-xs font-bold text-slate-700 mb-1.5";
+// Bộ class theo giao diện: "default" cho các form cũ, "preline" cho form dùng token Preline
+const variants = {
+  default: {
+    input:
+      "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none",
+    label: "block text-xs font-bold text-slate-700 mb-1.5",
+    required: "text-brand-500",
+    preview:
+      "relative isolate h-48 w-full cursor-pointer overflow-hidden rounded-xl border border-slate-200",
+    hint: "mb-3 rounded-full bg-white/95 px-4 py-1.5 text-xs font-semibold text-slate-700 shadow-sm",
+    coords: "mt-1.5 text-[11px] font-semibold text-slate-400",
+    overlay: "fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4",
+    dialog: "flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl",
+    divider: "border-slate-100",
+    title: "text-base font-bold text-slate-900",
+    close: "text-slate-400 transition hover:text-slate-600",
+    searching: "text-[11px] font-semibold text-slate-400",
+    results:
+      "absolute top-full right-5 left-5 z-10 mt-1 max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg",
+    result:
+      "block w-full px-4 py-2.5 text-left text-sm text-slate-700 transition hover:bg-slate-50",
+    footerText: "text-xs font-semibold text-slate-500",
+    cancel:
+      "rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50",
+    confirm:
+      "rounded-xl bg-brand-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:opacity-50",
+  },
+  preline: {
+    input:
+      "block w-full rounded-lg border-layer-line bg-layer px-3 py-2 text-foreground placeholder:text-muted-foreground-1 focus:border-primary-focus focus:ring-primary-focus sm:text-sm",
+    label: "mb-2 block text-sm font-medium text-foreground",
+    required: "text-red-500",
+    preview:
+      "relative isolate h-48 w-full cursor-pointer overflow-hidden rounded-lg border border-layer-line",
+    hint: "mb-3 rounded-full border border-layer-line bg-layer px-3 py-1.5 text-xs font-medium text-layer-foreground shadow-2xs",
+    coords: "mt-2 text-xs text-muted-foreground-1",
+    overlay: "fixed inset-0 z-80 flex items-center justify-center bg-gray-900/50 p-4",
+    dialog:
+      "flex w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-overlay-line bg-overlay shadow-2xs",
+    divider: "border-overlay-line",
+    title: "font-semibold text-foreground",
+    close:
+      "inline-flex size-8 items-center justify-center rounded-full bg-surface text-surface-foreground hover:bg-surface-hover focus:outline-hidden",
+    searching: "text-xs text-muted-foreground-1",
+    results:
+      "absolute top-full right-5 left-5 z-10 mt-1 max-h-56 overflow-y-auto rounded-lg border border-dropdown-line bg-dropdown p-1 shadow-md",
+    result:
+      "block w-full rounded-lg px-3 py-2 text-start text-sm text-dropdown-item-foreground hover:bg-dropdown-item-hover focus:outline-hidden",
+    footerText: "text-sm text-muted-foreground-1",
+    cancel:
+      "inline-flex items-center gap-x-2 rounded-lg border border-layer-line bg-layer px-3 py-2 text-sm font-medium text-layer-foreground shadow-2xs hover:bg-layer-hover focus:outline-hidden",
+    confirm:
+      "inline-flex items-center gap-x-2 rounded-lg border border-primary-line bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover focus:outline-hidden disabled:pointer-events-none disabled:opacity-50",
+  },
+};
 
 type LeafletModule = typeof import("leaflet");
 type LeafletMap = import("leaflet").Map;
@@ -160,10 +212,13 @@ function MapCanvas({
 export function LocationPicker({
   value,
   onChange,
+  variant = "default",
 }: {
   value: LatLng | null;
   onChange: (value: LatLng) => void;
+  variant?: keyof typeof variants;
 }) {
+  const cls = variants[variant];
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<LatLng | null>(value);
   const [query, setQuery] = useState("");
@@ -258,11 +313,11 @@ export function LocationPicker({
 
   return (
     <div>
-      <label className={labelClass}>
-        Vị trí trên bản đồ <span className="text-brand-500">*</span>
+      <label className={cls.label}>
+        Vị trí trên bản đồ <span className={cls.required}>*</span>
       </label>
 
-      <div className="relative isolate h-48 w-full cursor-pointer overflow-hidden rounded-xl border border-slate-200">
+      <div className={cls.preview}>
         <MapCanvas
           center={value ?? DEFAULT_CENTER}
           interactive={false}
@@ -270,32 +325,33 @@ export function LocationPicker({
           onPick={openModal}
         />
         <div className="pointer-events-none absolute inset-0 flex items-end justify-center">
-          <span className="mb-3 rounded-full bg-white/95 px-4 py-1.5 text-xs font-semibold text-slate-700 shadow-sm">
+          <span className={cls.hint}>
             {value ? "Nhấn để thay đổi vị trí" : "Nhấn để chọn vị trí trên bản đồ"}
           </span>
         </div>
       </div>
 
       {value ? (
-        <p className="mt-1.5 text-[11px] font-semibold text-slate-400">
+        <p className={cls.coords}>
           {value.lat.toFixed(6)}, {value.lng.toFixed(6)}
         </p>
       ) : null}
 
       {open ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+        <div className={cls.overlay}>
           <div
             aria-label="Chọn vị trí trên bản đồ"
             aria-modal="true"
-            className="flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+            className={cls.dialog}
             role="dialog"
           >
-            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-              <h3 className="text-base font-bold text-slate-900">
+            <div className={`flex items-center justify-between border-b px-5 py-4 ${cls.divider}`}>
+              <h3 className={cls.title}>
                 Chọn vị trí trên bản đồ
               </h3>
               <button
-                className="text-slate-400 transition hover:text-slate-600"
+                aria-label="Đóng"
+                className={cls.close}
                 onClick={() => setOpen(false)}
                 type="button"
               >
@@ -303,9 +359,9 @@ export function LocationPicker({
               </button>
             </div>
 
-            <div className="relative border-b border-slate-100 px-5 py-3">
+            <div className={`relative border-b px-5 py-3 ${cls.divider}`}>
               <input
-                className={inputClass}
+                className={cls.input}
                 onChange={(event) => {
                   skipSearchRef.current = false;
                   setQuery(event.target.value);
@@ -315,16 +371,16 @@ export function LocationPicker({
                 value={query}
               />
               {searching ? (
-                <span className="absolute top-1/2 right-8 -translate-y-1/2 text-[11px] font-semibold text-slate-400">
+                <span className={`absolute top-1/2 right-8 -translate-y-1/2 ${cls.searching}`}>
                   Đang tìm...
                 </span>
               ) : null}
               {results.length > 0 && query.trim().length >= 3 ? (
-                <ul className="absolute top-full right-5 left-5 z-10 mt-1 max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+                <ul className={cls.results}>
                   {results.map((result, index) => (
                     <li key={`${result.lat}-${result.lng}-${index}`}>
                       <button
-                        className="block w-full px-4 py-2.5 text-left text-sm text-slate-700 transition hover:bg-slate-50"
+                        className={cls.result}
                         onClick={() => selectResult(result)}
                         type="button"
                       >
@@ -345,22 +401,22 @@ export function LocationPicker({
               />
             </div>
 
-            <div className="flex items-center justify-between gap-4 border-t border-slate-100 px-5 py-4">
-              <span className="text-xs font-semibold text-slate-500">
+            <div className={`flex items-center justify-between gap-4 border-t px-5 py-4 ${cls.divider}`}>
+              <span className={cls.footerText}>
                 {draft
                   ? `${draft.lat.toFixed(6)}, ${draft.lng.toFixed(6)}`
                   : "Nhấn vào bản đồ hoặc kéo ghim để chọn vị trí"}
               </span>
               <div className="flex gap-2">
                 <button
-                  className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  className={cls.cancel}
                   onClick={() => setOpen(false)}
                   type="button"
                 >
                   Hủy
                 </button>
                 <button
-                  className="rounded-xl bg-brand-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:opacity-50"
+                  className={cls.confirm}
                   disabled={!draft}
                   onClick={confirm}
                   type="button"

@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { hotelRepo } from "@/entities/hotel";
 import { providerProfileRepo } from "@/entities/provider-profile";
 import {
+  HotelIcon,
   HotelsManager,
   HotelsSummaryCards,
   getHotelsSummary,
@@ -33,29 +34,25 @@ export default async function ProviderHotelsPage() {
   const summary = getHotelsSummary(hotelListItems);
 
   return (
-    <main className="flex-1 overflow-y-auto px-8 py-7">
-      <div className="mx-auto flex w-full max-w-7xl flex-col space-y-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+    <main className="flex-1 overflow-y-auto bg-background-1 font-inter text-foreground">
+      <div className="mx-auto w-full max-w-340 space-y-4 p-4 sm:space-y-6 sm:p-6">
+        <div className="grid gap-3 md:flex md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 lg:text-3xl">
+            <h1 className="text-2xl font-semibold text-foreground">
               Quản lý Khách sạn &amp; Lưu trú
             </h1>
-            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-500">
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground-1">
               Quản lý, theo dõi trạng thái hoạt động và tình trạng phòng của
               các khách sạn trên Roamly.
             </p>
           </div>
-          <div className="shrink-0">
-            <Link
-              className="inline-flex transform items-center gap-2 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 hover:shadow-brand-500/30 active:scale-95"
-              href="/provider/hotels/create"
-            >
-              <span className="material-symbols-outlined text-[20px]">
-                add_circle
-              </span>
-              <span>Tạo Khách sạn mới</span>
-            </Link>
-          </div>
+          <Link
+            className="inline-flex shrink-0 items-center gap-x-2 self-start rounded-lg border border-primary-line bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover focus:bg-primary-focus focus:outline-hidden md:self-auto"
+            href="/provider/hotels/create"
+          >
+            <HotelIcon name="plus" />
+            Tạo Khách sạn mới
+          </Link>
         </div>
 
         <HotelsSummaryCards summary={summary} />

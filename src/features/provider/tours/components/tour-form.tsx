@@ -13,6 +13,7 @@ import {
   useMultiStepForm,
   type StepDefinition,
 } from "@/shared/components/multi-step-form";
+import { PrelineStepper } from "@/shared/components/preline-stepper";
 import {
   createTourAction,
   updateTourAction,
@@ -106,70 +107,6 @@ function Card({
       </div>
       <div className="space-y-5 p-4 md:p-5">{children}</div>
     </div>
-  );
-}
-
-// Stepper theo phong cách Preline, điều khiển bằng state React
-function Stepper({
-  currentStep,
-  onStepClick,
-}: {
-  currentStep: number;
-  onStepClick: (step: number) => void;
-}) {
-  return (
-    <ul className="relative flex flex-col gap-3 md:flex-row md:gap-x-2">
-      {steps.map((step) => {
-        const isDone = step.id < currentStep;
-        const isActive = step.id === currentStep;
-
-        return (
-          <li
-            className="group flex flex-1 shrink basis-0 items-center gap-x-2"
-            key={step.id}
-          >
-            <button
-              className="inline-flex min-h-7 min-w-7 shrink-0 items-center gap-x-2 text-start align-middle focus:outline-hidden"
-              onClick={() => onStepClick(step.id)}
-              type="button"
-            >
-              <span
-                className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
-                  isDone
-                    ? "bg-teal-500 text-white"
-                    : isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-surface text-surface-foreground"
-                }`}
-              >
-                {isDone ? <TourIcon className="size-3.5" name="tick" /> : step.id}
-              </span>
-              <span className="block">
-                <span
-                  className={`block text-sm font-medium ${
-                    isActive || isDone
-                      ? "text-foreground"
-                      : "text-muted-foreground-1"
-                  }`}
-                >
-                  {step.title}
-                </span>
-                {step.subtitle ? (
-                  <span className="block text-xs text-muted-foreground-1">
-                    {step.subtitle}
-                  </span>
-                ) : null}
-              </span>
-            </button>
-            <div
-              className={`hidden h-px w-full flex-1 group-last:hidden md:block ${
-                isDone ? "bg-teal-500" : "bg-line-2"
-              }`}
-            />
-          </li>
-        );
-      })}
-    </ul>
   );
 }
 
@@ -470,7 +407,11 @@ export function TourForm({
       ) : null}
 
       <div className="rounded-xl border border-card-line bg-card p-4 shadow-2xs md:p-5">
-        <Stepper currentStep={currentStep} onStepClick={goTo} />
+        <PrelineStepper
+          currentStep={currentStep}
+          onStepClick={goTo}
+          steps={steps}
+        />
       </div>
 
       <div className="space-y-4 sm:space-y-6">
