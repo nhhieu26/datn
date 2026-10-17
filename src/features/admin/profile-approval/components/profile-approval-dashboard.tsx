@@ -5,9 +5,16 @@ import {
   approveProviderProfilesAction,
   rejectProviderProfileAction,
 } from "../actions";
-import { ApprovalProfilePreview } from "./approval-profile-preview";
+import { ApprovalIcon } from "./approval-icon";
 import { ApprovalProfilesTable } from "./approval-profiles-table";
-import type { StatusFilter, TypeFilter } from "./approval-shared";
+import { ApprovalRejectModal } from "./approval-reject-modal";
+import {
+  ApprovalToast,
+  getActionError,
+  primaryButtonClass,
+  type StatusFilter,
+  type TypeFilter,
+} from "./approval-shared";
 import { ApprovalSummaryCards } from "./approval-summary-cards";
 import type {
   ApprovalMutationResult,
@@ -15,12 +22,6 @@ import type {
   ApprovalProfilePatch,
 } from "../types";
 import type { ActionState } from "@/shared/lib/action-state";
-
-function getActionError(state: ActionState<ApprovalMutationResult>) {
-  if (state.formError) return state.formError;
-  const firstFieldError = Object.values(state.fieldErrors ?? {})[0]?.[0];
-  return firstFieldError ?? "Đã có lỗi xảy ra. Vui lòng thử lại.";
-}
 
 export function ProfileApprovalDashboard({
   initialProfiles,
@@ -31,12 +32,9 @@ export function ProfileApprovalDashboard({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
-  const [selectedId, setSelectedId] = useState(
-    initialProfiles.find((profile) => profile.approvalStatus === "pending")
-      ?.id ?? initialProfiles[0]?.id ?? "",
-  );
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
-  const [noteDraft, setNoteDraft] = useState({ profileId: "", value: "" });
+  const [rejectingProfile, setRejectingProfile] =
+    useState<ApprovalProfile | null>(null);
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
 
@@ -78,14 +76,6 @@ export function ProfileApprovalDashboard({
     });
   }, [profiles, search, statusFilter, typeFilter]);
 
-  const selectedProfile =
-    filteredProfiles.find((profile) => profile.id === selectedId) ??
-    filteredProfiles[0];
-  const note =
-    noteDraft.profileId === selectedProfile?.id
-      ? noteDraft.value
-      : (selectedProfile?.rejectionReason ?? "");
-
   const pendingIds = filteredProfiles
     .filter((profile) => profile.approvalStatus === "pending")
     .map((profile) => profile.id);
@@ -106,6 +96,7 @@ export function ProfileApprovalDashboard({
   const runMutation = (
     mutation: () => Promise<ActionState<ApprovalMutationResult>>,
     getSuccessMessage: (result: ApprovalMutationResult) => string,
+    onSuccess?: () => void,
   ) => {
     setMessage("");
     startTransition(async () => {
@@ -117,6 +108,7 @@ export function ProfileApprovalDashboard({
 
       applyPatches(result.data.profiles);
       setMessage(getSuccessMessage(result.data));
+      onSuccess?.();
     });
   };
 
@@ -131,15 +123,16 @@ export function ProfileApprovalDashboard({
     );
   };
 
-  const handleReject = () => {
-    if (!selectedProfile || selectedProfile.approvalStatus !== "pending") return;
-    if (!note.trim()) {
+  const handleReject = (profile: ApprovalProfile, reason: string) => {
+    if (profile.approvalStatus !== "pending") return;
+    if (!reason.trim()) {
       setMessage("Vui lòng nhập lý do trước khi từ chối hồ sơ.");
       return;
     }
     runMutation(
-      () => rejectProviderProfileAction(selectedProfile.id, note),
+      () => rejectProviderProfileAction(profile.id, reason),
       () => "Đã từ chối hồ sơ và lưu lý do phản hồi.",
+      () => setRejectingProfile(null),
     );
   };
 
@@ -152,10 +145,6 @@ export function ProfileApprovalDashboard({
     });
   };
 
-  const handleSelectProfile = (profile: ApprovalProfile) => {
-    setSelectedId(profile.id);
-  };
-
   const resetFilters = () => {
     setSearch("");
     setStatusFilter("pending");
@@ -163,91 +152,67 @@ export function ProfileApprovalDashboard({
   };
 
   return (
-    <main className="flex-1 overflow-y-auto bg-slate-50 px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-[1500px] space-y-5">
+    <main className="flex-1 overflow-y-auto bg-background-1 font-inter text-foreground">
+      <div className="mx-auto w-full max-w-340 space-y-4 p-4 sm:space-y-6 sm:p-6">
         {message ? (
-          <div className="fixed top-20 right-5 z-50 flex max-w-sm items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-semibold text-slate-700 shadow-xl">
-            <span className="material-symbols-outlined text-[18px] text-brand-500">
-              info
-            </span>
-            <span>{message}</span>
-            <button
-              className="ml-2 text-slate-400 hover:text-slate-700"
-              onClick={() => setMessage("")}
-              type="button"
-              aria-label="Đóng thông báo"
-            >
-              <span className="material-symbols-outlined text-[16px]">
-                close
-              </span>
-            </button>
-          </div>
+          <ApprovalToast message={message} onClose={() => setMessage("")} />
         ) : null}
 
-        <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="grid gap-3 md:flex md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
+            <h1 className="text-2xl font-semibold text-foreground">
               Duyệt hồ sơ đối tác
             </h1>
-            <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-slate-500">
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground-1">
               Xác minh thông tin doanh nghiệp, mã số thuế và hồ sơ pháp lý trước
               khi cấp quyền đăng tải dịch vụ trên Roamly.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              className="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={checkedIds.size === 0 || isPending}
-              onClick={() => handleApprove([...checkedIds])}
-              type="button"
-            >
-              <span className="material-symbols-outlined text-[18px]">
-                verified
-              </span>
-              Duyệt đã chọn ({checkedIds.size})
-            </button>
-          </div>
-        </section>
+          <button
+            className={`shrink-0 self-start md:self-auto ${primaryButtonClass}`}
+            disabled={checkedIds.size === 0 || isPending}
+            onClick={() => handleApprove([...checkedIds])}
+            type="button"
+          >
+            <ApprovalIcon name="shieldCheck" />
+            Duyệt đã chọn ({checkedIds.size})
+          </button>
+        </div>
 
         <ApprovalSummaryCards counts={counts} />
 
-        <div className="grid items-start gap-5 2xl:grid-cols-[minmax(0,1fr)_380px]">
-          <ApprovalProfilesTable
-            profiles={filteredProfiles}
-            total={counts.all}
-            selectedId={selectedProfile?.id ?? ""}
-            checkedIds={checkedIds}
-            allPendingChecked={allPendingChecked}
-            onToggleAllPending={() =>
-              setCheckedIds(allPendingChecked ? new Set() : new Set(pendingIds))
-            }
-            onToggleChecked={toggleChecked}
-            onSelectProfile={handleSelectProfile}
-            onViewProfile={setSelectedId}
-            counts={counts}
-            search={search}
-            onSearchChange={setSearch}
-            statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
-            typeFilter={typeFilter}
-            onTypeFilterChange={setTypeFilter}
-            onResetFilters={resetFilters}
-          />
-
-          {selectedProfile ? (
-            <ApprovalProfilePreview
-              profile={selectedProfile}
-              note={note}
-              onNoteChange={(value) =>
-                setNoteDraft({ profileId: selectedProfile.id, value })
-              }
-              onApprove={() => handleApprove([selectedProfile.id])}
-              onReject={handleReject}
-              isPending={isPending}
-            />
-          ) : null}
-        </div>
+        <ApprovalProfilesTable
+          profiles={filteredProfiles}
+          total={counts.all}
+          checkedIds={checkedIds}
+          isPending={isPending}
+          allPendingChecked={allPendingChecked}
+          onToggleAllPending={() =>
+            setCheckedIds(allPendingChecked ? new Set() : new Set(pendingIds))
+          }
+          onToggleChecked={toggleChecked}
+          onApprove={(profile) => handleApprove([profile.id])}
+          onReject={setRejectingProfile}
+          counts={counts}
+          search={search}
+          onSearchChange={setSearch}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          typeFilter={typeFilter}
+          onTypeFilterChange={setTypeFilter}
+          onResetFilters={resetFilters}
+        />
       </div>
+
+      {rejectingProfile ? (
+        <ApprovalRejectModal
+          isPending={isPending}
+          key={rejectingProfile.id}
+          onClose={() => setRejectingProfile(null)}
+          onConfirm={(reason) => handleReject(rejectingProfile, reason)}
+          profile={rejectingProfile}
+        />
+      ) : null}
     </main>
   );
 }

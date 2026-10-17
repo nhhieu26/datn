@@ -50,6 +50,7 @@ function toPatch(
 
 function revalidateApprovalPages() {
   revalidatePath("/admin/profile-approval");
+  revalidatePath("/admin/profile-approval/[id]", "page");
   revalidatePath("/provider/profiles");
 }
 

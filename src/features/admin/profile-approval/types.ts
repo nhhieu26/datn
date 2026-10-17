@@ -1,6 +1,7 @@
 import type {
   ApprovalStatus,
   BusinessType,
+  UserStatus,
 } from "@/generated/prisma/client";
 
 export type ReviewApprovalStatus = Exclude<ApprovalStatus, "not_submitted">;
@@ -24,6 +25,16 @@ export type ApprovalProfile = {
     fullname: string;
     email: string;
     phone: string;
+  };
+};
+
+export type ApprovalProfileDetail = Omit<ApprovalProfile, "user"> & {
+  payoutEmail: string;
+  paypalLinkedAt: string;
+  serviceCount: number;
+  user: ApprovalProfile["user"] & {
+    status: UserStatus;
+    createdAt: string;
   };
 };
 

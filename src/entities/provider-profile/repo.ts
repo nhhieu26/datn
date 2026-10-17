@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { ApprovalStatus } from "@/generated/prisma/client";
+import type { ApprovalStatus, Prisma } from "@/generated/prisma/client";
 import type {
   BusinessType,
   CreateProviderProfileInput,
@@ -24,36 +24,61 @@ export function findAllByUserId(userId: string): Promise<ProviderProfile[]> {
   });
 }
 
+const approvalWhere = {
+  approvalStatus: { in: ["pending", "approved", "rejected"] },
+  user: { is: { role: "provider" } },
+} satisfies Prisma.ProviderProfileWhereInput;
+
+const approvalSelect = {
+  id: true,
+  userId: true,
+  businessName: true,
+  businessType: true,
+  taxCode: true,
+  licenseUrl: true,
+  website: true,
+  address: true,
+  description: true,
+  photoUrl: true,
+  approvalStatus: true,
+  rejectionReason: true,
+  createdAt: true,
+  updatedAt: true,
+  user: {
+    select: {
+      fullname: true,
+      email: true,
+      phone: true,
+    },
+  },
+} satisfies Prisma.ProviderProfileSelect;
+
 export function findAllForApproval() {
   return prisma.providerProfile.findMany({
-    where: {
-      approvalStatus: { in: ["pending", "approved", "rejected"] },
-      user: { is: { role: "provider" } },
-    },
+    where: approvalWhere,
+    select: approvalSelect,
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export function findForApprovalById(id: string) {
+  return prisma.providerProfile.findFirst({
+    where: { ...approvalWhere, id },
     select: {
-      id: true,
-      userId: true,
-      businessName: true,
-      businessType: true,
-      taxCode: true,
-      licenseUrl: true,
-      website: true,
-      address: true,
-      description: true,
-      photoUrl: true,
-      approvalStatus: true,
-      rejectionReason: true,
-      createdAt: true,
-      updatedAt: true,
+      ...approvalSelect,
+      payoutEmail: true,
+      paypalLinkedAt: true,
       user: {
         select: {
-          fullname: true,
-          email: true,
-          phone: true,
+          ...approvalSelect.user.select,
+          status: true,
+          createdAt: true,
         },
       },
+      _count: {
+        select: { tours: true, hotels: true, restaurants: true },
+      },
     },
-    orderBy: { createdAt: "desc" },
   });
 }
 
