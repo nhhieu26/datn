@@ -32,7 +32,7 @@ export type BookingStatusConfig = {
   onSubmit: typeof updateTourBookingStatusAction;
 };
 
-const TITLES: Record<ProviderBookingTransition, string> = {
+export const STATUS_DIALOG_TITLES: Record<ProviderBookingTransition, string> = {
   confirmed: "Xác nhận đơn",
   completed: "Hoàn thành đơn",
   cancelled: "Hủy đơn",
@@ -46,7 +46,7 @@ const FAILED_NOTICE: Partial<Record<ProviderBookingTransition, string>> = {
     "Đơn đã hoàn thành nhưng PayPal từ chối chuyển tiền. Sàn sẽ liên hệ để xử lý khoản thanh toán này.",
 };
 
-function describe(
+export function describeTransition(
   target: ProviderBookingTransition,
   booking: StatusTargetBooking,
   config: BookingStatusConfig,
@@ -63,7 +63,8 @@ function describe(
   }
 }
 
-export function BookingStatusDialog({
+/** State + submit đổi trạng thái, dùng chung cho các biến thể dialog. */
+export function useBookingStatusForm({
   booking,
   config,
   target,
@@ -80,7 +81,6 @@ export function BookingStatusDialog({
   const [error, setError] = useState("");
   const [reasonError, setReasonError] = useState("");
   const [notice, setNotice] = useState("");
-  const meta = getBookingStatusMeta(target);
   const isCancel = target === "cancelled";
 
   useEffect(() => {
@@ -121,6 +121,46 @@ export function BookingStatusDialog({
     });
   }
 
+  function changeReason(value: string) {
+    setReason(value);
+    setReasonError("");
+  }
+
+  return {
+    isPending,
+    isCancel,
+    reason,
+    changeReason,
+    error,
+    reasonError,
+    notice,
+    handleSubmit,
+  };
+}
+
+export function BookingStatusDialog({
+  booking,
+  config,
+  target,
+  onClose,
+}: {
+  booking: StatusTargetBooking;
+  config: BookingStatusConfig;
+  target: ProviderBookingTransition;
+  onClose: () => void;
+}) {
+  const {
+    isPending,
+    isCancel,
+    reason,
+    changeReason,
+    error,
+    reasonError,
+    notice,
+    handleSubmit,
+  } = useBookingStatusForm({ booking, config, target, onClose });
+  const meta = getBookingStatusMeta(target);
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-[2px]"
@@ -153,7 +193,7 @@ export function BookingStatusDialog({
           className="text-lg font-bold text-slate-900"
           id="booking-status-heading"
         >
-          {TITLES[target]} {config.noun}?
+          {STATUS_DIALOG_TITLES[target]} {config.noun}?
         </h2>
         <p className="mt-1 text-xs font-semibold text-brand-600">
           {booking.code} · {config.subtitle}
@@ -177,7 +217,7 @@ export function BookingStatusDialog({
         ) : (
           <>
             <p className="mt-3 text-sm leading-relaxed text-slate-600">
-              {describe(target, booking, config)}
+              {describeTransition(target, booking, config)}
             </p>
 
             {isCancel ? (
@@ -189,10 +229,7 @@ export function BookingStatusDialog({
                   className="mt-1.5 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none"
                   disabled={isPending}
                   maxLength={500}
-                  onChange={(event) => {
-                    setReason(event.target.value);
-                    setReasonError("");
-                  }}
+                  onChange={(event) => changeReason(event.target.value)}
                   placeholder="Lý do sẽ được gửi cho khách hàng"
                   rows={3}
                   value={reason}

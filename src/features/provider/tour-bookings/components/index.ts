@@ -7,4 +7,5 @@ export { BookingStatusMenu } from "./booking-status-menu";
 export { BookingTimeline } from "./booking-timeline";
 export { PaymentBadge, StatusBadge } from "./booking-badges";
 export { TourBookingsSummaryCards } from "./tour-bookings-summary-cards";
+export { TourBookingsStats } from "./tour-bookings-stats";
 export { TourBookingsTable } from "./tour-bookings-table";

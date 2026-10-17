@@ -3,7 +3,7 @@ import { tourBookingRepo } from "@/entities/tour-booking";
 import { providerProfileRepo } from "@/entities/provider-profile";
 import {
   TOUR_BOOKINGS_PAGE_SIZE,
-  TourBookingsSummaryCards,
+  TourBookingsStats,
   TourBookingsTable,
   getTourBookingsSummary,
   buildTourBookingsUrl,
@@ -59,19 +59,19 @@ export default async function ProviderTourBookingsPage({
   const summary = getTourBookingsSummary(statusRows);
 
   return (
-    <main className="flex-1 overflow-y-auto px-8 py-7">
-      <div className="mx-auto flex w-full max-w-7xl flex-col space-y-6">
+    <main className="flex-1 overflow-y-auto bg-background-1 font-inter text-foreground">
+      <div className="mx-auto w-full max-w-340 space-y-4 p-4 sm:space-y-6 sm:p-6">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 lg:text-3xl">
+          <h1 className="text-2xl font-semibold text-foreground">
             Đơn đặt tour
           </h1>
-          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-500">
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground-1">
             Theo dõi các đơn đặt tour của khách hàng, trạng thái thanh toán và
             doanh thu thực nhận.
           </p>
         </div>
 
-        <TourBookingsSummaryCards summary={summary} />
+        <TourBookingsStats summary={summary} />
         <TourBookingsTable
           bookings={items}
           hasAnyBooking={summary.total > 0}
