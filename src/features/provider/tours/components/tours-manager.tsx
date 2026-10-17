@@ -2,31 +2,34 @@
 
 import type { ServiceStatus } from "@/generated/prisma/client";
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { formatCurrency, formatDate, formatTourDuration } from "@/lib/utils";
+import { useEffect, useMemo, useState } from "react";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import { TourListItem } from "../types";
+import { TourIcon, type TourIconName } from "./tour-icon";
+
+type HSWindow = Window & {
+  HSDropdown?: { autoInit: () => void };
+};
 
 type TourStatusMeta = {
   label: string;
-  icon: string;
+  icon: TourIconName;
   className: string;
   dotClass: string;
-  filled?: boolean;
 };
 
 const statusMeta: Record<ServiceStatus, TourStatusMeta> = {
   published: {
     label: "Đang mở bán",
-    icon: "check_circle",
-    className: "border-emerald-200/80 bg-emerald-50 text-emerald-700",
-    dotClass: "bg-emerald-500",
-    filled: true,
+    icon: "check",
+    className: "bg-teal-100 text-teal-800",
+    dotClass: "bg-teal-500",
   },
   paused: {
     label: "Tạm dừng",
-    icon: "pause_circle",
-    className: "border-rose-200/80 bg-rose-50 text-rose-700",
-    dotClass: "bg-rose-500",
+    icon: "pause",
+    className: "bg-red-100 text-red-800",
+    dotClass: "bg-red-500",
   },
 };
 
@@ -38,84 +41,124 @@ const statusFilters: { value: ServiceStatus | "all"; label: string }[] = [
 
 const PAGE_SIZE_OPTIONS = [6, 12, 24];
 
+const inputClass =
+  "block rounded-lg border-layer-line bg-layer py-2 text-foreground placeholder:text-muted-foreground-1 focus:border-primary-focus focus:ring-primary-focus sm:text-sm";
+
+const layerButtonClass =
+  "inline-flex items-center justify-center gap-x-2 rounded-lg border border-layer-line bg-layer text-sm font-medium text-layer-foreground shadow-2xs hover:bg-layer-hover focus:bg-layer-focus focus:outline-hidden disabled:pointer-events-none disabled:opacity-50";
+
+const primaryButtonClass =
+  "inline-flex items-center justify-center gap-x-2 rounded-lg border border-primary-line bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover focus:bg-primary-focus focus:outline-hidden disabled:pointer-events-none disabled:opacity-50";
+
+const dropdownItemClass =
+  "flex w-full items-center gap-x-3 rounded-lg px-3 py-2 text-start text-sm text-dropdown-item-foreground hover:bg-dropdown-item-hover focus:bg-dropdown-item-focus focus:outline-hidden";
+
 function StatusBadge({ status }: { status: ServiceStatus }) {
   const meta = statusMeta[status];
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold shadow-xs whitespace-nowrap ${meta.className}`}
+      className={`inline-flex items-center gap-x-1.5 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${meta.className}`}
     >
-      <span
-        className="material-symbols-outlined"
-        style={{
-          fontSize: "15px",
-          fontVariationSettings: meta.filled ? "'FILL' 1" : undefined,
-        }}
-      >
-        {meta.icon}
-      </span>
+      <TourIcon name={meta.icon} className="size-3" />
       {meta.label}
     </span>
   );
 }
 
-function IconAction({
-  icon,
-  title,
-  danger,
-  href,
-}: {
-  icon: string;
-  title: string;
-  danger?: boolean;
-  href?: string;
-}) {
-  const className = `rounded-lg p-1.5 text-slate-400 transition ${
-    danger
-      ? "hover:bg-rose-50 hover:text-rose-600"
-      : "hover:bg-slate-100 hover:text-slate-700"
-  }`;
-  const content = (
-    <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-      {icon}
-    </span>
-  );
-
-  if (href) {
-    return (
-      <Link className={`inline-flex ${className}`} href={href} title={title}>
-        {content}
-      </Link>
-    );
+function Rating({ tour }: { tour: TourListItem }) {
+  if (!tour.rating) {
+    return <span className="text-sm text-muted-foreground-1">Chưa có</span>;
   }
+  return (
+    <div className="flex items-center gap-x-1">
+      <TourIcon
+        name="star"
+        className="size-3.5 fill-yellow-400 text-yellow-400"
+      />
+      <span className="text-sm font-medium text-foreground">
+        {tour.rating.toFixed(1)}
+      </span>
+      <span className="text-xs text-muted-foreground-1">
+        ({tour.reviewCount})
+      </span>
+    </div>
+  );
+}
+
+function RowActions({ tour }: { tour: TourListItem }) {
+  const dropdownId = `hs-tour-actions-${tour.id}`;
 
   return (
-    <button className={className} title={title} type="button">
-      {content}
-    </button>
+    <div className="hs-dropdown relative inline-flex [--placement:bottom-right]">
+      <button
+        id={dropdownId}
+        type="button"
+        className={`hs-dropdown-toggle size-8 ${layerButtonClass}`}
+        aria-haspopup="menu"
+        aria-expanded="false"
+        aria-label="Thao tác"
+      >
+        <TourIcon name="more" />
+      </button>
+
+      <div
+        className="hs-dropdown-menu duration z-20 hidden min-w-44 rounded-xl border border-dropdown-line bg-dropdown opacity-0 shadow-xl transition-[opacity,margin] hs-dropdown-open:opacity-100"
+        role="menu"
+        aria-orientation="vertical"
+        aria-labelledby={dropdownId}
+      >
+        <div className="space-y-0.5 p-1">
+          <Link
+            className={dropdownItemClass}
+            href={`/provider/tours/${tour.id}/edit`}
+          >
+            <TourIcon name="edit" />
+            Chỉnh sửa
+          </Link>
+          <button className={dropdownItemClass} type="button">
+            <TourIcon name="eye" />
+            Xem chi tiết
+          </button>
+          <button className={dropdownItemClass} type="button">
+            <TourIcon name="calendar" />
+            Lịch khởi hành
+          </button>
+        </div>
+        <div className="space-y-0.5 border-t border-dropdown-divider p-1">
+          <button
+            className="flex w-full items-center gap-x-3 rounded-lg px-3 py-2 text-start text-sm text-red-600 hover:bg-red-50 focus:bg-red-50 focus:outline-hidden"
+            type="button"
+          >
+            <TourIcon name="trash" />
+            Xóa tour
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
 function TourRow({ tour }: { tour: TourListItem }) {
   return (
-    <tr className="transition-colors hover:bg-slate-50/70">
-      <td className="px-5 py-5 align-middle">
-        <div className="flex items-center gap-3.5">
+    <tr className="hover:bg-layer-hover">
+      <td className="min-w-80 px-6 py-4 align-middle">
+        <div className="flex items-center gap-x-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             alt={tour.title}
-            className="h-12 w-12 shrink-0 rounded-xl object-cover shadow-sm ring-1 ring-slate-200/80"
+            className="size-11 shrink-0 rounded-lg object-cover"
             src={tour.imageUrl}
           />
-          <div className="flex min-w-0 flex-col">
-            <span className="font-mono text-[11px] font-bold tracking-wider text-brand-500 uppercase">
+          <div className="min-w-0 grow">
+            <span className="inline-flex rounded-md bg-surface px-1.5 py-0.5 font-mono text-xs font-medium text-surface-foreground">
               {tour.code}
             </span>
-            <span className="truncate text-sm font-bold text-slate-900">
+            <span className="mt-1 block truncate text-sm font-semibold text-foreground">
               {tour.title}
             </span>
-            <span className="mt-0.5 inline-flex items-center gap-1.5 text-xs text-slate-500">
+            <span className="mt-0.5 inline-flex items-center gap-x-1.5 text-xs text-muted-foreground-1">
               <span
-                className={`h-1.5 w-1.5 rounded-full ${statusMeta[tour.status].dotClass}`}
+                className={`size-1.5 rounded-full ${statusMeta[tour.status].dotClass}`}
               />
               {tour.category}
             </span>
@@ -123,184 +166,62 @@ function TourRow({ tour }: { tour: TourListItem }) {
         </div>
       </td>
 
-      <td className="px-4 py-5 align-middle whitespace-nowrap">
-        <div className="flex flex-col">
-          <span className="text-sm font-bold text-slate-900">
-            {formatCurrency(tour.basePrice)}
-            <span className="ml-1 text-xs font-normal text-slate-400">
-              / khách
-            </span>
+      <td className="px-6 py-4 align-middle whitespace-nowrap">
+        <span className="block text-sm font-medium text-foreground">
+          {formatCurrency(tour.basePrice)}
+          <span className="ms-1 text-xs font-normal text-muted-foreground-1">
+            / khách
           </span>
-          <span className="mt-0.5 text-xs text-slate-400">
-            Khởi hành: {formatDate(tour.nearestDepartureDate)}
-          </span>
-        </div>
+        </span>
+        <span className="block text-xs text-muted-foreground-1">
+          Khởi hành: {formatDate(tour.nearestDepartureDate)}
+        </span>
       </td>
 
-      <td className="px-4 py-5 align-middle whitespace-nowrap">
-        <div className="flex flex-col">
-          <span className="text-sm font-bold text-slate-900">
-            {tour.totalBookings}
-          </span>
-          <span className="mt-0.5 text-xs text-slate-400">lượt đặt</span>
-        </div>
+      <td className="px-6 py-4 align-middle whitespace-nowrap">
+        <span className="block text-sm font-medium text-foreground">
+          {tour.totalBookings}
+        </span>
+        <span className="block text-xs text-muted-foreground-1">lượt đặt</span>
       </td>
 
-      <td className="px-4 py-5 align-middle whitespace-nowrap">
-        {tour.rating ? (
-          <div className="flex items-center gap-1.5">
-            <span
-              className="material-symbols-outlined text-[16px] text-amber-400"
-              style={{ fontVariationSettings: "'FILL' 1" }}
-            >
-              star
-            </span>
-            <span className="text-sm font-bold text-slate-900">
-              {tour.rating.toFixed(1)}
-            </span>
-            <span className="text-xs text-slate-400">({tour.reviewCount})</span>
-          </div>
-        ) : (
-          <span className="text-[13px] text-slate-400 italic">Chưa có</span>
-        )}
+      <td className="px-6 py-4 align-middle whitespace-nowrap">
+        <Rating tour={tour} />
       </td>
 
-      <td className="px-4 py-5 align-middle">
+      <td className="px-6 py-4 align-middle">
         <StatusBadge status={tour.status} />
       </td>
 
-      <td className="px-5 py-5 text-right align-middle whitespace-nowrap">
-        <div className="inline-flex items-center justify-end gap-1">
-          <IconAction
-            href={`/provider/tours/${tour.id}/edit`}
-            icon="edit"
-            title="Chỉnh sửa"
-          />
-          <IconAction icon="visibility" title="Xem chi tiết" />
-          <IconAction icon="calendar_month" title="Lịch khởi hành" />
-          <IconAction danger icon="delete" title="Xóa tour" />
-        </div>
+      <td className="px-6 py-4 text-end align-middle whitespace-nowrap">
+        <RowActions tour={tour} />
       </td>
     </tr>
   );
 }
 
-function TourCard({ tour }: { tour: TourListItem }) {
-  const meta = statusMeta[tour.status];
-  return (
-    <div className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm transition-all duration-300 hover:shadow-lg">
-      <div className="relative h-48 overflow-hidden bg-slate-100">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          alt={tour.title}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-          src={tour.imageUrl}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent" />
-        <div className="absolute top-3 left-3">
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-bold shadow-sm ${meta.className}`}
-          >
-            <span className={`h-1.5 w-1.5 rounded-full ${meta.dotClass}`} />
-            {meta.label}
-          </span>
-        </div>
-        <div className="absolute top-3 right-3">
-          <span className="inline-flex items-center gap-1 rounded-full bg-slate-900/70 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-md">
-            <span
-              className="material-symbols-outlined text-[14px] text-amber-400"
-              style={{ fontVariationSettings: "'FILL' 1" }}
-            >
-              star
-            </span>
-            {tour.rating
-              ? `${tour.rating.toFixed(1)} (${tour.reviewCount})`
-              : "Mới"}
-          </span>
-        </div>
-        <div className="absolute right-3 bottom-3 left-3 flex items-center justify-between text-white">
-          <span className="font-mono text-[11px] font-extrabold tracking-wider text-amber-300 uppercase">
-            {tour.code}
-          </span>
-          <span className="text-xs opacity-90">
-            {formatTourDuration(tour.durationDays, tour.durationNights)}
-          </span>
-        </div>
-      </div>
-
-      <div className="flex flex-1 flex-col justify-between space-y-4 p-5">
-        <div className="space-y-2">
-          <div className="flex items-center gap-1 text-xs text-slate-500">
-            <span className="material-symbols-outlined text-[16px] text-brand-500">
-              location_on
-            </span>
-            <span>{tour.provinceName}</span>
-          </div>
-          <h3 className="line-clamp-2 text-[15px] font-bold text-slate-900 transition-colors group-hover:text-brand-600">
-            {tour.title}
-          </h3>
-          <p className="line-clamp-2 text-xs leading-relaxed text-slate-500">
-            {tour.description}
-          </p>
-        </div>
-
-        <div className="space-y-3">
-          <div className="flex items-baseline justify-between rounded-xl bg-slate-50 px-3.5 py-2">
-            <span className="text-xs text-slate-500">Giá khởi điểm</span>
-            <span className="text-base font-bold text-brand-600">
-              {formatCurrency(tour.basePrice)}
-              <span className="ml-1 text-xs font-normal text-slate-400">
-                / khách
-              </span>
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <Link
-              className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-200/80"
-              href={`/provider/tours/${tour.id}/edit`}
-            >
-              <span className="material-symbols-outlined text-[16px]">
-                edit
-              </span>
-              Chỉnh sửa
-            </Link>
-            <button
-              className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-500 px-3 py-2 text-xs font-bold text-white shadow-sm shadow-brand-500/25 transition hover:bg-brand-600"
-              type="button"
-            >
-              <span className="material-symbols-outlined text-[16px]">
-                calendar_month
-              </span>
-              Quản lý lịch
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function ToursEmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-200/80 bg-white p-12 text-center shadow-sm">
-      <span className="material-symbols-outlined text-[40px] text-slate-300">
-        travel_explore
-      </span>
-      <h3 className="text-base font-bold text-slate-900">
-        Bạn chưa có tour du lịch nào
-      </h3>
-      <p className="max-w-sm text-sm text-slate-500">
-        Tạo tour đầu tiên để bắt đầu kinh doanh dịch vụ trải nghiệm trên Roamly.
-      </p>
-      <Link
-        className="mt-1 inline-flex items-center gap-2 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600"
-        href="/provider/tours/create"
-      >
-        <span className="material-symbols-outlined text-[20px]">
-          add_circle
+    <div className="flex flex-col rounded-xl border border-card-line bg-card shadow-2xs">
+      <div className="flex min-h-80 flex-col items-center justify-center p-4 text-center md:p-5">
+        <span className="flex size-12 items-center justify-center rounded-full bg-surface text-muted-foreground-2">
+          <TourIcon name="compass" className="size-6" />
         </span>
-        Tạo Tour mới
-      </Link>
+        <h3 className="mt-4 text-base font-semibold text-foreground">
+          Bạn chưa có tour du lịch nào
+        </h3>
+        <p className="mt-1 max-w-sm text-sm text-muted-foreground-1">
+          Tạo tour đầu tiên để bắt đầu kinh doanh dịch vụ trải nghiệm trên
+          Roamly.
+        </p>
+        <Link
+          className={`mt-5 ${primaryButtonClass}`}
+          href="/provider/tours/create"
+        >
+          <TourIcon name="plus" />
+          Tạo Tour mới
+        </Link>
+      </div>
     </div>
   );
 }
@@ -311,7 +232,6 @@ export function ToursManager({ tours }: { tours: TourListItem[] }) {
   const [statusFilter, setStatusFilter] = useState<ServiceStatus | "all">(
     "all",
   );
-  const [view, setView] = useState<"table" | "card">("table");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
 
@@ -342,6 +262,11 @@ export function ToursManager({ tours }: { tours: TourListItem[] }) {
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedTours = filteredTours.slice(startIndex, startIndex + pageSize);
 
+  // Dòng mới hiện ra sau khi lọc/chuyển trang cần được Preline khởi tạo dropdown
+  useEffect(() => {
+    (window as HSWindow).HSDropdown?.autoInit();
+  }, [paginatedTours]);
+
   const handleReset = () => {
     setSearch("");
     setCategoryFilter("all");
@@ -354,237 +279,162 @@ export function ToursManager({ tours }: { tours: TourListItem[] }) {
   }
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-      <div className="flex flex-col items-stretch gap-3 border-b border-slate-200/80 p-4 lg:flex-row lg:items-center">
-        <div className="flex items-center self-start rounded-full border border-slate-200 bg-slate-50 p-1 lg:self-center">
-          <button
-            className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition ${
-              view === "table"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-500 hover:text-slate-800"
-            }`}
-            onClick={() => setView("table")}
-            type="button"
-          >
-            <span
-              className={`material-symbols-outlined text-[18px] ${
-                view === "table" ? "text-brand-500" : ""
-              }`}
-            >
-              table_rows
-            </span>
-            Bảng
-          </button>
-          <button
-            className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition ${
-              view === "card"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-500 hover:text-slate-800"
-            }`}
-            onClick={() => setView("card")}
-            type="button"
-          >
-            <span
-              className={`material-symbols-outlined text-[18px] ${
-                view === "card" ? "text-brand-500" : ""
-              }`}
-            >
-              grid_view
-            </span>
-            Thẻ
-          </button>
+    <div className="flex flex-col overflow-hidden rounded-xl border border-card-line bg-card shadow-2xs">
+      <div className="grid gap-3 border-b border-card-line px-6 py-4 lg:flex lg:items-center lg:justify-between">
+        <div className="relative w-full md:max-w-sm">
+          <div className="pointer-events-none absolute inset-y-0 start-0 z-20 flex items-center ps-3.5">
+            <TourIcon name="search" className="size-4 text-muted-foreground" />
+          </div>
+          <label className="sr-only" htmlFor="hs-tours-search">
+            Tìm kiếm tour
+          </label>
+          <input
+            className={`${inputClass} w-full ps-10 pe-4`}
+            id="hs-tours-search"
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+            placeholder="Tìm theo tên, mã tour, địa điểm..."
+            type="text"
+            value={search}
+          />
         </div>
-
-        <div className="flex flex-1 flex-col items-center gap-2.5 sm:flex-row">
-          <div className="relative w-full sm:flex-1">
-            <span className="material-symbols-outlined absolute top-1/2 left-3.5 -translate-y-1/2 text-[20px] text-slate-400">
-              search
-            </span>
-            <input
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pr-4 pl-10 text-sm text-slate-800 transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none"
-              onChange={(event) => {
-                setSearch(event.target.value);
-                setPage(1);
-              }}
-              placeholder="Tìm kiếm theo tên tour, mã tour, địa điểm..."
-              type="text"
-              value={search}
-            />
-          </div>
-          <div className="relative w-full sm:w-auto">
-            <select
-              className="w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2.5 pr-8 pl-3.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100/70 focus:border-brand-500 focus:outline-none sm:w-auto"
-              onChange={(event) => {
-                setCategoryFilter(event.target.value);
-                setPage(1);
-              }}
-              value={categoryFilter}
-            >
-              <option value="all">Tất cả danh mục</option>
-              {categories.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
-            <span className="material-symbols-outlined pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-[18px] text-slate-400">
-              expand_more
-            </span>
-          </div>
-          <div className="relative w-full sm:w-auto">
-            <select
-              className="w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2.5 pr-8 pl-3.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100/70 focus:border-brand-500 focus:outline-none sm:w-auto"
-              onChange={(event) => {
-                setStatusFilter(event.target.value as ServiceStatus | "all");
-                setPage(1);
-              }}
-              value={statusFilter}
-            >
-              {statusFilters.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <span className="material-symbols-outlined pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-[18px] text-slate-400">
-              expand_more
-            </span>
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            aria-label="Lọc theo danh mục"
+            className={`${inputClass} ps-3 pe-9`}
+            onChange={(event) => {
+              setCategoryFilter(event.target.value);
+              setPage(1);
+            }}
+            value={categoryFilter}
+          >
+            <option value="all">Tất cả danh mục</option>
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="Lọc theo trạng thái"
+            className={`${inputClass} ps-3 pe-9`}
+            onChange={(event) => {
+              setStatusFilter(event.target.value as ServiceStatus | "all");
+              setPage(1);
+            }}
+            value={statusFilter}
+          >
+            {statusFilters.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
           <button
-            className="flex items-center justify-center self-stretch rounded-xl border border-slate-200 px-2.5 text-slate-500 shadow-sm transition hover:bg-slate-100 hover:text-slate-800"
+            className={`px-3 py-2 ${layerButtonClass}`}
             onClick={handleReset}
-            title="Đặt lại bộ lọc"
             type="button"
           >
-            <span className="material-symbols-outlined block text-[18px]">
-              refresh
-            </span>
+            <TourIcon name="reset" />
+            Đặt lại
           </button>
         </div>
       </div>
 
-      {view === "table" ? (
-        <div className="w-full overflow-x-auto">
-          <table className="w-full min-w-[1050px] table-fixed border-collapse text-left">
-            <thead>
-              <tr className="border-b border-slate-200/70 bg-slate-50/80 text-[11px] font-bold tracking-wider text-slate-500 uppercase">
-                <th className="w-[340px] px-5 py-4" scope="col">
-                  Tour &amp; Danh mục
-                </th>
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-table-line">
+          <thead className="bg-muted">
+            <tr>
+              {[
+                "Tour & Danh mục",
+                "Giá cơ bản / Lịch gần nhất",
+                "Tổng booking",
+                "Đánh giá",
+                "Trạng thái",
+              ].map((label) => (
                 <th
-                  className="w-[190px] px-4 py-4 whitespace-nowrap"
+                  key={label}
+                  className="px-6 py-3 text-start whitespace-nowrap"
                   scope="col"
                 >
-                  Giá cơ bản / Lịch gần nhất
+                  <span className="text-xs font-semibold text-foreground uppercase">
+                    {label}
+                  </span>
                 </th>
-                <th
-                  className="w-[110px] px-4 py-4 whitespace-nowrap"
-                  scope="col"
-                >
-                  Tổng booking
-                </th>
-                <th
-                  className="w-[110px] px-4 py-4 whitespace-nowrap"
-                  scope="col"
-                >
-                  Đánh giá
-                </th>
-                <th
-                  className="w-[140px] px-4 py-4 whitespace-nowrap"
-                  scope="col"
-                >
-                  Trạng thái
-                </th>
-                <th className="w-[160px] px-5 py-4 text-right" scope="col">
-                  Thao tác
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-sm">
-              {paginatedTours.length === 0 ? (
-                <tr>
-                  <td
-                    className="px-6 py-10 text-center text-sm text-slate-500"
-                    colSpan={6}
-                  >
-                    Không tìm thấy tour phù hợp với bộ lọc.
-                  </td>
-                </tr>
-              ) : (
-                paginatedTours.map((tour) => (
-                  <TourRow key={tour.id} tour={tour} />
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="p-4">
-          {paginatedTours.length === 0 ? (
-            <p className="py-10 text-center text-sm text-slate-500">
-              Không tìm thấy tour phù hợp với bộ lọc.
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {paginatedTours.map((tour) => (
-                <TourCard key={tour.id} tour={tour} />
               ))}
-            </div>
-          )}
-        </div>
-      )}
+              <th className="px-6 py-3 text-end" scope="col">
+                <span className="text-xs font-semibold text-foreground uppercase">
+                  Thao tác
+                </span>
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-table-line">
+            {paginatedTours.length === 0 ? (
+              <tr>
+                <td
+                  className="px-6 py-10 text-center text-sm text-muted-foreground-1"
+                  colSpan={6}
+                >
+                  Không tìm thấy tour phù hợp với bộ lọc.
+                </td>
+              </tr>
+            ) : (
+              paginatedTours.map((tour) => (
+                <TourRow key={tour.id} tour={tour} />
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
 
-      <div className="flex flex-col items-center justify-between gap-4 border-t border-slate-200/80 p-4 sm:flex-row">
-        <div className="flex items-center gap-4 text-sm text-slate-500">
-          <span>
+      <div className="grid gap-3 border-t border-card-line px-6 py-4 md:flex md:items-center md:justify-between">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <p className="text-sm text-muted-foreground-1">
             Hiển thị{" "}
-            <span className="font-semibold text-slate-900">
+            <span className="font-semibold text-foreground">
               {filteredTours.length === 0 ? 0 : startIndex + 1} -{" "}
               {Math.min(startIndex + pageSize, filteredTours.length)}
             </span>{" "}
-            trên tổng số{" "}
-            <span className="font-semibold text-slate-900">
-              {filteredTours.length}
-            </span>{" "}
-            tour
-          </span>
-          <div className="hidden items-center gap-2 sm:flex">
-            <span>Xem:</span>
-            <select
-              className="cursor-pointer rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-700 focus:border-brand-500 focus:outline-none"
-              onChange={(event) => {
-                setPageSize(Number(event.target.value));
-                setPage(1);
-              }}
-              value={pageSize}
-            >
-              {PAGE_SIZE_OPTIONS.map((size) => (
-                <option key={size} value={size}>
-                  {size} / trang
-                </option>
-              ))}
-            </select>
-          </div>
+            / {filteredTours.length} tour
+          </p>
+          <select
+            aria-label="Số tour mỗi trang"
+            className={`${inputClass} py-1.5 ps-3 pe-9`}
+            onChange={(event) => {
+              setPageSize(Number(event.target.value));
+              setPage(1);
+            }}
+            value={pageSize}
+          >
+            {PAGE_SIZE_OPTIONS.map((size) => (
+              <option key={size} value={size}>
+                {size} / trang
+              </option>
+            ))}
+          </select>
         </div>
 
-        <div className="flex items-center gap-1">
+        <nav aria-label="Phân trang" className="flex items-center gap-x-1">
           <button
-            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="Trang trước"
+            className="inline-flex min-h-9.5 min-w-9.5 items-center justify-center rounded-lg px-2.5 py-2 text-sm text-foreground hover:bg-muted-hover focus:bg-muted-focus focus:outline-hidden disabled:pointer-events-none disabled:opacity-50"
             disabled={currentPage <= 1}
             onClick={() => setPage((prev) => Math.max(1, prev - 1))}
             type="button"
           >
-            <span className="material-symbols-outlined text-[18px]">
-              chevron_left
-            </span>
+            <TourIcon name="chevronLeft" className="size-3.5" />
           </button>
           {Array.from({ length: totalPages }, (_, index) => index + 1).map(
             (pageNumber) => (
               <button
-                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition ${
+                aria-current={pageNumber === currentPage ? "page" : undefined}
+                className={`flex min-h-9.5 min-w-9.5 items-center justify-center rounded-lg px-3 py-2 text-sm focus:outline-hidden ${
                   pageNumber === currentPage
-                    ? "bg-brand-500 text-white shadow-sm"
-                    : "text-slate-600 hover:bg-slate-100"
+                    ? "bg-surface text-surface-foreground focus:bg-surface-focus"
+                    : "text-foreground hover:bg-muted-hover focus:bg-muted-focus"
                 }`}
                 key={pageNumber}
                 onClick={() => setPage(pageNumber)}
@@ -595,16 +445,15 @@ export function ToursManager({ tours }: { tours: TourListItem[] }) {
             ),
           )}
           <button
-            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="Trang sau"
+            className="inline-flex min-h-9.5 min-w-9.5 items-center justify-center rounded-lg px-2.5 py-2 text-sm text-foreground hover:bg-muted-hover focus:bg-muted-focus focus:outline-hidden disabled:pointer-events-none disabled:opacity-50"
             disabled={currentPage >= totalPages}
             onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
             type="button"
           >
-            <span className="material-symbols-outlined text-[18px]">
-              chevron_right
-            </span>
+            <TourIcon name="chevronRight" className="size-3.5" />
           </button>
-        </div>
+        </nav>
       </div>
     </div>
   );
