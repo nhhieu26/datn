@@ -63,13 +63,13 @@ export default async function ProviderRestaurantBookingsPage({
   const summary = getRestaurantBookingsSummary(summaryData);
 
   return (
-    <main className="flex-1 overflow-y-auto px-8 py-7">
-      <div className="mx-auto flex w-full max-w-7xl flex-col space-y-6">
+    <main className="flex-1 overflow-y-auto bg-background-1 font-inter text-foreground">
+      <div className="mx-auto w-full max-w-340 space-y-4 p-4 sm:space-y-6 sm:p-6">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 lg:text-3xl">
+          <h1 className="text-2xl font-semibold text-foreground">
             Đơn đặt bàn
           </h1>
-          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-500">
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground-1">
             Theo dõi và xác nhận các đơn đặt bàn của khách hàng tại nhà hàng
             của bạn.
           </p>
