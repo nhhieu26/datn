@@ -29,7 +29,7 @@ type HSWindow = Window & {
   HSDropdown?: { autoInit: () => void };
 };
 
-const inputClass =
+export const inputClass =
   "block rounded-lg border-layer-line bg-layer py-2 text-foreground placeholder:text-muted-foreground-1 focus:border-primary-focus focus:ring-primary-focus sm:text-sm";
 
 const pageButtonClass =
@@ -148,7 +148,7 @@ function pageList(page: number, totalPages: number): (number | "gap")[] {
   return result;
 }
 
-function Pagination({
+export function Pagination({
   page,
   totalPages,
   href,

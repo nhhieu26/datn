@@ -1,20 +1,23 @@
 import { formatDateTime } from "@/lib/utils";
 import type { TourBookingDetailView } from "../types";
 
-type TimelineInfo = Pick<
+export type TimelineInfo = Pick<
   TourBookingDetailView,
   "status" | "createdAt" | "confirmedAt" | "completedAt" | "cancelledAt"
 > &
   Partial<Pick<TourBookingDetailView, "paidAt" | "expiresAt">>;
 
-type Step = {
+export type TimelineStep = {
   label: string;
   hint: string;
   state: "done" | "pending" | "failed";
 };
 
-function buildSteps(b: TimelineInfo, withPayment: boolean): Step[] {
-  const steps: Step[] = [
+export function buildSteps(
+  b: TimelineInfo,
+  withPayment: boolean,
+): TimelineStep[] {
+  const steps: TimelineStep[] = [
     { label: "Tạo đơn", hint: formatDateTime(b.createdAt), state: "done" },
   ];
   const terminal =

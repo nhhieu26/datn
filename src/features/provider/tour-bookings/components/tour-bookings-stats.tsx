@@ -13,14 +13,16 @@ type StatCard = {
 /** Thẻ thống kê phong cách Preline cho trang danh sách đơn tour. */
 export function TourBookingsStats({
   summary,
+  totalHint = "Toàn bộ đơn đặt tour",
 }: {
   summary: TourBookingsSummary;
+  totalHint?: string;
 }) {
   const cards: StatCard[] = [
     {
       label: "Tổng đơn đặt",
       value: String(summary.total),
-      hint: "Toàn bộ đơn đặt tour",
+      hint: totalHint,
       icon: "ticket",
       iconClass: "bg-primary-100 text-primary-700",
     },

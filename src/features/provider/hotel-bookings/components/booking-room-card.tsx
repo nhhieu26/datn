@@ -1,33 +1,42 @@
 import { formatCurrency } from "@/lib/utils";
 import type { HotelBookingDetailView } from "../types";
 
+const thClass =
+  "px-4 py-3 text-start text-xs font-medium text-muted-foreground-1 uppercase md:px-5";
+const tdClass = "px-4 py-3 text-sm whitespace-nowrap text-foreground md:px-5";
+
+/** Bảng chi tiết phòng đã đặt theo phong cách Preline. */
 export function HotelBookingRoomCard({
   booking: b,
 }: {
   booking: HotelBookingDetailView;
 }) {
   return (
-    <table className="w-full text-left text-sm">
-      <thead className="bg-slate-50 text-xs tracking-wider text-slate-500 uppercase">
-        <tr>
-          <th className="px-6 py-3 font-semibold">Loại phòng</th>
-          <th className="px-6 py-3 font-semibold">Số phòng</th>
-          <th className="px-6 py-3 font-semibold">Số đêm</th>
-          <th className="px-6 py-3 font-semibold">Số khách</th>
-          <th className="px-6 py-3 text-right font-semibold">Đơn giá / đêm</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td className="px-6 py-4 font-bold text-slate-900">{b.roomName}</td>
-          <td className="px-6 py-4 text-slate-700">{b.roomQuantity}</td>
-          <td className="px-6 py-4 text-slate-700">{b.nights}</td>
-          <td className="px-6 py-4 text-slate-700">{b.guests}</td>
-          <td className="px-6 py-4 text-right text-slate-700">
-            {formatCurrency(b.unitPrice)}
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-table-line">
+        <thead className="bg-surface">
+          <tr>
+            <th className={thClass} scope="col">Loại phòng</th>
+            <th className={thClass} scope="col">Số phòng</th>
+            <th className={thClass} scope="col">Số đêm</th>
+            <th className={thClass} scope="col">Số khách</th>
+            <th className={`${thClass} text-end`} scope="col">
+              Đơn giá / đêm
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-table-line">
+          <tr>
+            <td className={`${tdClass} font-medium`}>{b.roomName}</td>
+            <td className={tdClass}>{b.roomQuantity}</td>
+            <td className={tdClass}>{b.nights}</td>
+            <td className={tdClass}>{b.guests}</td>
+            <td className={`${tdClass} text-end`}>
+              {formatCurrency(b.unitPrice)}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   );
 }

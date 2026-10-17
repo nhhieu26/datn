@@ -2,13 +2,19 @@
 
 import {
   DATE_RANGE_OPTIONS,
-  FilterSelect,
-  Pagination,
-  dateInputClass,
   type DateRange,
 } from "@/features/provider/components/list-controls";
-import { PaymentBadge } from "@/features/provider/tour-bookings/components/booking-badges";
-import { BookingStatusMenu } from "@/features/provider/tour-bookings/components/booking-status-menu";
+import { BookingIcon } from "@/features/provider/tour-bookings/components/booking-icon";
+import {
+  PrelineBookingActions,
+  PrelinePaymentBadge,
+  PrelineStatusBadge,
+  layerButtonClass,
+} from "@/features/provider/tour-bookings/components/tour-booking-status";
+import {
+  Pagination,
+  inputClass,
+} from "@/features/provider/tour-bookings/components/tour-bookings-table";
 import { BOOKING_STATUS_OPTIONS } from "@/features/provider/tour-bookings/utils";
 import {
   formatCurrency,
@@ -16,7 +22,6 @@ import {
   formatRelativeTime,
   hasCheckedOut,
 } from "@/lib/utils";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { updateHotelBookingStatusAction } from "../actions";
@@ -26,71 +31,86 @@ import {
 } from "../search-params";
 import type { HotelBookingListItem } from "../types";
 
+type HSWindow = Window & {
+  HSDropdown?: { autoInit: () => void };
+};
+
 function BookingRow({ booking }: { booking: HotelBookingListItem }) {
   return (
-    <tr className="transition-colors hover:bg-slate-50/70">
-      <td className="min-w-[340px] px-6 py-5 align-middle">
-        <div className="flex items-center gap-3.5">
+    <tr className="hover:bg-layer-hover">
+      <td className="min-w-80 px-6 py-4 align-middle">
+        <div className="flex items-center gap-x-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             alt={booking.roomName}
-            className="h-14 w-14 shrink-0 rounded-xl object-cover shadow-sm ring-1 ring-slate-200/80"
+            className="size-11 shrink-0 rounded-lg object-cover"
             src={booking.imageUrl}
           />
-          <div className="flex min-w-0 flex-col">
-            <span className="text-xs font-semibold text-slate-700">
+          <div className="min-w-0 grow">
+            <span className="block truncate text-sm font-semibold text-foreground">
               {booking.customerName}
             </span>
-            <span className="mt-0.5 line-clamp-2 text-sm font-medium text-brand-600">
+            <span className="mt-0.5 line-clamp-1 text-sm text-primary">
               {booking.hotelName} · {booking.roomName}
             </span>
-            <span className="mt-1 text-xs text-slate-500">
-              {booking.customerEmail} / {booking.customerPhone}
+            <span className="mt-0.5 block truncate text-xs text-muted-foreground-1">
+              {booking.customerEmail} · {booking.customerPhone}
             </span>
           </div>
         </div>
       </td>
-      <td className="px-6 py-5 align-middle whitespace-nowrap">
-        <div className="flex flex-col">
-          <span className="text-sm font-medium text-slate-800">
-            {formatDate(booking.checkInDate)} → {formatDate(booking.checkOutDate)}
-          </span>
-          <span className="mt-0.5 text-xs text-slate-400">
-            {booking.nights} đêm
-          </span>
-        </div>
+
+      <td className="px-6 py-4 align-middle whitespace-nowrap">
+        <span className="block text-sm font-medium text-foreground">
+          {formatDate(booking.checkInDate)} → {formatDate(booking.checkOutDate)}
+        </span>
+        <span className="block text-xs text-muted-foreground-1">
+          {booking.nights} đêm
+        </span>
       </td>
-      <td className="px-6 py-5 text-center align-middle whitespace-nowrap">
-        <div className="flex flex-col items-center gap-1 text-sm font-semibold text-slate-800">
-          <span className="inline-flex items-center gap-1">
-            <span className="material-symbols-outlined text-[16px] text-slate-400">
-              bed
-            </span>
-            {booking.roomQuantity}
-          </span>
-          <span className="inline-flex items-center gap-1 text-xs text-slate-500">
-            <span className="material-symbols-outlined text-[14px] text-slate-400">
-              group
-            </span>
-            {booking.guests}
-          </span>
-        </div>
+
+      <td className="px-6 py-4 align-middle whitespace-nowrap">
+        <span className="flex items-center gap-x-1.5 text-sm font-medium text-foreground">
+          <BookingIcon name="bed" className="size-4 text-muted-foreground" />
+          {booking.roomQuantity} phòng
+        </span>
+        <span className="mt-0.5 flex items-center gap-x-1.5 text-xs text-muted-foreground-1">
+          <BookingIcon name="users" className="size-4 text-muted-foreground" />
+          {booking.guests} khách
+        </span>
       </td>
-      <td className="px-6 py-5 text-right align-middle whitespace-nowrap">
-        <div className="flex flex-col">
-          <span className="text-sm font-bold text-slate-900">
-            {formatCurrency(booking.totalAmount)}
-          </span>
-          <span className="mt-0.5 text-xs text-slate-400">
-            Thực nhận {formatCurrency(booking.providerAmount)}
-          </span>
-        </div>
+
+      <td className="px-6 py-4 text-end align-middle whitespace-nowrap">
+        <span className="block text-sm font-medium text-foreground">
+          {formatCurrency(booking.totalAmount)}
+        </span>
+        <span className="block text-xs text-muted-foreground-1">
+          Thực nhận {formatCurrency(booking.providerAmount)}
+        </span>
       </td>
-      <td className="px-6 py-5 align-middle">
-        <PaymentBadge state={booking.paymentState} />
+
+      <td className="px-6 py-4 align-middle">
+        <PrelinePaymentBadge state={booking.paymentState} />
       </td>
-      <td className="px-6 py-5 align-middle">
-        <BookingStatusMenu
+
+      <td className="px-6 py-4 align-middle">
+        <PrelineStatusBadge status={booking.status} />
+      </td>
+
+      <td className="px-6 py-4 align-middle whitespace-nowrap">
+        <span
+          className="block text-sm font-medium text-foreground"
+          suppressHydrationWarning
+        >
+          {formatRelativeTime(booking.createdAt)}
+        </span>
+        <span className="block text-xs text-muted-foreground-1">
+          {formatDate(booking.createdAt)}
+        </span>
+      </td>
+
+      <td className="px-6 py-4 text-end align-middle whitespace-nowrap">
+        <PrelineBookingActions
           booking={booking}
           config={{
             noun: "đặt phòng",
@@ -101,34 +121,8 @@ function BookingRow({ booking }: { booking: HotelBookingListItem }) {
               : "Chưa đến ngày trả phòng",
             onSubmit: updateHotelBookingStatusAction,
           }}
+          detailHref={`/provider/bookings/hotels/${encodeURIComponent(booking.code)}`}
         />
-      </td>
-      <td className="px-6 py-5 align-middle whitespace-nowrap">
-        <div className="flex flex-col">
-          <span
-            className="text-sm font-medium text-slate-800"
-            suppressHydrationWarning
-          >
-            {formatRelativeTime(booking.createdAt)}
-          </span>
-          <span className="mt-0.5 text-xs text-slate-400">
-            {formatDate(booking.createdAt)}
-          </span>
-        </div>
-      </td>
-      <td className="px-6 py-5 text-right align-middle whitespace-nowrap">
-        <Link
-          className="inline-flex rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-          href={`/provider/bookings/hotels/${encodeURIComponent(booking.code)}`}
-          title="Xem chi tiết"
-        >
-          <span
-            className="material-symbols-outlined"
-            style={{ fontSize: "18px" }}
-          >
-            visibility
-          </span>
-        </Link>
       </td>
     </tr>
   );
@@ -136,17 +130,19 @@ function BookingRow({ booking }: { booking: HotelBookingListItem }) {
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-200/80 bg-white p-12 text-center shadow-sm">
-      <span className="material-symbols-outlined text-[40px] text-slate-300">
-        hotel
-      </span>
-      <h3 className="text-base font-bold text-slate-900">
-        Chưa có đơn đặt phòng nào
-      </h3>
-      <p className="max-w-sm text-sm text-slate-500">
-        Khi khách hàng đặt phòng khách sạn của bạn, đơn đặt chỗ sẽ xuất hiện
-        tại đây.
-      </p>
+    <div className="flex flex-col rounded-xl border border-card-line bg-card shadow-2xs">
+      <div className="flex min-h-80 flex-col items-center justify-center p-4 text-center md:p-5">
+        <span className="flex size-12 items-center justify-center rounded-full bg-surface text-muted-foreground-2">
+          <BookingIcon name="bed" className="size-6" />
+        </span>
+        <h3 className="mt-4 text-base font-semibold text-foreground">
+          Chưa có đơn đặt phòng nào
+        </h3>
+        <p className="mt-1 max-w-sm text-sm text-muted-foreground-1">
+          Khi khách hàng đặt phòng khách sạn của bạn, đơn đặt chỗ sẽ xuất hiện
+          tại đây.
+        </p>
+      </div>
     </div>
   );
 }
@@ -197,31 +193,45 @@ export function HotelBookingsTable({
     return () => clearTimeout(timer);
   }, [keyword, query, router]);
 
+  // Dòng mới hiện ra sau khi lọc/chuyển trang cần được Preline khởi tạo dropdown
+  useEffect(() => {
+    (window as HSWindow).HSDropdown?.autoInit();
+  }, [bookings]);
+
   if (!hasAnyBooking) return <EmptyState />;
 
   return (
     <div
-      className={`flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm transition-opacity ${
+      className={`flex flex-col overflow-hidden rounded-xl border border-card-line bg-card shadow-2xs transition-opacity ${
         isPending ? "opacity-70" : ""
       }`}
     >
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-200/80 p-4">
-        <div className="relative min-w-[200px] flex-1">
-          <span className="material-symbols-outlined absolute top-1/2 left-3.5 -translate-y-1/2 text-[20px] text-slate-400">
-            search
-          </span>
+      <div className="grid gap-3 border-b border-card-line px-6 py-4 xl:flex xl:items-center xl:justify-between">
+        <div className="relative w-full xl:max-w-sm">
+          <div className="pointer-events-none absolute inset-y-0 start-0 z-20 flex items-center ps-3.5">
+            <BookingIcon
+              name="search"
+              className="size-4 text-muted-foreground"
+            />
+          </div>
+          <label className="sr-only" htmlFor="hs-hotel-bookings-search">
+            Tìm kiếm đơn đặt
+          </label>
           <input
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pr-4 pl-10 text-sm text-slate-800 transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none"
+            className={`${inputClass} w-full ps-10 pe-4`}
+            id="hs-hotel-bookings-search"
             onChange={(event) => setKeyword(event.target.value)}
             placeholder="Tìm theo tên khách, khách sạn, phòng, email, SĐT..."
             type="text"
             value={keyword}
           />
         </div>
-        <div className="flex flex-wrap items-center gap-2.5">
-          <FilterSelect
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            aria-label="Lọc theo khách sạn"
+            className={`${inputClass} max-w-56 truncate ps-3 pe-9`}
+            onChange={(event) => apply({ hotel: event.target.value })}
             value={query.hotel}
-            onChange={(value) => apply({ hotel: value })}
           >
             <option value="">Tất cả khách sạn</option>
             {hotelNames.map((name) => (
@@ -229,12 +239,16 @@ export function HotelBookingsTable({
                 {name}
               </option>
             ))}
-          </FilterSelect>
-          <FilterSelect
-            value={query.status}
-            onChange={(value) =>
-              apply({ status: value as HotelBookingsQuery["status"] })
+          </select>
+          <select
+            aria-label="Lọc theo trạng thái"
+            className={`${inputClass} ps-3 pe-9`}
+            onChange={(event) =>
+              apply({
+                status: event.target.value as HotelBookingsQuery["status"],
+              })
             }
+            value={query.status}
           >
             <option value="all">Tất cả trạng thái</option>
             {BOOKING_STATUS_OPTIONS.map((option) => (
@@ -242,31 +256,38 @@ export function HotelBookingsTable({
                 {option.label}
               </option>
             ))}
-          </FilterSelect>
-          <FilterSelect
+          </select>
+          <select
+            aria-label="Lọc theo thời gian"
+            className={`${inputClass} ps-3 pe-9`}
+            onChange={(event) =>
+              apply({ range: event.target.value as DateRange })
+            }
             value={query.range}
-            onChange={(value) => apply({ range: value as DateRange })}
           >
             {DATE_RANGE_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
             ))}
-          </FilterSelect>
+          </select>
           {query.range === "custom" ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-x-2">
               <input
                 aria-label="Từ ngày"
-                className={dateInputClass}
+                className={`${inputClass} px-3`}
                 max={query.to || undefined}
                 onChange={(event) => apply({ from: event.target.value })}
                 type="date"
                 value={query.from}
               />
-              <span className="text-xs text-slate-400">→</span>
+              <BookingIcon
+                name="arrowRight"
+                className="size-4 text-muted-foreground"
+              />
               <input
                 aria-label="Đến ngày"
-                className={dateInputClass}
+                className={`${inputClass} px-3`}
                 min={query.from || undefined}
                 onChange={(event) => apply({ to: event.target.value })}
                 type="date"
@@ -275,7 +296,7 @@ export function HotelBookingsTable({
             </div>
           ) : null}
           <button
-            className="flex items-center justify-center self-stretch rounded-xl border border-slate-200 px-2.5 text-slate-500 shadow-sm transition hover:bg-slate-100 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className={`px-3 py-2 ${layerButtonClass}`}
             disabled={!hasFilters && keyword === ""}
             onClick={() => {
               setKeyword("");
@@ -283,34 +304,45 @@ export function HotelBookingsTable({
                 router.replace("?", { scroll: false });
               });
             }}
-            title="Đặt lại bộ lọc"
             type="button"
           >
-            <span className="material-symbols-outlined block text-[18px]">
-              refresh
-            </span>
+            <BookingIcon name="reset" />
+            Đặt lại
           </button>
         </div>
       </div>
-      <div className="w-full overflow-x-auto">
-        <table className="w-full min-w-[1000px] border-collapse text-left">
-          <thead>
-            <tr className="border-b border-slate-200/70 bg-slate-50/80 text-[11px] font-bold tracking-wider text-slate-500 uppercase">
-              <th className="px-6 py-4" scope="col">Khách hàng &amp; Phòng</th>
-              <th className="px-6 py-4" scope="col">Lưu trú</th>
-              <th className="px-6 py-4 text-center" scope="col">Phòng / Khách</th>
-              <th className="px-6 py-4 text-right" scope="col">Tổng tiền</th>
-              <th className="px-6 py-4" scope="col">Thanh toán</th>
-              <th className="px-6 py-4" scope="col">Trạng thái</th>
-              <th className="px-6 py-4" scope="col">Ngày đặt</th>
-              <th className="px-6 py-4 text-right" scope="col">Thao tác</th>
+
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-table-line">
+          <thead className="bg-muted">
+            <tr>
+              {[
+                { label: "Khách hàng & Phòng", align: "text-start" },
+                { label: "Lưu trú", align: "text-start" },
+                { label: "Phòng / Khách", align: "text-start" },
+                { label: "Tổng tiền", align: "text-end" },
+                { label: "Thanh toán", align: "text-start" },
+                { label: "Trạng thái", align: "text-start" },
+                { label: "Ngày đặt", align: "text-start" },
+                { label: "Thao tác", align: "text-end" },
+              ].map((column) => (
+                <th
+                  key={column.label}
+                  className={`px-6 py-3 whitespace-nowrap ${column.align}`}
+                  scope="col"
+                >
+                  <span className="text-xs font-semibold text-foreground uppercase">
+                    {column.label}
+                  </span>
+                </th>
+              ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 text-sm">
+          <tbody className="divide-y divide-table-line">
             {bookings.length === 0 ? (
               <tr>
                 <td
-                  className="px-6 py-10 text-center text-sm text-slate-500"
+                  className="px-6 py-10 text-center text-sm text-muted-foreground-1"
                   colSpan={8}
                 >
                   Không tìm thấy đơn đặt phù hợp với bộ lọc.
@@ -324,12 +356,17 @@ export function HotelBookingsTable({
           </tbody>
         </table>
       </div>
+
       {total > 0 ? (
-        <div className="flex flex-col items-center justify-between gap-3 border-t border-slate-200/80 px-6 py-4 sm:flex-row">
-          <span className="text-xs text-slate-500">
-            Hiển thị {(page - 1) * pageSize + 1}–
-            {(page - 1) * pageSize + bookings.length} trong {total} đơn
-          </span>
+        <div className="grid gap-3 border-t border-card-line px-6 py-4 md:flex md:items-center md:justify-between">
+          <p className="text-sm text-muted-foreground-1">
+            Hiển thị{" "}
+            <span className="font-semibold text-foreground">
+              {(page - 1) * pageSize + 1} -{" "}
+              {(page - 1) * pageSize + bookings.length}
+            </span>{" "}
+            / {total} đơn
+          </p>
           <Pagination
             href={(p) => buildHotelBookingsUrl(query, { page: p })}
             page={page}
