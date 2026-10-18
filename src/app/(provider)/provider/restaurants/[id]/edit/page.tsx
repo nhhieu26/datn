@@ -37,6 +37,8 @@ export default async function EditRestaurantPage({
     tagRepo.findAll(),
   ]);
   if (!restaurant) notFound();
+  // Nhà hàng đã dừng chờ xóa thì không cho sửa
+  if (restaurant.deleteScheduledAt) redirect("/provider/restaurants");
 
   return (
     <main className="flex-1 overflow-y-auto bg-background-1 font-inter text-foreground">

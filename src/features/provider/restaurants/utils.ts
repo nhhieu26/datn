@@ -61,6 +61,8 @@ export function mapRestaurantToListItem(
     tagNames: restaurant.tags.map((item) => item.tag.name),
     totalBookings: restaurant._count.bookings,
     status: restaurant.status,
+    deleteScheduledAt: restaurant.deleteScheduledAt?.toISOString() ?? null,
+    activeBookings: restaurant.bookings.length,
   };
 }
 

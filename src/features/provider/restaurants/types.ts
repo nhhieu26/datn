@@ -14,6 +14,8 @@ export type RestaurantListItem = {
   tagNames: string[];
   totalBookings: number;
   status: ServiceStatus;
+  deleteScheduledAt: string | null;
+  activeBookings: number;
 };
 
 export type RestaurantsSummary = {

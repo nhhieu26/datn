@@ -20,5 +20,6 @@ export type RestaurantForProviderList = Prisma.RestaurantGetPayload<{
     tags: { include: { tag: true } };
     timeSlots: true;
     _count: { select: { bookings: true } };
+    bookings: { select: { id: true } };
   };
 }>;

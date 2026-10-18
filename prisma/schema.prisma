@@ -297,6 +297,9 @@ model Restaurant {
   status            ServiceStatus   @default(published)
   ratingAvg         Decimal         @default(0) @db.Decimal(2, 1)
   reviewCount       Int             @default(0)
+  // Provider xóa nhà hàng: dừng ngay, cron xóa mềm khi tới hạn
+  deleteScheduledAt DateTime?
+  deletedAt         DateTime?
 
   tags      RestaurantTag[]
   timeSlots RestaurantTimeSlot[]
@@ -305,6 +308,8 @@ model Restaurant {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([deleteScheduledAt])
 }
 
 model RestaurantTag {

@@ -33,7 +33,7 @@ export function createConfirmed(
 ) {
   return prisma.$transaction(async (tx) => {
     const restaurant = await tx.restaurant.findFirst({
-      where: { slug: input.restaurantSlug, status: "published" },
+      where: { slug: input.restaurantSlug, status: "published", deletedAt: null },
       include: { timeSlots: { where: { startTime: input.slot } } },
     });
     if (!restaurant) throw new NotFoundError("Nhà hàng không còn nhận đặt bàn.");

@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/purge-stopped-hotels",
       "schedule": "0 17 * * *"
+    },
+    {
+      "path": "/api/cron/purge-stopped-restaurants",
+      "schedule": "0 17 * * *"
     }
   ]
 }

@@ -17,6 +17,7 @@ import {
   restaurantRepo,
   type CreateRestaurantInput,
   type Restaurant,
+  type RestaurantWithRelations,
 } from "@/entities/restaurant";
 import { providerProfileRepo } from "@/entities/provider-profile";
 import { provinceRepo } from "@/entities/province";
@@ -46,6 +47,7 @@ const ALLOWED_PHOTO_TYPES = ["image/png", "image/jpeg"];
 const MAX_PHOTOS = 5;
 const MAX_SLUG_ATTEMPTS = 5;
 const CLEANUP_ATTEMPTS = 3;
+const RESTAURANT_DELETE_GRACE_DAYS = 30;
 
 const STAGE_ERROR_MESSAGES: Record<CreationStage, string> = {
   authorization: "Không thể xác thực tài khoản. Vui lòng thử lại.",
@@ -527,6 +529,12 @@ export async function updateRestaurantAction(
     if (!restaurant) {
       return { status: "error", formError: "Không tìm thấy nhà hàng." };
     }
+    if (restaurant.deleteScheduledAt) {
+      return {
+        status: "error",
+        formError: "Nhà hàng đã dừng, không thể chỉnh sửa.",
+      };
+    }
     slug = restaurant.slug;
 
     stage = "validation";
@@ -700,4 +708,157 @@ export async function updateRestaurantAction(
   revalidatePath("/provider/restaurants");
   revalidatePath(`/restaurants/${slug}`);
   redirect("/provider/restaurants");
+}
+
+type ProviderRestaurantResult =
+  | { error: ActionState }
+  | { restaurant: RestaurantWithRelations; providerProfileId: string };
+
+async function findProviderRestaurant(
+  restaurantId: string,
+  verb: string
+): Promise<ProviderRestaurantResult> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: { status: "error", formError: "Vui lòng đăng nhập lại." } };
+  }
+  if (session.user.role !== "provider") {
+    return {
+      error: {
+        status: "error",
+        formError: `Chỉ tài khoản đối tác mới có thể ${verb} nhà hàng.`,
+      },
+    };
+  }
+
+  const providerProfile =
+    await providerProfileRepo.findApprovedByUserIdAndBusinessType(
+      session.user.id,
+      "restaurant"
+    );
+  if (!providerProfile) {
+    return {
+      error: {
+        status: "error",
+        formError:
+          "Tài khoản phải đang hoạt động và có hồ sơ doanh nghiệp loại Nhà hàng đã được duyệt.",
+      },
+    };
+  }
+
+  const restaurant = await restaurantRepo.findByIdForProvider(
+    restaurantId,
+    providerProfile.id
+  );
+  if (!restaurant) {
+    return {
+      error: { status: "error", formError: "Không tìm thấy nhà hàng." },
+    };
+  }
+  return { restaurant, providerProfileId: providerProfile.id };
+}
+
+function revalidateRestaurantPages(slug: string) {
+  revalidatePath("/provider/restaurants");
+  revalidatePath(`/restaurants/${slug}`);
+  revalidatePath("/explore");
+  revalidatePath("/");
+}
+
+export async function deleteRestaurantAction(
+  restaurantId: string
+): Promise<ActionState> {
+  const found = await findProviderRestaurant(restaurantId, "xóa");
+  if ("error" in found) return found.error;
+  const { restaurant, providerProfileId } = found;
+
+  // Không xóa ngay: dừng nhận đặt bàn, đơn đang có vẫn xử lý bình thường; cron xóa mềm khi tới hạn
+  const deleteAt = new Date(
+    Date.now() + RESTAURANT_DELETE_GRACE_DAYS * 24 * 60 * 60 * 1000
+  );
+  try {
+    const count = await restaurantRepo.scheduleDeletion(
+      restaurant.id,
+      providerProfileId,
+      deleteAt
+    );
+    if (count === 0) {
+      return { status: "error", formError: "Nhà hàng đã được dừng trước đó." };
+    }
+  } catch (error) {
+    console.error("Xóa nhà hàng thất bại", { restaurantId, error });
+    return {
+      status: "error",
+      formError: "Không thể xóa nhà hàng. Vui lòng thử lại.",
+    };
+  }
+
+  try {
+    await deleteRestaurantEmbedding(restaurant.id);
+  } catch (error) {
+    console.error("Xóa embedding nhà hàng thất bại", { restaurantId, error });
+  }
+
+  revalidateRestaurantPages(restaurant.slug);
+  return { status: "success" };
+}
+
+export async function restoreRestaurantAction(
+  restaurantId: string
+): Promise<ActionState> {
+  const found = await findProviderRestaurant(restaurantId, "khôi phục");
+  if ("error" in found) return found.error;
+  const { restaurant, providerProfileId } = found;
+
+  try {
+    const count = await restaurantRepo.cancelDeletion(
+      restaurant.id,
+      providerProfileId
+    );
+    if (count === 0) {
+      return {
+        status: "error",
+        formError: "Nhà hàng không ở trạng thái đã dừng.",
+      };
+    }
+  } catch (error) {
+    console.error("Khôi phục nhà hàng thất bại", { restaurantId, error });
+    return {
+      status: "error",
+      formError: "Không thể khôi phục nhà hàng. Vui lòng thử lại.",
+    };
+  }
+
+  // Embedding đã bị xóa khi dừng nhà hàng, tạo lại để nhà hàng xuất hiện trong tìm kiếm
+  try {
+    const menu = Array.isArray(restaurant.menu)
+      ? (restaurant.menu as { name?: unknown; description?: unknown }[])
+      : [];
+    const embeddingText = [
+      restaurant.name,
+      restaurant.description,
+      restaurant.province.fullName,
+      restaurant.address,
+      menu.map((item) => item.name).join(", "),
+      menu.map((item) => item.description).join(", "),
+    ]
+      .filter(Boolean)
+      .join("\n");
+    const vector = await embedText(embeddingText);
+    await upsertRestaurantEmbedding(restaurant.id, vector, {
+      name: restaurant.name,
+      provinceId: restaurant.provinceId,
+      tagIds: restaurant.tags.map((restaurantTag) => restaurantTag.tagId),
+      status: "published",
+      providerProfileId,
+    });
+  } catch (error) {
+    console.error("Tạo lại embedding nhà hàng thất bại", {
+      restaurantId,
+      error,
+    });
+  }
+
+  revalidateRestaurantPages(restaurant.slug);
+  return { status: "success" };
 }

@@ -4,8 +4,10 @@ import type { ServiceStatus } from "@/generated/prisma/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
+import { restoreRestaurantAction } from "../actions";
 import type { RestaurantListItem } from "../types";
+import { DeleteRestaurantDialog } from "./delete-restaurant-dialog";
 import { RestaurantIcon, type RestaurantIconName } from "./restaurant-icon";
 
 type HSWindow = Window & {
@@ -19,7 +21,10 @@ type RestaurantStatusMeta = {
   dotClass: string;
 };
 
-const statusMeta: Record<ServiceStatus, RestaurantStatusMeta> = {
+// "stopped": provider đã xóa, nhà hàng dừng nhận đặt bàn và chờ cron xóa mềm
+type RestaurantDisplayStatus = ServiceStatus | "stopped";
+
+const statusMeta: Record<RestaurantDisplayStatus, RestaurantStatusMeta> = {
   published: {
     label: "Đang mở bán",
     icon: "check",
@@ -32,13 +37,29 @@ const statusMeta: Record<ServiceStatus, RestaurantStatusMeta> = {
     className: "bg-red-100 text-red-800",
     dotClass: "bg-red-500",
   },
+  stopped: {
+    label: "Đã dừng",
+    icon: "trash",
+    className: "bg-red-100 text-red-800",
+    dotClass: "bg-red-500",
+  },
 };
 
-const statusFilters: { value: ServiceStatus | "all"; label: string }[] = [
+const statusFilters: {
+  value: RestaurantDisplayStatus | "all";
+  label: string;
+}[] = [
   { value: "all", label: "Tất cả trạng thái" },
   { value: "published", label: "Đang mở bán" },
   { value: "paused", label: "Tạm dừng" },
+  { value: "stopped", label: "Đã dừng" },
 ];
+
+function getDisplayStatus(
+  restaurant: RestaurantListItem,
+): RestaurantDisplayStatus {
+  return restaurant.deleteScheduledAt ? "stopped" : restaurant.status;
+}
 
 const PAGE_SIZE_OPTIONS = [6, 12, 24];
 
@@ -54,20 +75,42 @@ const primaryButtonClass =
 const dropdownItemClass =
   "flex w-full items-center gap-x-3 rounded-lg px-3 py-2 text-start text-sm text-dropdown-item-foreground hover:bg-dropdown-item-hover focus:bg-dropdown-item-focus focus:outline-hidden";
 
-function StatusBadge({ status }: { status: ServiceStatus }) {
-  const meta = statusMeta[status];
+function StatusBadge({ restaurant }: { restaurant: RestaurantListItem }) {
+  const meta = statusMeta[getDisplayStatus(restaurant)];
   return (
-    <span
-      className={`inline-flex items-center gap-x-1.5 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${meta.className}`}
-    >
-      <RestaurantIcon name={meta.icon} className="size-3" />
-      {meta.label}
-    </span>
+    <div>
+      <span
+        className={`inline-flex items-center gap-x-1.5 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${meta.className}`}
+      >
+        <RestaurantIcon name={meta.icon} className="size-3" />
+        {meta.label}
+      </span>
+      {restaurant.deleteScheduledAt ? (
+        <span className="mt-1 block text-xs whitespace-nowrap text-muted-foreground-1">
+          {new Date(restaurant.deleteScheduledAt) <= new Date() &&
+          restaurant.activeBookings > 0
+            ? `Chờ xóa – còn ${restaurant.activeBookings} booking đang xử lý`
+            : `Xóa ngày ${formatDate(restaurant.deleteScheduledAt)}`}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
-function RowActions({ restaurant }: { restaurant: RestaurantListItem }) {
+type RowHandlers = {
+  onDelete: (restaurant: RestaurantListItem) => void;
+  onRestore: (restaurant: RestaurantListItem) => void;
+  isRestoring: boolean;
+};
+
+function RowActions({
+  restaurant,
+  onDelete,
+  onRestore,
+  isRestoring,
+}: { restaurant: RestaurantListItem } & RowHandlers) {
   const dropdownId = `hs-restaurant-actions-${restaurant.id}`;
+  const isStopped = restaurant.deleteScheduledAt !== null;
 
   return (
     <div className="hs-dropdown relative inline-flex [--placement:bottom-right]">
@@ -89,13 +132,15 @@ function RowActions({ restaurant }: { restaurant: RestaurantListItem }) {
         aria-labelledby={dropdownId}
       >
         <div className="space-y-0.5 p-1">
-          <Link
-            className={dropdownItemClass}
-            href={`/provider/restaurants/${restaurant.id}/edit`}
-          >
-            <RestaurantIcon name="edit" />
-            Chỉnh sửa
-          </Link>
+          {isStopped ? null : (
+            <Link
+              className={dropdownItemClass}
+              href={`/provider/restaurants/${restaurant.id}/edit`}
+            >
+              <RestaurantIcon name="edit" />
+              Chỉnh sửa
+            </Link>
+          )}
           <button className={dropdownItemClass} type="button">
             <RestaurantIcon name="eye" />
             Xem chi tiết
@@ -105,21 +150,39 @@ function RowActions({ restaurant }: { restaurant: RestaurantListItem }) {
             Xem thực đơn
           </button>
         </div>
-        <div className="space-y-0.5 border-t border-dropdown-divider p-1">
-          <button
-            className="flex w-full items-center gap-x-3 rounded-lg px-3 py-2 text-start text-sm text-red-600 hover:bg-red-50 focus:bg-red-50 focus:outline-hidden"
-            type="button"
-          >
-            <RestaurantIcon name="trash" />
-            Xóa nhà hàng
-          </button>
-        </div>
+        {isStopped ? (
+          <div className="space-y-0.5 border-t border-dropdown-divider p-1">
+            <button
+              className={`${dropdownItemClass} disabled:pointer-events-none disabled:opacity-50`}
+              disabled={isRestoring}
+              onClick={() => onRestore(restaurant)}
+              type="button"
+            >
+              <RestaurantIcon name="reset" />
+              Khôi phục nhà hàng
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-0.5 border-t border-dropdown-divider p-1">
+            <button
+              className="flex w-full items-center gap-x-3 rounded-lg px-3 py-2 text-start text-sm text-red-600 hover:bg-red-50 focus:bg-red-50 focus:outline-hidden"
+              onClick={() => onDelete(restaurant)}
+              type="button"
+            >
+              <RestaurantIcon name="trash" />
+              Xóa nhà hàng
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function RestaurantRow({ restaurant }: { restaurant: RestaurantListItem }) {
+function RestaurantRow({
+  restaurant,
+  ...handlers
+}: { restaurant: RestaurantListItem } & RowHandlers) {
   return (
     <tr className="hover:bg-layer-hover">
       <td className="min-w-80 px-6 py-4 align-middle">
@@ -139,7 +202,7 @@ function RestaurantRow({ restaurant }: { restaurant: RestaurantListItem }) {
             </span>
             <span className="mt-0.5 inline-flex items-center gap-x-1.5 text-xs text-muted-foreground-1">
               <span
-                className={`size-1.5 rounded-full ${statusMeta[restaurant.status].dotClass}`}
+                className={`size-1.5 rounded-full ${statusMeta[getDisplayStatus(restaurant)].dotClass}`}
               />
               {restaurant.provinceName}
             </span>
@@ -190,11 +253,11 @@ function RestaurantRow({ restaurant }: { restaurant: RestaurantListItem }) {
       </td>
 
       <td className="px-6 py-4 align-middle">
-        <StatusBadge status={restaurant.status} />
+        <StatusBadge restaurant={restaurant} />
       </td>
 
       <td className="px-6 py-4 text-end align-middle whitespace-nowrap">
-        <RowActions restaurant={restaurant} />
+        <RowActions restaurant={restaurant} {...handlers} />
       </td>
     </tr>
   );
@@ -235,9 +298,13 @@ export function RestaurantsManager({
   const [isRefreshing, startRefresh] = useTransition();
   const [search, setSearch] = useState("");
   const [provinceFilter, setProvinceFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<ServiceStatus | "all">(
-    "all",
-  );
+  const [statusFilter, setStatusFilter] = useState<
+    RestaurantDisplayStatus | "all"
+  >("all");
+  const [deletingRestaurant, setDeletingRestaurant] =
+    useState<RestaurantListItem | null>(null);
+  const [isRestoring, startRestore] = useTransition();
+  const [restoreError, setRestoreError] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
 
@@ -259,7 +326,7 @@ export function RestaurantsManager({
       const matchesProvince =
         provinceFilter === "all" || restaurant.provinceName === provinceFilter;
       const matchesStatus =
-        statusFilter === "all" || restaurant.status === statusFilter;
+        statusFilter === "all" || getDisplayStatus(restaurant) === statusFilter;
       return matchesSearch && matchesProvince && matchesStatus;
     });
   }, [restaurants, search, provinceFilter, statusFilter]);
@@ -279,6 +346,18 @@ export function RestaurantsManager({
   useEffect(() => {
     (window as HSWindow).HSDropdown?.autoInit();
   }, [paginatedRestaurants]);
+
+  const handleRestore = (restaurant: RestaurantListItem) => {
+    setRestoreError("");
+    startRestore(async () => {
+      const result = await restoreRestaurantAction(restaurant.id);
+      if (result.status !== "success") {
+        setRestoreError(result.formError ?? "Không thể khôi phục nhà hàng.");
+        return;
+      }
+      router.refresh();
+    });
+  };
 
   const handleReset = () => {
     setSearch("");
@@ -338,7 +417,9 @@ export function RestaurantsManager({
             aria-label="Lọc theo trạng thái"
             className={`${inputClass} ps-3 pe-9`}
             onChange={(event) => {
-              setStatusFilter(event.target.value as ServiceStatus | "all");
+              setStatusFilter(
+                event.target.value as RestaurantDisplayStatus | "all",
+              );
               setPage(1);
             }}
             value={statusFilter}
@@ -365,6 +446,12 @@ export function RestaurantsManager({
           </button>
         </div>
       </div>
+
+      {restoreError ? (
+        <p className="border-b border-card-line bg-red-50 px-6 py-3 text-sm text-red-700">
+          {restoreError}
+        </p>
+      ) : null}
 
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-table-line">
@@ -407,7 +494,13 @@ export function RestaurantsManager({
               </tr>
             ) : (
               paginatedRestaurants.map((restaurant) => (
-                <RestaurantRow key={restaurant.id} restaurant={restaurant} />
+                <RestaurantRow
+                  isRestoring={isRestoring}
+                  key={restaurant.id}
+                  onDelete={setDeletingRestaurant}
+                  onRestore={handleRestore}
+                  restaurant={restaurant}
+                />
               ))
             )}
           </tbody>
@@ -479,6 +572,13 @@ export function RestaurantsManager({
           </button>
         </nav>
       </div>
+
+      {deletingRestaurant ? (
+        <DeleteRestaurantDialog
+          onClose={() => setDeletingRestaurant(null)}
+          restaurant={deletingRestaurant}
+        />
+      ) : null}
     </div>
   );
 }
