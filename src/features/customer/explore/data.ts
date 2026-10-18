@@ -17,6 +17,8 @@ export type ExploreItem = {
   meta: [string, string];
   /** điểm đánh giá; điểm đến không có review */
   rating?: { avg: number; count: number };
+  /** số lượt đặt (booking paid/confirmed/completed), dùng sắp xếp "Phổ biến" */
+  bookingCount?: number;
 };
 
 export const KIND_LABELS: Record<ExploreKind, string> = {

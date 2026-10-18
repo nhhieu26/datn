@@ -14,6 +14,8 @@ export type ExploreQuery = {
   to: string;
   minPrice?: number;
   maxPrice?: number;
+  /** lọc từ N sao trở lên (1–5) */
+  minRating?: number;
   sort: ExploreSort;
   page: number;
 };
@@ -36,6 +38,7 @@ export function parseExploreQuery(raw: RawParams): ExploreQuery {
   const sort = SORT_OPTIONS.find((s) => s.value === first(raw.sort))?.value;
   const from = first(raw.from);
   const to = first(raw.to);
+  const rating = Math.floor(Number(first(raw.minRating)));
   const page = Math.floor(Number(first(raw.page)));
   return {
     kind: kind ?? "tour",
@@ -46,6 +49,7 @@ export function parseExploreQuery(raw: RawParams): ExploreQuery {
     to: DATE_RE.test(to) ? to : "",
     minPrice: positiveNumber(first(raw.minPrice)),
     maxPrice: positiveNumber(first(raw.maxPrice)),
+    minRating: rating >= 1 && rating <= 5 ? rating : undefined,
     sort: sort ?? "popular",
     page: page >= 1 ? page : 1,
   };
@@ -69,6 +73,7 @@ export function buildExploreUrl(
   }
   if (next.minPrice !== undefined) params.set("minPrice", String(next.minPrice));
   if (next.maxPrice !== undefined) params.set("maxPrice", String(next.maxPrice));
+  if (next.minRating !== undefined) params.set("minRating", String(next.minRating));
   if (next.sort !== "popular") params.set("sort", next.sort);
   if (next.page > 1) params.set("page", String(next.page));
   return `/explore?${params.toString()}`;

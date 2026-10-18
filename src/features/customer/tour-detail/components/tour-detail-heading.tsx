@@ -44,8 +44,9 @@ export function TourDetailHeading({ tour }: { tour: TourDetail }) {
         <a className="w-fit hover:underline" href="#reviews">
           <Rating {...tour.rating} />
         </a>
-        {/* ponytail: chưa có module booking/đánh giá nên hardcode số lượt đặt */}
-        <p className="text-sm text-new-paragraph">128 lượt đặt</p>
+        <p className="text-sm text-new-paragraph">
+          {tour.bookingCount} lượt đặt
+        </p>
       </div>
     </div>
   );

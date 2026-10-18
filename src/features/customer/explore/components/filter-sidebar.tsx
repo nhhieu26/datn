@@ -5,6 +5,7 @@ import { useState } from "react";
 import { LocationPicker } from "../../components/location-picker";
 import { KIND_FILTERS } from "../data";
 import { buildExploreUrl, type ExploreQuery } from "../lib/search-params";
+import { PriceRangeSlider } from "./price-range-slider";
 
 function Icon({ name, className = "" }: { name: string; className?: string }) {
   return (
@@ -30,20 +31,9 @@ type FilterSidebarProps = { locations: string[]; query: ExploreQuery };
 export function FilterSidebar({ locations, query }: FilterSidebarProps) {
   const router = useRouter();
   const [keyword, setKeyword] = useState(query.q);
-  const [minPrice, setMinPrice] = useState(query.minPrice?.toString() ?? "");
-  const [maxPrice, setMaxPrice] = useState(query.maxPrice?.toString() ?? "");
-  // Chưa có dữ liệu đánh giá thật nên bộ lọc sao chỉ là UI, không ảnh hưởng kết quả
-  const [stars, setStars] = useState<number[]>([4]);
 
   function apply(patch: Partial<ExploreQuery> = {}) {
     router.push(buildExploreUrl(query, patch));
-  }
-
-  function applyPrice() {
-    apply({
-      minPrice: minPrice === "" ? undefined : Number(minPrice),
-      maxPrice: maxPrice === "" ? undefined : Number(maxPrice),
-    });
   }
 
   return (
@@ -124,34 +114,12 @@ export function FilterSidebar({ locations, query }: FilterSidebarProps) {
         <div>
           <Heading icon="attach_money" title="Khoảng giá" />
           <div className="pt-5">
-            <div className="flex items-center gap-2">
-              <input
-                aria-label="Giá thấp nhất (VND)"
-                className="w-full rounded border border-new-chip px-2.5 py-1.5 text-sm"
-                min={0}
-                onChange={(e) => setMinPrice(e.target.value)}
-                placeholder="Từ (VND)"
-                type="number"
-                value={minPrice}
-              />
-              <span>-</span>
-              <input
-                aria-label="Giá cao nhất (VND)"
-                className="w-full rounded border border-new-chip px-2.5 py-1.5 text-sm"
-                min={0}
-                onChange={(e) => setMaxPrice(e.target.value)}
-                placeholder="Đến (VND)"
-                type="number"
-                value={maxPrice}
-              />
-            </div>
-            <button
-              className="mt-3 rounded bg-new-chip px-2.5 py-1 whitespace-nowrap text-sm font-medium leading-[1.4]"
-              onClick={applyPrice}
-              type="button"
-            >
-              Áp dụng
-            </button>
+            <PriceRangeSlider
+              key={`${query.minPrice}-${query.maxPrice}`}
+              maxPrice={query.maxPrice}
+              minPrice={query.minPrice}
+              onCommit={(minPrice, maxPrice) => apply({ minPrice, maxPrice })}
+            />
           </div>
         </div>
 
@@ -159,7 +127,7 @@ export function FilterSidebar({ locations, query }: FilterSidebarProps) {
           <Heading icon="star" title="Đánh giá" />
           <div className="flex flex-wrap gap-2 pt-5">
             {[1, 2, 3, 4, 5].map((n) => {
-              const on = stars.includes(n);
+              const on = query.minRating === n;
               return (
                 <button
                   key={n}
@@ -168,11 +136,7 @@ export function FilterSidebar({ locations, query }: FilterSidebarProps) {
                       ? "border-new-teal-cta bg-new-teal-cta text-white"
                       : "border-new-chip bg-white text-new-paragraph"
                   }`}
-                  onClick={() =>
-                    setStars((s) =>
-                      s.includes(n) ? s.filter((x) => x !== n) : [...s, n],
-                    )
-                  }
+                  onClick={() => apply({ minRating: on ? undefined : n })}
                   type="button"
                 >
                   <Icon className="text-sm text-[#ffb400]" name="star" />

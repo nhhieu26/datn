@@ -6,11 +6,15 @@ import type { tourRepo } from "@/entities/tour";
 import { firstImage } from "@/features/customer/components/cards/card-parts";
 import type { ExploreItem } from "../data";
 
-type TourRow = Awaited<ReturnType<typeof tourRepo.findPaged>>["items"][number];
-type HotelRow = Awaited<ReturnType<typeof hotelRepo.findPaged>>["items"][number];
+type WithBookings = { bookingCount?: number };
+type TourRow = Awaited<ReturnType<typeof tourRepo.findPaged>>["items"][number] &
+  WithBookings;
+type HotelRow = Awaited<ReturnType<typeof hotelRepo.findPaged>>["items"][number] &
+  WithBookings;
 type RestaurantRow = Awaited<
   ReturnType<typeof restaurantRepo.findPaged>
->["items"][number];
+>["items"][number] &
+  WithBookings;
 type DestinationRow = Awaited<
   ReturnType<typeof destinationRepo.findPaged>
 >["items"][number];
@@ -35,6 +39,7 @@ export function toTourItem(t: TourRow): ExploreItem {
     image: firstImage(t.images),
     price: Number(t.basePrice),
     rating: toRating(t),
+    bookingCount: t.bookingCount,
     meta: [
       `${t.durationDays} ngày ${t.durationNights} đêm`,
       `${t._count.departures} lịch khởi hành`,
@@ -54,6 +59,7 @@ export function toHotelItem(h: HotelRow): ExploreItem {
     image: firstImage(h.images),
     price: average(h.rooms.map((r) => Number(r.basePrice))),
     rating: toRating(h),
+    bookingCount: h.bookingCount,
     meta: [
       `${h.rooms.length} loại phòng`,
       capacity ? `Tối đa ${capacity} khách` : "—",
@@ -74,6 +80,7 @@ export function toRestaurantItem(r: RestaurantRow): ExploreItem {
     image: firstImage(r.images),
     price: menuAveragePrice(r.menu),
     rating: toRating(r),
+    bookingCount: r.bookingCount,
     meta: [
       `Sức chứa ${r.capacity}`,
       starts.length ? `${starts[0]} - ${ends[ends.length - 1]}` : "—",

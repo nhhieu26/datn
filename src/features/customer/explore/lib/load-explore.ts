@@ -25,6 +25,7 @@ async function loadKind(
     tag: query.tag,
     minPrice: query.minPrice,
     maxPrice: query.maxPrice,
+    minRating: query.minRating,
     sort: query.sort,
     skip,
     take,
@@ -83,6 +84,10 @@ export async function loadExplore(query: ExploreQuery): Promise<Page> {
   const direction =
     query.sort === "price_asc" ? 1 : query.sort === "price_desc" ? -1 : 0;
   merged.sort((a, b) => {
+    if (!direction && query.sort === "popular") {
+      const diff = (b.bookingCount ?? 0) - (a.bookingCount ?? 0);
+      if (diff) return diff;
+    }
     if (direction) {
       const pa = a.price ?? Infinity;
       const pb = b.price ?? Infinity;

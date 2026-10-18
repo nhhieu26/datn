@@ -1,6 +1,13 @@
 import type { BookingStatus, Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { type ListFilter, priceOrder, priceRange } from "../list-filter";
+import { tourBookingCounts } from "../booking-counts";
+import {
+  type ListFilter,
+  paginateByPrice,
+  priceOrder,
+  priceRange,
+  ratingWhere,
+} from "../list-filter";
 import type {
   CreateTourInput,
   Tour,
@@ -48,7 +55,7 @@ export function findAllByProviderProfileId(
           _count: {
             select: {
               bookings: {
-                where: { status: { in: ["paid", "confirmed", "completed"] } },
+                where: { status: "completed" },
               },
             },
           },
@@ -243,6 +250,7 @@ export async function findPaged(
   const where: Prisma.TourWhereInput = {
     status: "published",
     deletedAt: null,
+    ...ratingWhere(filter),
     ...(filter.province && { province: { name: filter.province } }),
     ...(filter.tag && { tags: { some: { tag: { name: filter.tag } } } }),
     ...(filter.q && {
@@ -262,19 +270,29 @@ export async function findPaged(
     }),
   };
   const order = priceOrder(filter.sort);
+  const include = {
+    province: true,
+    _count: {
+      select: {
+        departures: {
+          where: { status: "scheduled", departureDate: { gt: now } },
+        },
+      },
+    },
+  } satisfies Prisma.TourInclude;
+
+  // "Phổ biến": lượt đặt không orderBy được bằng Prisma → quét hết rồi sort trong bộ nhớ
+  if (!order && filter.sort === "popular") {
+    const [all, counts] = await Promise.all([
+      prisma.tour.findMany({ where, include, orderBy: { createdAt: "desc" } }),
+      tourBookingCounts(),
+    ]);
+    return paginateByPrice(all, (t) => Number(t.basePrice), filter, counts);
+  }
   const [items, total] = await Promise.all([
     prisma.tour.findMany({
       where,
-      include: {
-        province: true,
-        _count: {
-          select: {
-            departures: {
-              where: { status: "scheduled", departureDate: { gt: now } },
-            },
-          },
-        },
-      },
+      include,
       orderBy: order ? { basePrice: order } : { createdAt: "desc" },
       skip: filter.skip,
       take: filter.take,

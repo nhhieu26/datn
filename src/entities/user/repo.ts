@@ -1,6 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
-import type { CreateUserInput, ProfileUser, PublicUser, User } from "./type";
+import type {
+  CreateUserInput,
+  ProfileUser,
+  PublicUser,
+  UpdateProfileInput,
+  User,
+} from "./type";
 
 export function toPublicUser(user: User): PublicUser {
   const { password: _password, ...publicUser } = user;
@@ -34,6 +40,22 @@ export function updatePreferences(
   preferences: Prisma.InputJsonValue
 ) {
   return prisma.user.update({ where: { id }, data: { preferences } });
+}
+
+export function updateProfile(id: string, data: UpdateProfileInput) {
+  return prisma.user.update({ where: { id }, data });
+}
+
+export async function findPasswordHashById(id: string): Promise<string | null> {
+  const user = await prisma.user.findUnique({
+    where: { id },
+    select: { password: true },
+  });
+  return user?.password ?? null;
+}
+
+export function updatePassword(id: string, passwordHash: string) {
+  return prisma.user.update({ where: { id }, data: { password: passwordHash } });
 }
 
 export function createUser(

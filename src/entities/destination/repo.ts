@@ -92,6 +92,8 @@ export function remove(id: string): Promise<Destination> {
 }
 
 export async function findPaged(filter: ListFilter) {
+  // điểm đến không có đánh giá nên không thể thỏa bộ lọc theo sao
+  if (filter.minRating !== undefined) return { items: [], total: 0 };
   const price = priceRange(filter);
   const where: Prisma.DestinationWhereInput = {
     isPublished: true,

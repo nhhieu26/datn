@@ -17,7 +17,28 @@ export const createUserSchema = z.object({
   role: publicRegisterableRoleSchema,
 });
 
-export const loginSchema = z.object({
+export const updateProfileSchema = createUserSchema.pick({
+  email: true,
+  phone: true,
+  fullname: true,
+});
+
+export const changePasswordSchema = z
+  .object({
+    current_password: z.string().min(1, "Vui lòng nhập mật khẩu cũ"),
+    new_password: z.string().min(8, "Mật khẩu tối thiểu 8 ký tự"),
+    confirm_password: z.string().min(1, "Vui lòng nhập lại mật khẩu"),
+  })
+  .refine((data) => data.new_password === data.confirm_password, {
+    message: "Mật khẩu nhập lại không khớp",
+    path: ["confirm_password"],
+  })
+  .refine((data) => data.new_password !== data.current_password, {
+    message: "Mật khẩu mới phải khác mật khẩu cũ",
+    path: ["new_password"],
+  });
+
+export const loginSchema =z.object({
   email: z.string().trim().toLowerCase().email(),
   password: z.string().min(1, "Vui lòng nhập mật khẩu"),
   role: roleSchema,

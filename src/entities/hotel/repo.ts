@@ -1,9 +1,11 @@
 import type { BookingStatus, Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { hotelBookingCounts } from "../booking-counts";
 import {
   average,
-  needsPriceScan,
+  needsScan,
   paginateByPrice,
+  ratingWhere,
   type ListFilter,
 } from "../list-filter";
 import type {
@@ -52,7 +54,7 @@ export function findAllByProviderProfileId(
           _count: {
             select: {
               bookings: {
-                where: { status: { in: ["paid", "confirmed", "completed"] } },
+                where: { status: "completed" },
               },
             },
           },
@@ -245,6 +247,7 @@ export async function findPaged(filter: ListFilter) {
   const where: Prisma.HotelWhereInput = {
     status: "published",
     deletedAt: null,
+    ...ratingWhere(filter),
     ...(filter.province && { province: { name: filter.province } }),
     ...(filter.tag && { tags: { some: { tag: { name: filter.tag } } } }),
     ...(filter.q && {
@@ -258,12 +261,16 @@ export async function findPaged(filter: ListFilter) {
   const orderBy = { createdAt: "desc" } as const;
 
   // giá khách sạn = giá phòng trung bình
-  if (needsPriceScan(filter)) {
-    const all = await prisma.hotel.findMany({ where, include, orderBy });
+  if (needsScan(filter)) {
+    const [all, counts] = await Promise.all([
+      prisma.hotel.findMany({ where, include, orderBy }),
+      filter.sort === "popular" ? hotelBookingCounts() : undefined,
+    ]);
     return paginateByPrice(
       all,
       (h) => average(h.rooms.map((r) => Number(r.basePrice))),
       filter,
+      counts,
     );
   }
   const [items, total] = await Promise.all([

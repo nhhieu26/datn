@@ -1,9 +1,11 @@
 import type { BookingStatus, Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { restaurantBookingCounts } from "../booking-counts";
 import {
   menuAveragePrice,
-  needsPriceScan,
+  needsScan,
   paginateByPrice,
+  ratingWhere,
   type ListFilter,
 } from "../list-filter";
 import type {
@@ -47,7 +49,7 @@ export function findAllByProviderProfileId(
       _count: {
         select: {
           bookings: {
-            where: { status: { in: ["paid", "confirmed", "completed"] } },
+            where: { status: "completed" },
           },
         },
       },
@@ -202,6 +204,7 @@ export async function findPaged(filter: ListFilter) {
   const where: Prisma.RestaurantWhereInput = {
     status: "published",
     deletedAt: null,
+    ...ratingWhere(filter),
     ...(filter.province && { province: { name: filter.province } }),
     ...(filter.tag && { tags: { some: { tag: { name: filter.tag } } } }),
     ...(filter.q && {
@@ -215,9 +218,17 @@ export async function findPaged(filter: ListFilter) {
   const orderBy = { createdAt: "desc" } as const;
 
   // giá nhà hàng = giá món trung bình trong menu
-  if (needsPriceScan(filter)) {
-    const all = await prisma.restaurant.findMany({ where, include, orderBy });
-    return paginateByPrice(all, (r) => menuAveragePrice(r.menu), filter);
+  if (needsScan(filter)) {
+    const [all, counts] = await Promise.all([
+      prisma.restaurant.findMany({ where, include, orderBy }),
+      filter.sort === "popular" ? restaurantBookingCounts() : undefined,
+    ]);
+    return paginateByPrice(
+      all,
+      (r) => menuAveragePrice(r.menu),
+      filter,
+      counts,
+    );
   }
   const [items, total] = await Promise.all([
     prisma.restaurant.findMany({

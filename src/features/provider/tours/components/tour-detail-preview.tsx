@@ -47,6 +47,7 @@ function toPreviewDetail(
     itinerary: form.itinerary.filter((day) => day.title || day.description),
     tags: tagNames,
     rating: { avg: 0, count: 0 },
+    bookingCount: 0,
     departures,
   };
 }

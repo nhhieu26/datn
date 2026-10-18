@@ -20,6 +20,7 @@ export type TourDetail = {
   itinerary: { title: string; description: string }[];
   tags: string[];
   rating: { avg: number; count: number };
+  bookingCount: number;
   departures: {
     id: string;
     /** ISO yyyy-mm-dd */
@@ -30,7 +31,7 @@ export type TourDetail = {
 };
 
 // Prisma Decimal/Date không truyền được sang Client Component → map sang kiểu thuần
-export function toTourDetail(t: TourRow): TourDetail {
+export function toTourDetail(t: TourRow, bookingCount: number): TourDetail {
   const departures = t.departures.map((d) => ({
     id: d.id,
     date: d.departureDate.toISOString().slice(0, 10),
@@ -40,6 +41,7 @@ export function toTourDetail(t: TourRow): TourDetail {
   const images = (t.images as { url: string }[] | null) ?? [];
   return {
     id: t.id,
+    bookingCount,
     rating: { avg: Number(t.ratingAvg), count: t.reviewCount },
     slug: t.slug,
     title: t.title,

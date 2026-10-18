@@ -6,6 +6,8 @@ export type ListFilter = {
   tag?: string;
   minPrice?: number;
   maxPrice?: number;
+  /** chỉ lấy mục có ratingAvg >= minRating */
+  minRating?: number;
   sort: ListSort;
   skip: number;
   take: number;
@@ -16,6 +18,12 @@ export function priceRange(filter: Pick<ListFilter, "minPrice" | "maxPrice">) {
     return undefined;
   }
   return { gte: filter.minPrice, lte: filter.maxPrice };
+}
+
+export function ratingWhere(filter: Pick<ListFilter, "minRating">) {
+  return filter.minRating === undefined
+    ? {}
+    : { ratingAvg: { gte: filter.minRating } };
 }
 
 export function priceOrder(sort: ListSort): "asc" | "desc" | undefined {
@@ -40,17 +48,23 @@ export function menuAveragePrice(menu: unknown): number | undefined {
 /**
  * Giá trung bình (phòng/món) không tính được bằng Prisma nên khi lọc hoặc sort theo giá
  * phải lấy hết rồi lọc, sắp xếp, cắt trang trong bộ nhớ. Mục không có giá bị loại khi lọc giá
- * và xếp cuối khi sort giá.
+ * và xếp cuối khi sort giá. Sort "popular" xếp theo lượt đặt giảm dần (getBookings),
+ * cùng lượt đặt thì mới nhất trước.
  */
-export function paginateByPrice<T extends { createdAt: Date }>(
+export function paginateByPrice<T extends { id: string; createdAt: Date }>(
   rows: T[],
   getPrice: (row: T) => number | undefined,
   filter: ListFilter,
+  bookingCounts?: Map<string, number>,
 ) {
   const order = priceOrder(filter.sort);
   const hasRange =
     filter.minPrice !== undefined || filter.maxPrice !== undefined;
-  const priced = rows.map((row) => ({ row, price: getPrice(row) }));
+  const priced = rows.map((row) => ({
+    row,
+    price: getPrice(row),
+    bookingCount: bookingCounts?.get(row.id) ?? 0,
+  }));
   const kept = priced.filter(({ price }) => {
     if (!hasRange) return true;
     if (price === undefined) return false;
@@ -67,19 +81,27 @@ export function paginateByPrice<T extends { createdAt: Date }>(
       if (b.price === undefined) return -1;
       return (a.price - b.price) * dir;
     });
+  } else if (bookingCounts) {
+    kept.sort(
+      (a, b) =>
+        b.bookingCount - a.bookingCount ||
+        b.row.createdAt.getTime() - a.row.createdAt.getTime(),
+    );
   }
   return {
     items: kept
       .slice(filter.skip, filter.skip + filter.take)
-      .map(({ row }) => row),
+      .map(({ row, bookingCount }) => ({ ...row, bookingCount })),
     total: kept.length,
   };
 }
 
-export function needsPriceScan(filter: ListFilter) {
+/** Lọc/sort theo giá hoặc theo lượt đặt đều phải quét hết rồi xử lý trong bộ nhớ */
+export function needsScan(filter: ListFilter) {
   return (
     filter.minPrice !== undefined ||
     filter.maxPrice !== undefined ||
-    priceOrder(filter.sort) !== undefined
+    priceOrder(filter.sort) !== undefined ||
+    filter.sort === "popular"
   );
 }

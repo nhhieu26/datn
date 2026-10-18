@@ -38,7 +38,7 @@ async function loadSummary(
       const row = await tourRepo.findPublishedDetailBySlug(slug);
       if (!row) notFound();
       return {
-        summary: tourSummary(toTourDetail(row), query),
+        summary: tourSummary(toTourDetail(row, 0), query),
         backHref: `/tours/${slug}`,
       };
     }

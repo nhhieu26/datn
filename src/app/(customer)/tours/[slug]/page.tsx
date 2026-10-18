@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { tourBookingCount } from "@/entities/booking-counts";
 import { tourRepo } from "@/entities/tour";
 import { tourBookingRepo } from "@/entities/tour-booking";
 import { PageBanner } from "@/features/customer/components/page-banner";
@@ -36,7 +37,7 @@ export default async function TourDetailPage({
   await tourBookingRepo.releaseExpired();
   const row = await tourRepo.findPublishedDetailBySlug(slug);
   if (!row) notFound();
-  const tour = toTourDetail(row);
+  const tour = toTourDetail(row, await tourBookingCount(row.id));
 
   return (
     <main>
