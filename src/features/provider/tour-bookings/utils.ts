@@ -78,7 +78,7 @@ export const PROVIDER_BOOKING_TRANSITIONS: Partial<
   Record<BookingStatus, ProviderBookingTransition[]>
 > = {
   paid: ["confirmed", "cancelled"],
-  confirmed: ["completed"],
+  confirmed: ["completed", "cancelled"],
 };
 
 const paymentMeta: Record<PaymentState, StatusMeta> = {

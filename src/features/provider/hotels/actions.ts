@@ -768,7 +768,7 @@ export async function updateHotelAction(
       return {
         status: "error",
         fieldErrors: {
-          rooms: ["Không thể xóa loại phòng đã có khách đặt."],
+          rooms: ["Không thể xóa loại phòng đang có đơn đặt chưa hoàn tất."],
         },
       };
     }

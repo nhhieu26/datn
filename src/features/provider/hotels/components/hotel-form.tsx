@@ -668,7 +668,7 @@ export function HotelForm({
                 action={
                   room.bookedCount ? (
                     <span className="inline-flex items-center rounded-full bg-teal-100 px-2.5 py-1 text-xs font-medium text-teal-800">
-                      Đã có khách đặt
+                      Đang có khách đặt
                     </span>
                   ) : form.rooms.length > 1 ? (
                     <button

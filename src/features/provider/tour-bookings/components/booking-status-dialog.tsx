@@ -55,7 +55,7 @@ export function describeTransition(
   if (override) return override;
   switch (target) {
     case "confirmed":
-      return "Khách hàng sẽ thấy đơn đã được xác nhận. Sau khi xác nhận, đơn không thể hủy từ trang này.";
+      return "Khách hàng sẽ thấy đơn đã được xác nhận.";
     case "completed":
       return `Sàn sẽ chuyển ${formatCurrency(booking.providerAmount ?? 0)} (thực nhận) vào tài khoản PayPal đã liên kết của bạn. Thao tác không thể hoàn tác.`;
     case "cancelled":

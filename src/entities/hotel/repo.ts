@@ -1,4 +1,4 @@
-import type { Prisma } from "@/generated/prisma/client";
+import type { BookingStatus, Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   average,
@@ -82,6 +82,13 @@ export function create(input: {
   });
 }
 
+const ACTIVE_BOOKING_STATUSES: BookingStatus[] = [
+  "pending_payment",
+  "pending_confirmation",
+  "paid",
+  "confirmed",
+];
+
 export function findByIdForProvider(
   id: string,
   providerProfileId: string
@@ -93,7 +100,14 @@ export function findByIdForProvider(
       tags: { include: { tag: true } },
       rooms: {
         orderBy: { createdAt: "asc" },
-        include: { _count: { select: { bookings: true } } },
+        // Chỉ đếm đơn còn hiệu lực; đơn đã kết thúc đã lưu snapshot nên không chặn xóa phòng
+        include: {
+          _count: {
+            select: {
+              bookings: { where: { status: { in: ACTIVE_BOOKING_STATUSES } } },
+            },
+          },
+        },
       },
     },
   });

@@ -357,18 +357,19 @@ export async function findTourTitles(providerProfileId: string) {
 
 const STALE_STATUS_MESSAGE = "Trạng thái đơn đã thay đổi, vui lòng tải lại.";
 
-/** Khóa booking của provider đang ở trạng thái `from`; không khớp → ConflictError. */
+/** Khóa booking của provider đang ở một trong các trạng thái `from`; không khớp → ConflictError. */
 async function lockForProvider(
   tx: Tx,
   code: string,
   providerProfileId: string,
-  from: BookingStatus
+  from: BookingStatus | BookingStatus[]
 ) {
+  const statuses = Array.isArray(from) ? from : [from];
   const rows = await tx.$queryRaw<{ id: string }[]>`
     SELECT "id" FROM "TourBooking"
     WHERE "code" = ${code}
       AND "providerProfileId" = ${providerProfileId}
-      AND "status" = ${from}::"BookingStatus"
+      AND "status" = ANY(${statuses}::"BookingStatus"[])
     FOR UPDATE`;
   if (rows.length === 0) throw new ConflictError(STALE_STATUS_MESSAGE);
   return rows[0].id;
@@ -418,14 +419,14 @@ async function cancelAndCreateRefund(tx: Tx, id: string, reason: string) {
   return { booking, refund, captureId: payment.gatewayCaptureId };
 }
 
-/** Provider hủy đơn đã thanh toán. */
+/** Provider hủy đơn đã thanh toán hoặc đã xác nhận. */
 export function cancelForProvider(
   code: string,
   providerProfileId: string,
   reason: string
 ) {
   return prisma.$transaction(async (tx) => {
-    const id = await lockForProvider(tx, code, providerProfileId, "paid");
+    const id = await lockForProvider(tx, code, providerProfileId, ["paid", "confirmed"]);
     return cancelAndCreateRefund(tx, id, reason);
   });
 }
