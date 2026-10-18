@@ -61,6 +61,11 @@ export function mapTourToListItem(tour: TourForProvider): TourListItem {
     rating: null,
     reviewCount: 0,
     status: tour.status,
+    deleteScheduledAt: tour.deleteScheduledAt?.toISOString() ?? null,
+    activeBookings: tour.departures.reduce(
+      (total, departure) => total + departure.bookings.length,
+      0,
+    ),
   };
 }
 

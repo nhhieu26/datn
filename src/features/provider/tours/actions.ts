@@ -15,6 +15,7 @@ import {
   tourRepo,
   type CreateTourInput,
   type Tour,
+  type TourWithRelations,
 } from "@/entities/tour";
 import { providerProfileRepo } from "@/entities/provider-profile";
 import { provinceRepo } from "@/entities/province";
@@ -36,6 +37,7 @@ const ALLOWED_PHOTO_TYPES = ["image/png", "image/jpeg"];
 const MAX_PHOTOS = 5;
 const MAX_SLUG_ATTEMPTS = 5;
 const CLEANUP_ATTEMPTS = 3;
+const TOUR_DELETE_GRACE_DAYS = 30;
 
 const STAGE_ERROR_MESSAGES: Record<CreationStage, string> = {
   authorization: "Không thể xác thực tài khoản. Vui lòng thử lại.",
@@ -85,7 +87,10 @@ function hasPastDeparture(
 const PAST_DEPARTURE_ERROR = "Ngày khởi hành phải ở tương lai.";
 
 function buildEmbeddingText(
-  data: CreateTourInput,
+  data: Pick<
+    CreateTourInput,
+    "title" | "description" | "itinerary" | "includeServices"
+  >,
   provinceName: string,
   tags: { name: string }[],
 ): string {
@@ -515,6 +520,12 @@ export async function updateTourAction(
     if (!tour) {
       return { status: "error", formError: "Không tìm thấy tour." };
     }
+    if (tour.deleteScheduledAt) {
+      return {
+        status: "error",
+        formError: "Tour đã dừng, không thể chỉnh sửa.",
+      };
+    }
     slug = tour.slug;
 
     stage = "validation";
@@ -700,4 +711,140 @@ export async function updateTourAction(
   revalidatePath("/provider/tours");
   revalidatePath(`/tours/${slug}`);
   redirect("/provider/tours");
+}
+
+type ProviderTourResult =
+  | { error: ActionState }
+  | { tour: TourWithRelations; providerProfileId: string };
+
+async function findProviderTour(
+  tourId: string,
+  verb: string,
+): Promise<ProviderTourResult> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: { status: "error", formError: "Vui lòng đăng nhập lại." } };
+  }
+  if (session.user.role !== "provider") {
+    return {
+      error: {
+        status: "error",
+        formError: `Chỉ tài khoản đối tác mới có thể ${verb} tour.`,
+      },
+    };
+  }
+
+  const providerProfile =
+    await providerProfileRepo.findApprovedByUserIdAndBusinessType(
+      session.user.id,
+      "tour",
+    );
+  if (!providerProfile) {
+    return {
+      error: {
+        status: "error",
+        formError:
+          "Tài khoản phải đang hoạt động và có hồ sơ doanh nghiệp loại Tour đã được duyệt.",
+      },
+    };
+  }
+
+  const tour = await tourRepo.findByIdForProvider(tourId, providerProfile.id);
+  if (!tour) {
+    return { error: { status: "error", formError: "Không tìm thấy tour." } };
+  }
+  return { tour, providerProfileId: providerProfile.id };
+}
+
+function revalidateTourPages(slug: string) {
+  revalidatePath("/provider/tours");
+  revalidatePath(`/tours/${slug}`);
+  revalidatePath("/explore");
+  revalidatePath("/");
+}
+
+export async function deleteTourAction(tourId: string): Promise<ActionState> {
+  const found = await findProviderTour(tourId, "xóa");
+  if ("error" in found) return found.error;
+  const { tour, providerProfileId } = found;
+
+  // Không xóa ngay: dừng bán, booking đang có vẫn xử lý bình thường; cron xóa mềm khi tới hạn
+  const deleteAt = new Date(
+    Date.now() + TOUR_DELETE_GRACE_DAYS * 24 * 60 * 60 * 1000,
+  );
+  try {
+    const count = await tourRepo.scheduleDeletion(
+      tour.id,
+      providerProfileId,
+      deleteAt,
+    );
+    if (count === 0) {
+      return { status: "error", formError: "Tour đã được dừng trước đó." };
+    }
+  } catch (error) {
+    console.error("Xóa tour thất bại", { tourId, error });
+    return {
+      status: "error",
+      formError: "Không thể xóa tour. Vui lòng thử lại.",
+    };
+  }
+
+  try {
+    await deleteTourEmbedding(tour.id);
+  } catch (error) {
+    console.error("Xóa embedding tour thất bại", { tourId, error });
+  }
+
+  revalidateTourPages(tour.slug);
+  return { status: "success" };
+}
+
+export async function restoreTourAction(tourId: string): Promise<ActionState> {
+  const found = await findProviderTour(tourId, "khôi phục");
+  if ("error" in found) return found.error;
+  const { tour, providerProfileId } = found;
+
+  try {
+    const count = await tourRepo.cancelDeletion(tour.id, providerProfileId);
+    if (count === 0) {
+      return { status: "error", formError: "Tour không ở trạng thái đã dừng." };
+    }
+  } catch (error) {
+    console.error("Khôi phục tour thất bại", { tourId, error });
+    return {
+      status: "error",
+      formError: "Không thể khôi phục tour. Vui lòng thử lại.",
+    };
+  }
+
+  // Embedding đã bị xóa khi dừng tour, tạo lại để tour xuất hiện trong tìm kiếm
+  try {
+    const tagIds = tour.tags.map((tourTag) => tourTag.tagId);
+    const vector = await embedText(
+      buildEmbeddingText(
+        {
+          title: tour.title,
+          description: tour.description ?? "",
+          itinerary: Array.isArray(tour.itinerary)
+            ? (tour.itinerary as CreateTourInput["itinerary"])
+            : [],
+          includeServices: tour.includeServices,
+        },
+        tour.province.fullName,
+        tour.tags.map((tourTag) => tourTag.tag),
+      ),
+    );
+    await upsertTourEmbedding(tour.id, vector, {
+      title: tour.title,
+      provinceId: tour.provinceId,
+      tagIds,
+      status: "published",
+      providerProfileId,
+    });
+  } catch (error) {
+    console.error("Tạo lại embedding tour thất bại", { tourId, error });
+  }
+
+  revalidateTourPages(tour.slug);
+  return { status: "success" };
 }

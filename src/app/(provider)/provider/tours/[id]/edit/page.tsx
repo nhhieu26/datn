@@ -34,6 +34,8 @@ export default async function EditTourPage({
     tagRepo.findAll(),
   ]);
   if (!tour) notFound();
+  // Tour đã dừng chờ xóa thì không cho sửa
+  if (tour.deleteScheduledAt) redirect("/provider/tours");
 
   return (
     <main className="flex-1 overflow-y-auto bg-background-1 font-inter text-foreground">

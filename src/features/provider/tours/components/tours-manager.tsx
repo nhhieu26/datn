@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { restoreTourAction } from "../actions";
 import { TourListItem } from "../types";
+import { DeleteTourDialog } from "./delete-tour-dialog";
 import { TourIcon, type TourIconName } from "./tour-icon";
 
 type HSWindow = Window & {
@@ -19,7 +21,10 @@ type TourStatusMeta = {
   dotClass: string;
 };
 
-const statusMeta: Record<ServiceStatus, TourStatusMeta> = {
+// "stopped": provider đã xóa, tour dừng bán và chờ cron xóa mềm
+type TourDisplayStatus = ServiceStatus | "stopped";
+
+const statusMeta: Record<TourDisplayStatus, TourStatusMeta> = {
   published: {
     label: "Đang mở bán",
     icon: "check",
@@ -32,13 +37,24 @@ const statusMeta: Record<ServiceStatus, TourStatusMeta> = {
     className: "bg-red-100 text-red-800",
     dotClass: "bg-red-500",
   },
+  stopped: {
+    label: "Đã dừng",
+    icon: "trash",
+    className: "bg-red-100 text-red-800",
+    dotClass: "bg-red-500",
+  },
 };
 
-const statusFilters: { value: ServiceStatus | "all"; label: string }[] = [
+const statusFilters: { value: TourDisplayStatus | "all"; label: string }[] = [
   { value: "all", label: "Tất cả trạng thái" },
   { value: "published", label: "Đang mở bán" },
   { value: "paused", label: "Tạm dừng" },
+  { value: "stopped", label: "Đã dừng" },
 ];
+
+function getDisplayStatus(tour: TourListItem): TourDisplayStatus {
+  return tour.deleteScheduledAt ? "stopped" : tour.status;
+}
 
 const PAGE_SIZE_OPTIONS = [6, 12, 24];
 
@@ -54,15 +70,25 @@ const primaryButtonClass =
 const dropdownItemClass =
   "flex w-full items-center gap-x-3 rounded-lg px-3 py-2 text-start text-sm text-dropdown-item-foreground hover:bg-dropdown-item-hover focus:bg-dropdown-item-focus focus:outline-hidden";
 
-function StatusBadge({ status }: { status: ServiceStatus }) {
-  const meta = statusMeta[status];
+function StatusBadge({ tour }: { tour: TourListItem }) {
+  const meta = statusMeta[getDisplayStatus(tour)];
   return (
-    <span
-      className={`inline-flex items-center gap-x-1.5 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${meta.className}`}
-    >
-      <TourIcon name={meta.icon} className="size-3" />
-      {meta.label}
-    </span>
+    <div>
+      <span
+        className={`inline-flex items-center gap-x-1.5 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${meta.className}`}
+      >
+        <TourIcon name={meta.icon} className="size-3" />
+        {meta.label}
+      </span>
+      {tour.deleteScheduledAt ? (
+        <span className="mt-1 block text-xs whitespace-nowrap text-muted-foreground-1">
+          {new Date(tour.deleteScheduledAt) <= new Date() &&
+          tour.activeBookings > 0
+            ? `Chờ xóa – còn ${tour.activeBookings} booking đang xử lý`
+            : `Xóa ngày ${formatDate(tour.deleteScheduledAt)}`}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
@@ -86,8 +112,20 @@ function Rating({ tour }: { tour: TourListItem }) {
   );
 }
 
-function RowActions({ tour }: { tour: TourListItem }) {
+type RowHandlers = {
+  onDelete: (tour: TourListItem) => void;
+  onRestore: (tour: TourListItem) => void;
+  isRestoring: boolean;
+};
+
+function RowActions({
+  tour,
+  onDelete,
+  onRestore,
+  isRestoring,
+}: { tour: TourListItem } & RowHandlers) {
   const dropdownId = `hs-tour-actions-${tour.id}`;
+  const isStopped = tour.deleteScheduledAt !== null;
 
   return (
     <div className="hs-dropdown relative inline-flex [--placement:bottom-right]">
@@ -109,13 +147,15 @@ function RowActions({ tour }: { tour: TourListItem }) {
         aria-labelledby={dropdownId}
       >
         <div className="space-y-0.5 p-1">
-          <Link
-            className={dropdownItemClass}
-            href={`/provider/tours/${tour.id}/edit`}
-          >
-            <TourIcon name="edit" />
-            Chỉnh sửa
-          </Link>
+          {isStopped ? null : (
+            <Link
+              className={dropdownItemClass}
+              href={`/provider/tours/${tour.id}/edit`}
+            >
+              <TourIcon name="edit" />
+              Chỉnh sửa
+            </Link>
+          )}
           <button className={dropdownItemClass} type="button">
             <TourIcon name="eye" />
             Xem chi tiết
@@ -125,21 +165,39 @@ function RowActions({ tour }: { tour: TourListItem }) {
             Lịch khởi hành
           </button>
         </div>
-        <div className="space-y-0.5 border-t border-dropdown-divider p-1">
-          <button
-            className="flex w-full items-center gap-x-3 rounded-lg px-3 py-2 text-start text-sm text-red-600 hover:bg-red-50 focus:bg-red-50 focus:outline-hidden"
-            type="button"
-          >
-            <TourIcon name="trash" />
-            Xóa tour
-          </button>
-        </div>
+        {isStopped ? (
+          <div className="space-y-0.5 border-t border-dropdown-divider p-1">
+            <button
+              className={`${dropdownItemClass} disabled:pointer-events-none disabled:opacity-50`}
+              disabled={isRestoring}
+              onClick={() => onRestore(tour)}
+              type="button"
+            >
+              <TourIcon name="reset" />
+              Khôi phục tour
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-0.5 border-t border-dropdown-divider p-1">
+            <button
+              className="flex w-full items-center gap-x-3 rounded-lg px-3 py-2 text-start text-sm text-red-600 hover:bg-red-50 focus:bg-red-50 focus:outline-hidden"
+              onClick={() => onDelete(tour)}
+              type="button"
+            >
+              <TourIcon name="trash" />
+              Xóa tour
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function TourRow({ tour }: { tour: TourListItem }) {
+function TourRow({
+  tour,
+  ...handlers
+}: { tour: TourListItem } & RowHandlers) {
   return (
     <tr className="hover:bg-layer-hover">
       <td className="min-w-80 px-6 py-4 align-middle">
@@ -159,7 +217,7 @@ function TourRow({ tour }: { tour: TourListItem }) {
             </span>
             <span className="mt-0.5 inline-flex items-center gap-x-1.5 text-xs text-muted-foreground-1">
               <span
-                className={`size-1.5 rounded-full ${statusMeta[tour.status].dotClass}`}
+                className={`size-1.5 rounded-full ${statusMeta[getDisplayStatus(tour)].dotClass}`}
               />
               {tour.category}
             </span>
@@ -191,11 +249,11 @@ function TourRow({ tour }: { tour: TourListItem }) {
       </td>
 
       <td className="px-6 py-4 align-middle">
-        <StatusBadge status={tour.status} />
+        <StatusBadge tour={tour} />
       </td>
 
       <td className="px-6 py-4 text-end align-middle whitespace-nowrap">
-        <RowActions tour={tour} />
+        <RowActions tour={tour} {...handlers} />
       </td>
     </tr>
   );
@@ -232,9 +290,12 @@ export function ToursManager({ tours }: { tours: TourListItem[] }) {
   const [isRefreshing, startRefresh] = useTransition();
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<ServiceStatus | "all">(
-    "all",
-  );
+  const [statusFilter, setStatusFilter] = useState<
+    TourDisplayStatus | "all"
+  >("all");
+  const [deletingTour, setDeletingTour] = useState<TourListItem | null>(null);
+  const [isRestoring, startRestore] = useTransition();
+  const [restoreError, setRestoreError] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
 
@@ -255,7 +316,7 @@ export function ToursManager({ tours }: { tours: TourListItem[] }) {
       const matchesCategory =
         categoryFilter === "all" || tour.category === categoryFilter;
       const matchesStatus =
-        statusFilter === "all" || tour.status === statusFilter;
+        statusFilter === "all" || getDisplayStatus(tour) === statusFilter;
       return matchesSearch && matchesCategory && matchesStatus;
     });
   }, [tours, search, categoryFilter, statusFilter]);
@@ -269,6 +330,18 @@ export function ToursManager({ tours }: { tours: TourListItem[] }) {
   useEffect(() => {
     (window as HSWindow).HSDropdown?.autoInit();
   }, [paginatedTours]);
+
+  const handleRestore = (tour: TourListItem) => {
+    setRestoreError("");
+    startRestore(async () => {
+      const result = await restoreTourAction(tour.id);
+      if (result.status !== "success") {
+        setRestoreError(result.formError ?? "Không thể khôi phục tour.");
+        return;
+      }
+      router.refresh();
+    });
+  };
 
   const handleReset = () => {
     setSearch("");
@@ -325,7 +398,7 @@ export function ToursManager({ tours }: { tours: TourListItem[] }) {
             aria-label="Lọc theo trạng thái"
             className={`${inputClass} ps-3 pe-9`}
             onChange={(event) => {
-              setStatusFilter(event.target.value as ServiceStatus | "all");
+              setStatusFilter(event.target.value as TourDisplayStatus | "all");
               setPage(1);
             }}
             value={statusFilter}
@@ -352,6 +425,12 @@ export function ToursManager({ tours }: { tours: TourListItem[] }) {
           </button>
         </div>
       </div>
+
+      {restoreError ? (
+        <p className="border-b border-card-line bg-red-50 px-6 py-3 text-sm text-red-700">
+          {restoreError}
+        </p>
+      ) : null}
 
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-table-line">
@@ -393,7 +472,13 @@ export function ToursManager({ tours }: { tours: TourListItem[] }) {
               </tr>
             ) : (
               paginatedTours.map((tour) => (
-                <TourRow key={tour.id} tour={tour} />
+                <TourRow
+                  isRestoring={isRestoring}
+                  key={tour.id}
+                  onDelete={setDeletingTour}
+                  onRestore={handleRestore}
+                  tour={tour}
+                />
               ))
             )}
           </tbody>
@@ -465,6 +550,13 @@ export function ToursManager({ tours }: { tours: TourListItem[] }) {
           </button>
         </nav>
       </div>
+
+      {deletingTour ? (
+        <DeleteTourDialog
+          onClose={() => setDeletingTour(null)}
+          tour={deletingTour}
+        />
+      ) : null}
     </div>
   );
 }

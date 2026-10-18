@@ -16,6 +16,8 @@ export type TourListItem = {
   rating: number | null;
   reviewCount: number;
   status: ServiceStatus;
+  deleteScheduledAt: string | null;
+  activeBookings: number;
 };
 
 export type ToursSummary = {

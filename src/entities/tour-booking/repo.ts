@@ -75,7 +75,7 @@ export function createHeld(customerId: string, input: CreateTourBookingInput) {
         id: input.departureId,
         status: "scheduled",
         departureDate: { gt: now },
-        tour: { status: "published" },
+        tour: { status: "published", deletedAt: null },
       },
       include: { tour: true },
     });

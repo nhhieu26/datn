@@ -23,6 +23,11 @@ export type TourForProvider = Prisma.TourGetPayload<{
   include: {
     province: true;
     tags: { include: { tag: true } };
-    departures: { include: { _count: { select: { bookings: true } } } };
+    departures: {
+      include: {
+        _count: { select: { bookings: true } };
+        bookings: { select: { id: true } };
+      };
+    };
   };
 }>;
