@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { formatCurrency, formatDate, formatTime } from "@/lib/utils";
 import type { DestinationListItem } from "../types";
 import { DestinationIcon } from "./destination-icon";
@@ -198,6 +199,8 @@ export function DestinationsManager({
 }: {
   destinations: DestinationListItem[];
 }) {
+  const router = useRouter();
+  const [isRefreshing, startRefresh] = useTransition();
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -272,6 +275,7 @@ export function DestinationsManager({
     setCategoryFilter("all");
     setStatusFilter("all");
     setPage(1);
+    startRefresh(() => router.refresh());
   };
 
   if (destinations.length === 0) {
@@ -322,12 +326,18 @@ export function DestinationsManager({
               ))}
             </select>
             <button
+              aria-busy={isRefreshing}
               className={`px-3 py-2 ${layerButtonClass}`}
+              disabled={isRefreshing}
               onClick={handleReset}
+              title="Đặt lại bộ lọc và làm mới dữ liệu"
               type="button"
             >
-              <DestinationIcon name="reset" />
-              Đặt lại
+              <DestinationIcon
+                name="reset"
+                className={isRefreshing ? "size-4 shrink-0 animate-spin" : undefined}
+              />
+              {isRefreshing ? "Đang tải…" : "Đặt lại"}
             </button>
           </div>
         </div>

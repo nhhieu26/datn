@@ -2,7 +2,8 @@
 
 import type { ServiceStatus } from "@/generated/prisma/client";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { formatCurrency } from "@/lib/utils";
 import type { RestaurantListItem } from "../types";
 import { RestaurantIcon, type RestaurantIconName } from "./restaurant-icon";
@@ -230,6 +231,8 @@ export function RestaurantsManager({
 }: {
   restaurants: RestaurantListItem[];
 }) {
+  const router = useRouter();
+  const [isRefreshing, startRefresh] = useTransition();
   const [search, setSearch] = useState("");
   const [provinceFilter, setProvinceFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<ServiceStatus | "all">(
@@ -282,6 +285,7 @@ export function RestaurantsManager({
     setProvinceFilter("all");
     setStatusFilter("all");
     setPage(1);
+    startRefresh(() => router.refresh());
   };
 
   if (restaurants.length === 0) {
@@ -346,12 +350,18 @@ export function RestaurantsManager({
             ))}
           </select>
           <button
+            aria-busy={isRefreshing}
             className={`px-3 py-2 ${layerButtonClass}`}
+            disabled={isRefreshing}
             onClick={handleReset}
+            title="Đặt lại bộ lọc và làm mới dữ liệu"
             type="button"
           >
-            <RestaurantIcon name="reset" />
-            Đặt lại
+            <RestaurantIcon
+              name="reset"
+              className={isRefreshing ? "size-4 shrink-0 animate-spin" : undefined}
+            />
+            {isRefreshing ? "Đang tải…" : "Đặt lại"}
           </button>
         </div>
       </div>

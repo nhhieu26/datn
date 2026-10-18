@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import {
   approveProviderProfilesAction,
@@ -28,6 +29,8 @@ export function ProfileApprovalDashboard({
 }: {
   initialProfiles: ApprovalProfile[];
 }) {
+  const router = useRouter();
+  const [previousProfiles, setPreviousProfiles] = useState(initialProfiles);
   const [profiles, setProfiles] = useState(initialProfiles);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
@@ -37,6 +40,14 @@ export function ProfileApprovalDashboard({
     useState<ApprovalProfile | null>(null);
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [isRefreshing, startRefresh] = useTransition();
+  const isBusy = isPending || isRefreshing;
+
+  // Refresh gửi props mới nhưng vẫn giữ state của Client Component.
+  if (initialProfiles !== previousProfiles) {
+    setPreviousProfiles(initialProfiles);
+    setProfiles(initialProfiles);
+  }
 
   const counts = useMemo(
     () => ({
@@ -149,6 +160,8 @@ export function ProfileApprovalDashboard({
     setSearch("");
     setStatusFilter("pending");
     setTypeFilter("all");
+    setCheckedIds(new Set());
+    startRefresh(() => router.refresh());
   };
 
   return (
@@ -170,7 +183,7 @@ export function ProfileApprovalDashboard({
           </div>
           <button
             className={`shrink-0 self-start md:self-auto ${primaryButtonClass}`}
-            disabled={checkedIds.size === 0 || isPending}
+            disabled={checkedIds.size === 0 || isBusy}
             onClick={() => handleApprove([...checkedIds])}
             type="button"
           >
@@ -185,7 +198,8 @@ export function ProfileApprovalDashboard({
           profiles={filteredProfiles}
           total={counts.all}
           checkedIds={checkedIds}
-          isPending={isPending}
+          isPending={isBusy}
+          isRefreshing={isRefreshing}
           allPendingChecked={allPendingChecked}
           onToggleAllPending={() =>
             setCheckedIds(allPendingChecked ? new Set() : new Set(pendingIds))
@@ -206,7 +220,7 @@ export function ProfileApprovalDashboard({
 
       {rejectingProfile ? (
         <ApprovalRejectModal
-          isPending={isPending}
+          isPending={isBusy}
           key={rejectingProfile.id}
           onClose={() => setRejectingProfile(null)}
           onConfirm={(reason) => handleReject(rejectingProfile, reason)}

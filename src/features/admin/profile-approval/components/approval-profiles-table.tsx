@@ -132,6 +132,7 @@ export function ApprovalProfilesTable({
   total,
   checkedIds,
   isPending,
+  isRefreshing,
   allPendingChecked,
   onToggleAllPending,
   onToggleChecked,
@@ -150,6 +151,7 @@ export function ApprovalProfilesTable({
   total: number;
   checkedIds: Set<string>;
   isPending: boolean;
+  isRefreshing: boolean;
   allPendingChecked: boolean;
   onToggleAllPending: () => void;
   onToggleChecked: (id: string) => void;
@@ -172,6 +174,8 @@ export function ApprovalProfilesTable({
   return (
     <section className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-card-line bg-card shadow-2xs">
       <ApprovalFilterBar
+        isPending={isPending}
+        isRefreshing={isRefreshing}
         counts={counts}
         search={search}
         onSearchChange={onSearchChange}

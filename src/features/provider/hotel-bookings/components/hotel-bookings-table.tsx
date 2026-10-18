@@ -23,7 +23,7 @@ import {
   hasCheckedOut,
 } from "@/lib/utils";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { updateHotelBookingStatusAction } from "../actions";
 import {
   buildHotelBookingsUrl,
@@ -164,7 +164,6 @@ export function HotelBookingsTable({
   bookings,
   query,
   hotelNames,
-  hasFilters,
   hasAnyBooking,
   total,
   page,
@@ -173,6 +172,7 @@ export function HotelBookingsTable({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [keyword, setKeyword] = useState(query.q);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function apply(patch: Partial<HotelBookingsQuery>) {
     startTransition(() => {
@@ -181,17 +181,35 @@ export function HotelBookingsTable({
   }
 
   useEffect(() => {
+    if (isPending) return;
     const next = keyword.trim();
     if (next === query.q) return;
     const timer = setTimeout(() => {
+      searchTimerRef.current = null;
       startTransition(() => {
         router.replace(buildHotelBookingsUrl(query, { q: next }), {
           scroll: false,
         });
       });
     }, SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  }, [keyword, query, router]);
+    searchTimerRef.current = timer;
+    return () => {
+      clearTimeout(timer);
+      searchTimerRef.current = null;
+    };
+  }, [isPending, keyword, query, router]);
+
+  function handleReset() {
+    if (searchTimerRef.current !== null) {
+      clearTimeout(searchTimerRef.current);
+      searchTimerRef.current = null;
+    }
+    setKeyword("");
+    startTransition(() => {
+      router.replace("?", { scroll: false });
+      router.refresh();
+    });
+  }
 
   // Dòng mới hiện ra sau khi lọc/chuyển trang cần được Preline khởi tạo dropdown
   useEffect(() => {
@@ -296,18 +314,18 @@ export function HotelBookingsTable({
             </div>
           ) : null}
           <button
+            aria-busy={isPending}
             className={`px-3 py-2 ${layerButtonClass}`}
-            disabled={!hasFilters && keyword === ""}
-            onClick={() => {
-              setKeyword("");
-              startTransition(() => {
-                router.replace("?", { scroll: false });
-              });
-            }}
+            disabled={isPending}
+            onClick={handleReset}
+            title="Đặt lại bộ lọc và làm mới dữ liệu"
             type="button"
           >
-            <BookingIcon name="reset" />
-            Đặt lại
+            <BookingIcon
+              name="reset"
+              className={isPending ? "size-4 shrink-0 animate-spin" : undefined}
+            />
+            {isPending ? "Đang tải…" : "Đặt lại"}
           </button>
         </div>
       </div>

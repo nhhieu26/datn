@@ -2,7 +2,8 @@
 
 import type { ServiceStatus } from "@/generated/prisma/client";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { formatCurrency } from "@/lib/utils";
 import { HotelListItem } from "../types";
 import { HotelIcon, type HotelIconName } from "./hotel-icon";
@@ -243,6 +244,8 @@ function HotelsEmptyState() {
 }
 
 export function HotelsManager({ hotels }: { hotels: HotelListItem[] }) {
+  const router = useRouter();
+  const [isRefreshing, startRefresh] = useTransition();
   const [search, setSearch] = useState("");
   const [provinceFilter, setProvinceFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<ServiceStatus | "all">(
@@ -292,6 +295,7 @@ export function HotelsManager({ hotels }: { hotels: HotelListItem[] }) {
     setProvinceFilter("all");
     setStatusFilter("all");
     setPage(1);
+    startRefresh(() => router.refresh());
   };
 
   if (hotels.length === 0) {
@@ -353,12 +357,18 @@ export function HotelsManager({ hotels }: { hotels: HotelListItem[] }) {
             ))}
           </select>
           <button
+            aria-busy={isRefreshing}
             className={`px-3 py-2 ${layerButtonClass}`}
+            disabled={isRefreshing}
             onClick={handleReset}
+            title="Đặt lại bộ lọc và làm mới dữ liệu"
             type="button"
           >
-            <HotelIcon name="reset" />
-            Đặt lại
+            <HotelIcon
+              name="reset"
+              className={isRefreshing ? "size-4 shrink-0 animate-spin" : undefined}
+            />
+            {isRefreshing ? "Đang tải…" : "Đặt lại"}
           </button>
         </div>
       </div>

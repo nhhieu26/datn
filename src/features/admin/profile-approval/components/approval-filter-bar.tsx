@@ -8,6 +8,8 @@ import {
 } from "./approval-shared";
 
 export function ApprovalFilterBar({
+  isPending,
+  isRefreshing,
   counts,
   search,
   onSearchChange,
@@ -17,6 +19,8 @@ export function ApprovalFilterBar({
   onTypeFilterChange,
   onReset,
 }: {
+  isPending: boolean;
+  isRefreshing: boolean;
   counts: ApprovalCounts;
   search: string;
   onSearchChange: (value: string) => void;
@@ -63,12 +67,18 @@ export function ApprovalFilterBar({
             <option value="restaurant">Nhà hàng &amp; Ẩm thực</option>
           </select>
           <button
+            aria-busy={isRefreshing}
             className={`px-3 py-2 ${layerButtonClass}`}
+            disabled={isPending}
             onClick={onReset}
+            title="Đặt lại bộ lọc và làm mới dữ liệu"
             type="button"
           >
-            <ApprovalIcon name="reset" />
-            Đặt lại
+            <ApprovalIcon
+              name="reset"
+              className={isRefreshing ? "size-4 shrink-0 animate-spin" : undefined}
+            />
+            {isRefreshing ? "Đang tải…" : "Đặt lại"}
           </button>
         </div>
       </div>

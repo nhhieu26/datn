@@ -6,7 +6,8 @@ import type {
   ProviderProfile,
 } from "@/generated/prisma/client";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { getServiceMeta, getStatusMeta } from "../../utils";
 import { formatDate, formatEntityCode, formatUpdatedLabel } from "@/lib/utils";
 import { ProfileIcon, type ProfileIconName } from "./profile-icon";
@@ -224,6 +225,7 @@ function ProfileRow({ profile }: { profile: ProviderProfile }) {
 }
 
 type ToolbarProps = {
+  isRefreshing: boolean;
   search: string;
   onSearchChange: (value: string) => void;
   typeFilter: BusinessType | "all";
@@ -234,6 +236,7 @@ type ToolbarProps = {
 };
 
 function ProfilesToolbar({
+  isRefreshing,
   search,
   onSearchChange,
   typeFilter,
@@ -289,12 +292,18 @@ function ProfilesToolbar({
           <option value="not_submitted">Chưa nộp</option>
         </select>
         <button
+          aria-busy={isRefreshing}
           className={`px-3 py-2 ${layerButtonClass}`}
+          disabled={isRefreshing}
           onClick={onReset}
+          title="Đặt lại bộ lọc và làm mới dữ liệu"
           type="button"
         >
-          <ProfileIcon name="reset" />
-          Đặt lại
+          <ProfileIcon
+            name="reset"
+            className={isRefreshing ? "size-4 shrink-0 animate-spin" : undefined}
+          />
+          {isRefreshing ? "Đang tải…" : "Đặt lại"}
         </button>
       </div>
     </div>
@@ -328,6 +337,8 @@ function ProfilesEmptyState() {
 }
 
 export function ProfilesTable({ profiles }: { profiles: ProviderProfile[] }) {
+  const router = useRouter();
+  const [isRefreshing, startRefresh] = useTransition();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<BusinessType | "all">("all");
   const [statusFilter, setStatusFilter] = useState<ApprovalStatus | "all">(
@@ -358,6 +369,7 @@ export function ProfilesTable({ profiles }: { profiles: ProviderProfile[] }) {
     setSearch("");
     setTypeFilter("all");
     setStatusFilter("all");
+    startRefresh(() => router.refresh());
   };
 
   if (profiles.length === 0) {
@@ -367,6 +379,7 @@ export function ProfilesTable({ profiles }: { profiles: ProviderProfile[] }) {
   return (
     <div className="flex flex-col overflow-hidden rounded-xl border border-card-line bg-card shadow-2xs">
       <ProfilesToolbar
+        isRefreshing={isRefreshing}
         onReset={handleReset}
         onSearchChange={setSearch}
         onStatusChange={setStatusFilter}
