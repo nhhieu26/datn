@@ -1,6 +1,5 @@
 "use client";
 
-import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ADMIN_SIDEBAR_ID } from "./admin-sidebar";
@@ -20,14 +19,9 @@ function buildCrumbs(pathname: string) {
     .map((href) => ({ href, label: crumbLabels[href] }));
 }
 
-export function AdminHeader({
-  user,
-}: {
-  user: { name?: string | null; email?: string | null };
-}) {
+export function AdminHeader() {
   const pathname = usePathname();
   const crumbs = buildCrumbs(pathname);
-  const name = user.name || "Admin Roamly";
 
   return (
     <header className="z-48 flex font-inter w-full shrink-0 border-b border-navbar-line bg-navbar py-2.5 text-sm">
@@ -92,7 +86,7 @@ export function AdminHeader({
                   <path d="m9 18 6-6-6-6" />
                 </svg>
               </li>
-            )
+            ),
           )}
         </ol>
 
@@ -119,60 +113,6 @@ export function AdminHeader({
             </svg>
             <span className="absolute end-2 top-2 size-2 rounded-full bg-red-500 ring-2 ring-navbar" />
           </button>
-
-          <div className="hs-dropdown relative inline-flex [--placement:bottom-right]">
-            <button
-              id="hs-admin-account-dropdown"
-              type="button"
-              className="inline-flex size-9.5 items-center justify-center gap-x-2 rounded-full border border-transparent text-sm font-semibold text-foreground focus:outline-hidden"
-              aria-haspopup="menu"
-              aria-expanded="false"
-              aria-label="Tài khoản"
-            >
-              <span className="inline-flex size-9.5 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-                {name.charAt(0).toUpperCase()}
-              </span>
-            </button>
-
-            <div
-              className="hs-dropdown-menu duration z-10 mt-2 hidden min-w-60 rounded-lg border border-dropdown-line bg-dropdown opacity-0 shadow-md transition-[opacity,margin] hs-dropdown-open:opacity-100"
-              role="menu"
-              aria-orientation="vertical"
-              aria-labelledby="hs-admin-account-dropdown"
-            >
-              <div className="rounded-t-lg bg-muted px-5 py-3">
-                <p className="text-sm text-muted-foreground-1">Quản trị viên</p>
-                <p className="truncate text-sm font-medium text-foreground">
-                  {user.email || name}
-                </p>
-              </div>
-              <div className="space-y-0.5 p-1.5">
-                <button
-                  className="flex w-full items-center gap-x-3 rounded-lg px-3 py-2 text-start text-sm text-dropdown-item-foreground hover:bg-dropdown-item-hover focus:bg-dropdown-item-focus focus:outline-hidden"
-                  onClick={() => signOut({ callbackUrl: "/admin/sign-in" })}
-                  type="button"
-                >
-                  <svg
-                    className="size-4 shrink-0"
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                    <polyline points="16 17 21 12 16 7" />
-                    <line x1="21" x2="9" y1="12" y2="12" />
-                  </svg>
-                  Đăng xuất
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       </nav>
     </header>

@@ -20,9 +20,9 @@ export default async function ProviderLayout({
 
   return (
     <div className="provider-shell flex h-dvh w-full overflow-hidden bg-[#F8FAFC] font-sans text-slate-800 antialiased">
-      <ProviderSidebar />
+      <ProviderSidebar user={session.user} />
       <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden lg:ps-64">
-        <ProviderHeader user={session.user} />
+        <ProviderHeader />
         {children}
       </div>
       <PrelineScript />

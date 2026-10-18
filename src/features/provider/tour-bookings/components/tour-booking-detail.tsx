@@ -27,7 +27,9 @@ export function TourBookingDetailHeader({
         <h2 className="text-lg font-semibold text-foreground">
           {booking.tourTitle}
         </h2>
-        <p className="text-sm text-muted-foreground-1">Mã đơn: {booking.code}</p>
+        <p className="text-sm text-muted-foreground-1">
+          Mã đơn: {booking.code}
+        </p>
 
         <dl className="mt-4 grid gap-3 sm:grid-cols-2">
           <Meta icon="calendar" label="Ngày khởi hành">
@@ -78,7 +80,7 @@ function Meta({
 }
 
 const thClass =
-  "px-4 py-3 text-start text-xs font-medium text-muted-foreground-1 uppercase md:px-5";
+  "px-4 py-3 text-xs font-medium text-muted-foreground-1 uppercase md:px-5";
 const tdClass = "px-4 py-3 text-sm whitespace-nowrap text-foreground md:px-5";
 
 /** Bảng danh sách khách theo phong cách Preline. */
@@ -92,10 +94,18 @@ export function TourBookingGuestsTable({
       <table className="min-w-full divide-y divide-table-line">
         <thead className="bg-surface">
           <tr>
-            <th className={thClass} scope="col">Loại</th>
-            <th className={thClass} scope="col">Số lượng</th>
-            <th className={`${thClass} text-end`} scope="col">Đơn giá</th>
-            <th className={`${thClass} text-end`} scope="col">Thành tiền</th>
+            <th className={`${thClass} text-start`} scope="col">
+              Loại
+            </th>
+            <th className={`${thClass} text-start`} scope="col">
+              Số lượng
+            </th>
+            <th className={`${thClass} text-end`} scope="col">
+              Đơn giá
+            </th>
+            <th className={`${thClass} text-end`} scope="col">
+              Thành tiền
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-table-line">

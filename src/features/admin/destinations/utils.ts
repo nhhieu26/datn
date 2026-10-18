@@ -18,6 +18,7 @@ export function mapDestinationToListItem(
   return {
     id: destination.id,
     code: formatEntityCode("DE", destination.id),
+    slug: destination.slug,
     name: destination.name,
     description: destination.description ?? "",
     imageUrl: extractImageUrl(destination.images),

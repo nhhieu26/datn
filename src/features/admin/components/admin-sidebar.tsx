@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SidebarAccountDropdown } from "@/shared/components/sidebar-account-dropdown";
 import { useEffect, type ReactNode } from "react";
 
 export const ADMIN_SIDEBAR_ID = "hs-admin-sidebar";
@@ -110,8 +111,13 @@ const navigation = [
   },
 ];
 
-export function AdminSidebar() {
+export function AdminSidebar({
+  user,
+}: {
+  user: { name?: string | null; email?: string | null };
+}) {
   const pathname = usePathname();
+  const name = user.name || "Admin Roamly";
 
   useEffect(() => {
     (window as HSWindow).HSOverlay?.close(`#${ADMIN_SIDEBAR_ID}`);
@@ -156,7 +162,7 @@ export function AdminSidebar() {
           </div>
         </header>
 
-        <nav className="h-full overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-none [&::-webkit-scrollbar-thumb]:bg-scrollbar-thumb [&::-webkit-scrollbar-track]:bg-scrollbar-track">
+        <nav className="min-h-0 flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-none [&::-webkit-scrollbar-thumb]:bg-scrollbar-thumb [&::-webkit-scrollbar-track]:bg-scrollbar-track">
           <div className="flex w-full flex-col flex-wrap px-2 pb-0">
             <ul className="flex flex-col space-y-1">
               {navigation.map((item) => {
@@ -184,6 +190,14 @@ export function AdminSidebar() {
             </ul>
           </div>
         </nav>
+
+        <SidebarAccountDropdown
+          id="hs-admin-account-dropdown"
+          name={name}
+          email={user.email}
+          roleLabel="Quản trị viên"
+          signOutUrl="/admin/sign-in"
+        />
       </div>
     </div>
   );

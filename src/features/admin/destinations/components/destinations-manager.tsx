@@ -1,187 +1,187 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { useEffect, useMemo, useState } from "react";
+import { formatCurrency, formatDate, formatTime } from "@/lib/utils";
 import type { DestinationListItem } from "../types";
+import { DestinationIcon } from "./destination-icon";
+
+type HSWindow = Window & {
+  HSDropdown?: { autoInit: () => void };
+};
+
+type StatusFilter = "all" | "published" | "draft";
 
 const PAGE_SIZE_OPTIONS = [6, 12, 24];
+
+// Class dùng chung theo token Preline
+const inputClass =
+  "block rounded-lg border-layer-line bg-layer py-2 text-foreground placeholder:text-muted-foreground-1 focus:border-primary-focus focus:ring-primary-focus sm:text-sm";
+
+const layerButtonClass =
+  "inline-flex items-center justify-center gap-x-2 rounded-lg border border-layer-line bg-layer text-sm font-medium text-layer-foreground shadow-2xs hover:bg-layer-hover focus:bg-layer-focus focus:outline-hidden disabled:pointer-events-none disabled:opacity-50";
+
+const primaryButtonClass =
+  "inline-flex items-center justify-center gap-x-2 rounded-lg border border-primary-line bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover focus:bg-primary-focus focus:outline-hidden disabled:pointer-events-none disabled:opacity-50";
+
+const dropdownItemClass =
+  "flex w-full items-center gap-x-3 rounded-lg px-3 py-2 text-start text-sm text-dropdown-item-foreground hover:bg-dropdown-item-hover focus:bg-dropdown-item-focus focus:outline-hidden";
+
+const pageButtonClass =
+  "inline-flex min-h-9.5 min-w-9.5 items-center justify-center rounded-lg px-2.5 py-2 text-sm text-foreground hover:bg-muted-hover focus:bg-muted-focus focus:outline-hidden disabled:pointer-events-none disabled:opacity-50";
 
 function StatusBadge({ isPublished }: { isPublished: boolean }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold shadow-xs whitespace-nowrap ${
+      className={`inline-flex items-center gap-x-1.5 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${
         isPublished
-          ? "border-emerald-200/80 bg-emerald-50 text-emerald-700"
-          : "border-slate-200/80 bg-slate-100 text-slate-600"
+          ? "bg-teal-100 text-teal-800"
+          : "bg-yellow-100 text-yellow-800"
       }`}
     >
-      <span
-        className={`h-1.5 w-1.5 rounded-full ${
-          isPublished ? "bg-emerald-500" : "bg-slate-400"
-        }`}
+      <DestinationIcon
+        name={isPublished ? "check" : "draft"}
+        className="size-3"
       />
       {isPublished ? "Đã xuất bản" : "Bản nháp"}
     </span>
   );
 }
 
-function DestinationRow({ destination }: { destination: DestinationListItem }) {
+function RowActions({ destination }: { destination: DestinationListItem }) {
+  const dropdownId = `hs-destination-actions-${destination.id}`;
+
   return (
-    <tr className="transition-colors hover:bg-slate-50/70">
-      <td className="px-5 py-5 align-middle">
-        <div className="flex items-center gap-3.5">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            alt={destination.name}
-            className="h-12 w-12 shrink-0 rounded-xl object-cover shadow-sm ring-1 ring-slate-200/80"
-            src={destination.imageUrl}
-          />
-          <div className="flex min-w-0 flex-col">
-            <span className="font-mono text-[11px] font-bold tracking-wider text-brand-500 uppercase">
-              {destination.code}
+    <div className="hs-dropdown relative inline-flex [--placement:bottom-right]">
+      <button
+        id={dropdownId}
+        type="button"
+        className={`hs-dropdown-toggle size-8 ${layerButtonClass}`}
+        aria-haspopup="menu"
+        aria-expanded="false"
+        aria-label="Thao tác"
+      >
+        <DestinationIcon name="more" />
+      </button>
+
+      <div
+        className="hs-dropdown-menu duration z-20 hidden min-w-48 rounded-xl border border-dropdown-line bg-dropdown opacity-0 shadow-xl transition-[opacity,margin] hs-dropdown-open:opacity-100"
+        role="menu"
+        aria-orientation="vertical"
+        aria-labelledby={dropdownId}
+      >
+        <div className="space-y-0.5 p-1">
+          {destination.isPublished ? (
+            <Link
+              className={dropdownItemClass}
+              href={`/destinations/${destination.slug}`}
+              rel="noreferrer"
+              target="_blank"
+            >
+              <DestinationIcon name="externalLink" />
+              Xem trang công khai
+            </Link>
+          ) : (
+            <span className={`${dropdownItemClass} pointer-events-none opacity-50`}>
+              <DestinationIcon name="externalLink" />
+              Chưa xuất bản
             </span>
-            <span className="truncate text-sm font-bold text-slate-900">
-              {destination.name}
-            </span>
-            <span className="mt-0.5 max-w-[220px] truncate text-xs text-slate-500">
-              {destination.category}
-            </span>
-          </div>
-        </div>
-      </td>
-
-      <td className="px-4 py-5 align-middle">
-        <div className="flex flex-col">
-          <span className="text-sm font-bold text-slate-900">
-            {destination.provinceName}
-          </span>
-          <span className="mt-0.5 max-w-[240px] truncate text-xs text-slate-400">
-            {destination.address}
-          </span>
-        </div>
-      </td>
-
-      <td className="px-4 py-5 align-middle whitespace-nowrap">
-        <span className="text-sm font-bold text-slate-900">
-          {destination.ticketPrice === null
-            ? "Miễn phí"
-            : formatCurrency(destination.ticketPrice)}
-        </span>
-      </td>
-
-      <td className="px-4 py-5 align-middle whitespace-nowrap">
-        <StatusBadge isPublished={destination.isPublished} />
-      </td>
-
-      <td className="px-5 py-5 align-middle whitespace-nowrap">
-        <span className="text-sm text-slate-600">
-          {formatDate(destination.createdAt)}
-        </span>
-      </td>
-    </tr>
-  );
-}
-
-function DestinationCard({ destination }: { destination: DestinationListItem }) {
-  return (
-    <div className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm transition-all duration-300 hover:shadow-lg">
-      <div className="relative h-48 overflow-hidden bg-slate-100">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          alt={destination.name}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-          src={destination.imageUrl}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent" />
-        <div className="absolute top-3 left-3">
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-bold shadow-sm ${
-              destination.isPublished
-                ? "border-emerald-200/80 bg-emerald-50 text-emerald-700"
-                : "border-slate-200/80 bg-slate-100 text-slate-600"
-            }`}
-          >
-            <span
-              className={`h-1.5 w-1.5 rounded-full ${
-                destination.isPublished ? "bg-emerald-500" : "bg-slate-400"
-              }`}
-            />
-            {destination.isPublished ? "Đã xuất bản" : "Bản nháp"}
-          </span>
-        </div>
-        <div className="absolute right-3 bottom-3 left-3 flex items-center justify-between text-white">
-          <span className="font-mono text-[11px] font-extrabold tracking-wider text-amber-300 uppercase">
-            {destination.code}
-          </span>
-          <span className="text-xs opacity-90">
-            {destination.provinceName}
-          </span>
-        </div>
-      </div>
-
-      <div className="flex flex-1 flex-col justify-between space-y-4 p-5">
-        <div className="space-y-2">
-          <h3 className="line-clamp-2 text-[15px] font-bold text-slate-900 transition-colors group-hover:text-brand-600">
-            {destination.name}
-          </h3>
-          <p className="line-clamp-2 text-xs leading-relaxed text-slate-500">
-            {destination.description}
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {destination.category
-              .split(", ")
-              .slice(0, 3)
-              .map((tagName) => (
-                <span
-                  className="inline-block rounded-full border border-emerald-200/60 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700"
-                  key={tagName}
-                >
-                  {tagName}
-                </span>
-              ))}
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <div className="flex items-baseline justify-between rounded-xl bg-slate-50 px-3.5 py-2">
-            <span className="text-xs text-slate-500">Giá vé tham quan</span>
-            <span className="text-base font-bold text-brand-600">
-              {destination.ticketPrice === null
-                ? "Miễn phí"
-                : formatCurrency(destination.ticketPrice)}
-            </span>
-          </div>
-          <p className="text-[11px] font-medium text-slate-400">
-            {destination.address}
-          </p>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
+function DestinationRow({ destination }: { destination: DestinationListItem }) {
+  return (
+    <tr className="hover:bg-layer-hover">
+      <td className="min-w-80 px-6 py-4 align-middle">
+        <div className="flex items-center gap-x-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            alt={destination.name}
+            className="size-11 shrink-0 rounded-lg object-cover"
+            src={destination.imageUrl}
+          />
+          <div className="min-w-0 grow">
+            <span className="inline-flex rounded-md bg-surface px-1.5 py-0.5 font-mono text-xs font-medium text-surface-foreground">
+              {destination.code}
+            </span>
+            <span className="mt-1 block max-w-60 truncate text-sm font-semibold text-foreground">
+              {destination.name}
+            </span>
+            <span className="mt-0.5 inline-flex max-w-60 items-center gap-x-1.5 text-xs text-muted-foreground-1">
+              <DestinationIcon name="tag" className="size-3" />
+              <span className="truncate">{destination.category}</span>
+            </span>
+          </div>
+        </div>
+      </td>
+
+      <td className="max-w-72 px-6 py-4 align-middle">
+        <span className="inline-flex items-center gap-x-1.5 text-sm font-medium whitespace-nowrap text-foreground">
+          <DestinationIcon
+            name="mapPin"
+            className="size-3.5 text-muted-foreground-1"
+          />
+          {destination.provinceName}
+        </span>
+        <span className="block truncate text-xs text-muted-foreground-1">
+          {destination.address}
+        </span>
+      </td>
+
+      <td className="px-6 py-4 align-middle whitespace-nowrap">
+        <span className="block text-sm font-medium text-foreground">
+          {destination.ticketPrice === null
+            ? "Miễn phí"
+            : formatCurrency(destination.ticketPrice)}
+        </span>
+        <span className="block text-xs text-muted-foreground-1">/ khách</span>
+      </td>
+
+      <td className="px-6 py-4 align-middle">
+        <StatusBadge isPublished={destination.isPublished} />
+      </td>
+
+      <td className="px-6 py-4 align-middle whitespace-nowrap">
+        <span className="block text-sm text-foreground">
+          {formatDate(destination.createdAt)}
+        </span>
+        <span className="block text-xs text-muted-foreground-1">
+          {formatTime(destination.createdAt)}
+        </span>
+      </td>
+
+      <td className="px-6 py-4 text-end align-middle whitespace-nowrap">
+        <RowActions destination={destination} />
+      </td>
+    </tr>
+  );
+}
+
 function DestinationsEmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-200/80 bg-white p-12 text-center shadow-sm">
-      <span className="material-symbols-outlined text-[40px] text-slate-300">
-        travel_explore
-      </span>
-      <h3 className="text-base font-bold text-slate-900">
-        Chưa có địa điểm du lịch nào
-      </h3>
-      <p className="max-w-sm text-sm text-slate-500">
-        Tạo địa điểm đầu tiên để giới thiệu điểm tham quan tới du khách.
-      </p>
-      <Link
-        className="mt-1 inline-flex items-center gap-2 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600"
-        href="/admin/destinations/create"
-      >
-        <span className="material-symbols-outlined text-[20px]">
-          add_circle
+    <div className="flex flex-col rounded-xl border border-card-line bg-card shadow-2xs">
+      <div className="flex min-h-80 flex-col items-center justify-center p-4 text-center md:p-5">
+        <span className="flex size-12 items-center justify-center rounded-full bg-surface text-muted-foreground-2">
+          <DestinationIcon name="compass" className="size-6" />
         </span>
-        Tạo Địa điểm mới
-      </Link>
+        <h3 className="mt-4 text-base font-semibold text-foreground">
+          Chưa có địa điểm du lịch nào
+        </h3>
+        <p className="mt-1 max-w-sm text-sm text-muted-foreground-1">
+          Tạo địa điểm đầu tiên để giới thiệu điểm tham quan tới du khách.
+        </p>
+        <Link
+          className={`mt-5 ${primaryButtonClass}`}
+          href="/admin/destinations/create"
+        >
+          <DestinationIcon name="plus" />
+          Tạo địa điểm mới
+        </Link>
+      </div>
     </div>
   );
 }
@@ -193,10 +193,7 @@ export function DestinationsManager({
 }) {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | "published" | "draft">(
-    "all"
-  );
-  const [view, setView] = useState<"table" | "card">("table");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
 
@@ -207,40 +204,61 @@ export function DestinationsManager({
           destinations
             .map((destination) => destination.category)
             .filter((category) => category !== "Chưa phân loại")
-            .flatMap((category) => category.split(", "))
+            .flatMap((category) => category.split(", ")),
         ),
       ].sort(),
-    [destinations]
+    [destinations],
+  );
+
+  const counts = useMemo(
+    () => ({
+      all: destinations.length,
+      published: destinations.filter((destination) => destination.isPublished)
+        .length,
+      draft: destinations.filter((destination) => !destination.isPublished)
+        .length,
+    }),
+    [destinations],
   );
 
   const filteredDestinations = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const query = search.trim().toLocaleLowerCase("vi");
     return destinations.filter((destination) => {
-      const matchesSearch =
-        query.length === 0 ||
-        destination.name.toLowerCase().includes(query) ||
-        destination.code.toLowerCase().includes(query) ||
-        destination.provinceName.toLowerCase().includes(query) ||
-        destination.address.toLowerCase().includes(query);
+      const haystack = [
+        destination.name,
+        destination.code,
+        destination.provinceName,
+        destination.address,
+      ]
+        .join(" ")
+        .toLocaleLowerCase("vi");
       const matchesCategory =
         categoryFilter === "all" ||
-        destination.category.includes(categoryFilter);
+        destination.category.split(", ").includes(categoryFilter);
       const matchesStatus =
-        statusFilter === "all" || destination.isPublished === (statusFilter === "published");
-      return matchesSearch && matchesCategory && matchesStatus;
+        statusFilter === "all" ||
+        destination.isPublished === (statusFilter === "published");
+      return (
+        (!query || haystack.includes(query)) && matchesCategory && matchesStatus
+      );
     });
   }, [destinations, search, categoryFilter, statusFilter]);
 
   const totalPages = Math.max(
     1,
-    Math.ceil(filteredDestinations.length / pageSize)
+    Math.ceil(filteredDestinations.length / pageSize),
   );
   const currentPage = Math.min(page, totalPages);
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedDestinations = filteredDestinations.slice(
     startIndex,
-    startIndex + pageSize
+    startIndex + pageSize,
   );
+
+  // Dòng mới hiện ra sau khi lọc/chuyển trang cần được Preline khởi tạo dropdown
+  useEffect(() => {
+    (window as HSWindow).HSDropdown?.autoInit();
+  }, [paginatedDestinations]);
 
   const handleReset = () => {
     setSearch("");
@@ -249,77 +267,40 @@ export function DestinationsManager({
     setPage(1);
   };
 
-  const statusFilters: { value: "all" | "published" | "draft"; label: string }[] = [
-    { value: "all", label: "Tất cả trạng thái" },
-    { value: "published", label: "Đã xuất bản" },
-    { value: "draft", label: "Bản nháp" },
-  ];
-
   if (destinations.length === 0) {
     return <DestinationsEmptyState />;
   }
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-      <div className="flex flex-col items-stretch gap-3 border-b border-slate-200/80 p-4 lg:flex-row lg:items-center">
-        <div className="flex items-center self-start rounded-full border border-slate-200 bg-slate-50 p-1 lg:self-center">
-          <button
-            className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition ${
-              view === "table"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-500 hover:text-slate-800"
-            }`}
-            onClick={() => setView("table")}
-            type="button"
-          >
-            <span
-              className={`material-symbols-outlined text-[18px] ${
-                view === "table" ? "text-brand-500" : ""
-              }`}
-            >
-              table_rows
-            </span>
-            Bảng
-          </button>
-          <button
-            className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition ${
-              view === "card"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-500 hover:text-slate-800"
-            }`}
-            onClick={() => setView("card")}
-            type="button"
-          >
-            <span
-              className={`material-symbols-outlined text-[18px] ${
-                view === "card" ? "text-brand-500" : ""
-              }`}
-            >
-              grid_view
-            </span>
-            Thẻ
-          </button>
-        </div>
-
-        <div className="flex flex-1 flex-col items-center gap-2.5 sm:flex-row">
-          <div className="relative w-full sm:flex-1">
-            <span className="material-symbols-outlined absolute top-1/2 left-3.5 -translate-y-1/2 text-[20px] text-slate-400">
-              search
-            </span>
+    <section className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-card-line bg-card shadow-2xs">
+      <div className="grid gap-3 border-b border-card-line px-6 py-4">
+        <div className="grid gap-3 md:flex md:items-center md:justify-between">
+          <div className="relative w-full md:max-w-sm">
+            <div className="pointer-events-none absolute inset-y-0 start-0 z-20 flex items-center ps-3.5">
+              <DestinationIcon
+                name="search"
+                className="size-4 text-muted-foreground"
+              />
+            </div>
+            <label className="sr-only" htmlFor="hs-destinations-search">
+              Tìm kiếm địa điểm
+            </label>
             <input
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pr-4 pl-10 text-sm text-slate-800 transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none"
+              className={`${inputClass} w-full ps-10 pe-4`}
+              id="hs-destinations-search"
               onChange={(event) => {
                 setSearch(event.target.value);
                 setPage(1);
               }}
-              placeholder="Tìm kiếm theo tên, mã, tỉnh/thành, địa chỉ..."
+              placeholder="Tìm theo tên, mã, tỉnh/thành, địa chỉ..."
               type="text"
               value={search}
             />
           </div>
-          <div className="relative w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2">
             <select
-              className="w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2.5 pr-8 pl-3.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100/70 focus:border-brand-500 focus:outline-none sm:w-auto"
+              aria-label="Lọc theo danh mục"
+              className={`${inputClass} ps-3 pe-9`}
               onChange={(event) => {
                 setCategoryFilter(event.target.value);
                 setPage(1);
@@ -333,163 +314,161 @@ export function DestinationsManager({
                 </option>
               ))}
             </select>
-            <span className="material-symbols-outlined pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-[18px] text-slate-400">
-              expand_more
-            </span>
-          </div>
-          <div className="relative w-full sm:w-auto">
-            <select
-              className="w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2.5 pr-8 pl-3.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100/70 focus:border-brand-500 focus:outline-none sm:w-auto"
-              onChange={(event) => {
-                setStatusFilter(
-                  event.target.value as "all" | "published" | "draft"
-                );
-                setPage(1);
-              }}
-              value={statusFilter}
+            <button
+              className={`px-3 py-2 ${layerButtonClass}`}
+              onClick={handleReset}
+              type="button"
             >
-              {statusFilters.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <span className="material-symbols-outlined pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-[18px] text-slate-400">
-              expand_more
-            </span>
+              <DestinationIcon name="reset" />
+              Đặt lại
+            </button>
           </div>
-          <button
-            className="flex items-center justify-center self-stretch rounded-xl border border-slate-200 px-2.5 text-slate-500 shadow-sm transition hover:bg-slate-100 hover:text-slate-800"
-            onClick={handleReset}
-            title="Đặt lại bộ lọc"
-            type="button"
-          >
-            <span className="material-symbols-outlined block text-[18px]">
-              refresh
-            </span>
-          </button>
         </div>
+
+        <nav
+          aria-label="Lọc theo trạng thái"
+          className="flex w-fit max-w-full gap-x-1 overflow-x-auto rounded-lg bg-surface p-1"
+          role="tablist"
+        >
+          {(
+            [
+              ["all", "Tất cả", counts.all],
+              ["published", "Đã xuất bản", counts.published],
+              ["draft", "Bản nháp", counts.draft],
+            ] as const
+          ).map(([value, label, count]) => {
+            const active = statusFilter === value;
+            return (
+              <button
+                aria-selected={active}
+                className={`inline-flex items-center gap-x-2 rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap focus:outline-hidden ${
+                  active
+                    ? "bg-layer text-layer-foreground shadow-2xs"
+                    : "text-muted-foreground-2 hover:text-foreground focus:text-foreground"
+                }`}
+                key={value}
+                onClick={() => {
+                  setStatusFilter(value);
+                  setPage(1);
+                }}
+                role="tab"
+                type="button"
+              >
+                {label}
+                <span
+                  className={`inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-medium ${
+                    active
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-surface-1 text-surface-foreground"
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </nav>
       </div>
 
-      {view === "table" ? (
-        <div className="w-full overflow-x-auto">
-          <table className="w-full min-w-[950px] table-fixed border-collapse text-left">
-            <thead>
-              <tr className="border-b border-slate-200/70 bg-slate-50/80 text-[11px] font-bold tracking-wider text-slate-500 uppercase">
-                <th className="w-[330px] px-5 py-4" scope="col">
-                  Địa điểm & Danh mục
-                </th>
-                <th className="w-[260px] px-4 py-4" scope="col">
-                  Tỉnh / Thành & Địa chỉ
-                </th>
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-table-line">
+          <thead className="bg-muted">
+            <tr>
+              {[
+                "Địa điểm & Danh mục",
+                "Tỉnh / Thành & Địa chỉ",
+                "Giá vé",
+                "Trạng thái",
+                "Ngày tạo",
+              ].map((label) => (
                 <th
-                  className="w-[140px] px-4 py-4 whitespace-nowrap"
+                  key={label}
+                  className="px-6 py-3 text-start whitespace-nowrap"
                   scope="col"
                 >
-                  Giá vé
+                  <span className="text-xs font-semibold text-foreground uppercase">
+                    {label}
+                  </span>
                 </th>
-                <th
-                  className="w-[140px] px-4 py-4 whitespace-nowrap"
-                  scope="col"
-                >
-                  Trạng thái
-                </th>
-                <th className="w-[130px] px-5 py-4 whitespace-nowrap" scope="col">
-                  Ngày tạo
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-sm">
-              {paginatedDestinations.length === 0 ? (
-                <tr>
-                  <td
-                    className="px-6 py-10 text-center text-sm text-slate-500"
-                    colSpan={5}
-                  >
-                    Không tìm thấy địa điểm phù hợp với bộ lọc.
-                  </td>
-                </tr>
-              ) : (
-                paginatedDestinations.map((destination) => (
-                  <DestinationRow
-                    key={destination.id}
-                    destination={destination}
-                  />
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="p-4">
-          {paginatedDestinations.length === 0 ? (
-            <p className="py-10 text-center text-sm text-slate-500">
-              Không tìm thấy địa điểm phù hợp với bộ lọc.
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {paginatedDestinations.map((destination) => (
-                <DestinationCard
-                  key={destination.id}
-                  destination={destination}
-                />
               ))}
-            </div>
-          )}
-        </div>
-      )}
+              <th className="px-6 py-3 text-end" scope="col">
+                <span className="text-xs font-semibold text-foreground uppercase">
+                  Thao tác
+                </span>
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-table-line">
+            {paginatedDestinations.length === 0 ? (
+              <tr>
+                <td className="px-6 py-14" colSpan={6}>
+                  <div className="flex flex-col items-center text-center">
+                    <span className="flex size-12 items-center justify-center rounded-full bg-surface text-muted-foreground-2">
+                      <DestinationIcon name="search" className="size-6" />
+                    </span>
+                    <h3 className="mt-4 text-base font-semibold text-foreground">
+                      Không tìm thấy địa điểm phù hợp
+                    </h3>
+                    <p className="mt-1 text-sm text-muted-foreground-1">
+                      Thử thay đổi từ khóa hoặc bộ lọc đang chọn.
+                    </p>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              paginatedDestinations.map((destination) => (
+                <DestinationRow key={destination.id} destination={destination} />
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
 
-      <div className="flex flex-col items-center justify-between gap-4 border-t border-slate-200/80 p-4 sm:flex-row">
-        <div className="flex items-center gap-4 text-sm text-slate-500">
-          <span>
+      <div className="grid gap-3 border-t border-card-line px-6 py-4 md:flex md:items-center md:justify-between">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <p className="text-sm text-muted-foreground-1">
             Hiển thị{" "}
-            <span className="font-semibold text-slate-900">
+            <span className="font-semibold text-foreground">
               {filteredDestinations.length === 0 ? 0 : startIndex + 1} -{" "}
               {Math.min(startIndex + pageSize, filteredDestinations.length)}
             </span>{" "}
-            trên tổng số{" "}
-            <span className="font-semibold text-slate-900">
-              {filteredDestinations.length}
-            </span>{" "}
-            địa điểm
-          </span>
-          <div className="hidden items-center gap-2 sm:flex">
-            <span>Xem:</span>
-            <select
-              className="cursor-pointer rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-700 focus:border-brand-500 focus:outline-none"
-              onChange={(event) => {
-                setPageSize(Number(event.target.value));
-                setPage(1);
-              }}
-              value={pageSize}
-            >
-              {PAGE_SIZE_OPTIONS.map((size) => (
-                <option key={size} value={size}>
-                  {size} / trang
-                </option>
-              ))}
-            </select>
-          </div>
+            / {filteredDestinations.length} địa điểm
+          </p>
+          <select
+            aria-label="Số địa điểm mỗi trang"
+            className={`${inputClass} py-1.5 ps-3 pe-9`}
+            onChange={(event) => {
+              setPageSize(Number(event.target.value));
+              setPage(1);
+            }}
+            value={pageSize}
+          >
+            {PAGE_SIZE_OPTIONS.map((size) => (
+              <option key={size} value={size}>
+                {size} / trang
+              </option>
+            ))}
+          </select>
         </div>
 
-        <div className="flex items-center gap-1">
+        <nav aria-label="Phân trang" className="flex items-center gap-x-1">
           <button
-            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="Trang trước"
+            className={pageButtonClass}
             disabled={currentPage <= 1}
             onClick={() => setPage((prev) => Math.max(1, prev - 1))}
             type="button"
           >
-            <span className="material-symbols-outlined text-[18px]">
-              chevron_left
-            </span>
+            <DestinationIcon name="chevronLeft" className="size-3.5" />
           </button>
           {Array.from({ length: totalPages }, (_, index) => index + 1).map(
             (pageNumber) => (
               <button
-                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition ${
+                aria-current={pageNumber === currentPage ? "page" : undefined}
+                className={`flex min-h-9.5 min-w-9.5 items-center justify-center rounded-lg px-3 py-2 text-sm focus:outline-hidden ${
                   pageNumber === currentPage
-                    ? "bg-brand-500 text-white shadow-sm"
-                    : "text-slate-600 hover:bg-slate-100"
+                    ? "bg-muted text-foreground"
+                    : "text-foreground hover:bg-muted-hover focus:bg-muted-focus"
                 }`}
                 key={pageNumber}
                 onClick={() => setPage(pageNumber)}
@@ -497,20 +476,19 @@ export function DestinationsManager({
               >
                 {pageNumber}
               </button>
-            )
+            ),
           )}
           <button
-            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="Trang sau"
+            className={pageButtonClass}
             disabled={currentPage >= totalPages}
             onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
             type="button"
           >
-            <span className="material-symbols-outlined text-[18px]">
-              chevron_right
-            </span>
+            <DestinationIcon name="chevronRight" className="size-3.5" />
           </button>
-        </div>
+        </nav>
       </div>
-    </div>
+    </section>
   );
 }

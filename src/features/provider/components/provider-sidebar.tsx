@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SidebarAccountDropdown } from "@/shared/components/sidebar-account-dropdown";
 import { useEffect, type ReactNode } from "react";
 
 export const PROVIDER_SIDEBAR_ID = "hs-provider-sidebar";
@@ -118,8 +119,13 @@ function isActive(pathname: string, href: string) {
   return href !== "#" && (pathname === href || pathname.startsWith(`${href}/`));
 }
 
-export function ProviderSidebar() {
+export function ProviderSidebar({
+  user,
+}: {
+  user: { name?: string | null; email?: string | null };
+}) {
   const pathname = usePathname();
+  const name = user.name || user.email || "Đối tác";
 
   useEffect(() => {
     (window as HSWindow).HSOverlay?.close(`#${PROVIDER_SIDEBAR_ID}`);
@@ -164,7 +170,7 @@ export function ProviderSidebar() {
           </div>
         </header>
 
-        <nav className="h-full overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-none [&::-webkit-scrollbar-thumb]:bg-scrollbar-thumb [&::-webkit-scrollbar-track]:bg-scrollbar-track">
+        <nav className="min-h-0 flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-none [&::-webkit-scrollbar-thumb]:bg-scrollbar-thumb [&::-webkit-scrollbar-track]:bg-scrollbar-track">
           <div
             className="hs-accordion-group flex w-full flex-col flex-wrap px-2 pb-0"
             data-hs-accordion-always-open
@@ -188,7 +194,7 @@ export function ProviderSidebar() {
                 }
 
                 const open = item.children.some((child) =>
-                  isActive(pathname, child.href)
+                  isActive(pathname, child.href),
                 );
                 const accordionId = `${PROVIDER_SIDEBAR_ID}-accordion-${index}`;
 
@@ -265,6 +271,31 @@ export function ProviderSidebar() {
             </ul>
           </div>
         </nav>
+
+        <SidebarAccountDropdown
+          id="hs-provider-account-dropdown"
+          name={name}
+          email={user.email}
+          roleLabel="Nhà cung cấp"
+          links={[
+            {
+              label: "Hồ sơ doanh nghiệp",
+              href: "/provider/profiles",
+              icon: (
+                <Icon>
+                  <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" />
+                  <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" />
+                  <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2" />
+                  <path d="M10 6h4" />
+                  <path d="M10 10h4" />
+                  <path d="M10 14h4" />
+                  <path d="M10 18h4" />
+                </Icon>
+              ),
+            },
+          ]}
+          signOutUrl="/sign-in"
+        />
       </div>
     </div>
   );

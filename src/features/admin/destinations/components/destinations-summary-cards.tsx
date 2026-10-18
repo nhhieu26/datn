@@ -1,13 +1,12 @@
 import type { DestinationsSummary } from "../types";
+import { DestinationIcon, type DestinationIconName } from "./destination-icon";
 
 type SummaryCard = {
   label: string;
-  value: number;
-  hint: string;
-  icon: string;
+  value: string | number;
+  detail: string;
+  icon: DestinationIconName;
   iconClass: string;
-  valueClass: string;
-  filled?: boolean;
 };
 
 export function DestinationsSummaryCards({
@@ -19,60 +18,56 @@ export function DestinationsSummaryCards({
     {
       label: "Tổng số địa điểm",
       value: summary.total,
-      hint: "Toàn bộ kho địa điểm",
-      icon: "explore",
-      iconClass: "bg-slate-100 text-slate-700",
-      valueClass: "text-slate-900",
+      detail: "Toàn bộ kho địa điểm",
+      icon: "compass",
+      iconClass: "bg-primary-100 text-primary-700",
     },
     {
       label: "Đã xuất bản",
       value: summary.published,
-      hint: "Hiển thị với du khách",
-      icon: "check_circle",
-      iconClass: "bg-emerald-50 text-emerald-600",
-      valueClass: "text-emerald-600",
-      filled: true,
+      detail: "Hiển thị với du khách",
+      icon: "check",
+      iconClass: "bg-teal-100 text-teal-700",
     },
     {
       label: "Bản nháp",
       value: summary.draft,
-      hint: "Chưa hiển thị công khai",
-      icon: "schedule",
-      iconClass: "bg-amber-50 text-amber-600",
-      valueClass: "text-amber-600",
+      detail: "Chưa hiển thị công khai",
+      icon: "draft",
+      iconClass: "bg-yellow-100 text-yellow-700",
+    },
+    {
+      label: "Tỷ lệ xuất bản",
+      value: `${Math.round((summary.published / Math.max(summary.total, 1)) * 100)}%`,
+      detail: "Trên tổng địa điểm hiện có",
+      icon: "chart",
+      iconClass: "bg-surface text-surface-foreground",
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
       {cards.map((card) => (
         <div
           key={card.label}
-          className="flex items-center gap-3.5 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm"
+          className="flex flex-col rounded-xl border border-card-line bg-card shadow-2xs"
         >
-          <div
-            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${card.iconClass}`}
-          >
-            <span
-              className="material-symbols-outlined text-[22px]"
-              style={
-                card.filled ? { fontVariationSettings: "'FILL' 1" } : undefined
-              }
-            >
-              {card.icon}
-            </span>
-          </div>
-          <div className="min-w-0">
-            <div className="truncate text-xs font-semibold tracking-wide text-slate-500 uppercase">
-              {card.label}
-            </div>
+          <div className="flex gap-x-4 p-4 md:p-5">
             <div
-              className={`mt-0.5 text-2xl font-extrabold ${card.valueClass}`}
+              className={`flex size-11 shrink-0 items-center justify-center rounded-lg ${card.iconClass}`}
             >
-              {card.value}
+              <DestinationIcon name={card.icon} className="size-5" />
             </div>
-            <div className="truncate text-[11px] font-medium text-slate-400">
-              {card.hint}
+            <div className="min-w-0 grow">
+              <p className="text-xs tracking-wide text-muted-foreground-1 uppercase">
+                {card.label}
+              </p>
+              <h3 className="mt-1 text-xl font-medium text-foreground sm:text-2xl">
+                {card.value}
+              </h3>
+              <p className="mt-0.5 truncate text-xs text-muted-foreground-1">
+                {card.detail}
+              </p>
             </div>
           </div>
         </div>
