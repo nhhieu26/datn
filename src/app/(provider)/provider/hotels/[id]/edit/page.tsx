@@ -34,6 +34,8 @@ export default async function EditHotelPage({
     tagRepo.findAll(),
   ]);
   if (!hotel) notFound();
+  // Khách sạn đã dừng chờ xóa thì không cho sửa
+  if (hotel.deleteScheduledAt) redirect("/provider/hotels");
 
   return (
     <main className="flex-1 overflow-y-auto bg-background-1 font-inter text-foreground">

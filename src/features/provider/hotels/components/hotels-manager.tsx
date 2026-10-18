@@ -4,8 +4,10 @@ import type { ServiceStatus } from "@/generated/prisma/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
+import { restoreHotelAction } from "../actions";
 import { HotelListItem } from "../types";
+import { DeleteHotelDialog } from "./delete-hotel-dialog";
 import { HotelIcon, type HotelIconName } from "./hotel-icon";
 
 type HSWindow = Window & {
@@ -19,7 +21,10 @@ type HotelStatusMeta = {
   dotClass: string;
 };
 
-const statusMeta: Record<ServiceStatus, HotelStatusMeta> = {
+// "stopped": provider đã xóa, khách sạn dừng bán và chờ cron xóa mềm
+type HotelDisplayStatus = ServiceStatus | "stopped";
+
+const statusMeta: Record<HotelDisplayStatus, HotelStatusMeta> = {
   published: {
     label: "Đang mở bán",
     icon: "check",
@@ -32,13 +37,24 @@ const statusMeta: Record<ServiceStatus, HotelStatusMeta> = {
     className: "bg-red-100 text-red-800",
     dotClass: "bg-red-500",
   },
+  stopped: {
+    label: "Đã dừng",
+    icon: "trash",
+    className: "bg-red-100 text-red-800",
+    dotClass: "bg-red-500",
+  },
 };
 
-const statusFilters: { value: ServiceStatus | "all"; label: string }[] = [
+const statusFilters: { value: HotelDisplayStatus | "all"; label: string }[] = [
   { value: "all", label: "Tất cả trạng thái" },
   { value: "published", label: "Đang mở bán" },
   { value: "paused", label: "Tạm dừng" },
+  { value: "stopped", label: "Đã dừng" },
 ];
+
+function getDisplayStatus(hotel: HotelListItem): HotelDisplayStatus {
+  return hotel.deleteScheduledAt ? "stopped" : hotel.status;
+}
 
 const PAGE_SIZE_OPTIONS = [6, 12, 24];
 
@@ -54,15 +70,25 @@ const primaryButtonClass =
 const dropdownItemClass =
   "flex w-full items-center gap-x-3 rounded-lg px-3 py-2 text-start text-sm text-dropdown-item-foreground hover:bg-dropdown-item-hover focus:bg-dropdown-item-focus focus:outline-hidden";
 
-function StatusBadge({ status }: { status: ServiceStatus }) {
-  const meta = statusMeta[status];
+function StatusBadge({ hotel }: { hotel: HotelListItem }) {
+  const meta = statusMeta[getDisplayStatus(hotel)];
   return (
-    <span
-      className={`inline-flex items-center gap-x-1.5 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${meta.className}`}
-    >
-      <HotelIcon name={meta.icon} className="size-3" />
-      {meta.label}
-    </span>
+    <div>
+      <span
+        className={`inline-flex items-center gap-x-1.5 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${meta.className}`}
+      >
+        <HotelIcon name={meta.icon} className="size-3" />
+        {meta.label}
+      </span>
+      {hotel.deleteScheduledAt ? (
+        <span className="mt-1 block text-xs whitespace-nowrap text-muted-foreground-1">
+          {new Date(hotel.deleteScheduledAt) <= new Date() &&
+          hotel.activeBookings > 0
+            ? `Chờ xóa – còn ${hotel.activeBookings} booking đang xử lý`
+            : `Xóa ngày ${formatDate(hotel.deleteScheduledAt)}`}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
@@ -86,8 +112,20 @@ function Rating({ hotel }: { hotel: HotelListItem }) {
   );
 }
 
-function RowActions({ hotel }: { hotel: HotelListItem }) {
+type RowHandlers = {
+  onDelete: (hotel: HotelListItem) => void;
+  onRestore: (hotel: HotelListItem) => void;
+  isRestoring: boolean;
+};
+
+function RowActions({
+  hotel,
+  onDelete,
+  onRestore,
+  isRestoring,
+}: { hotel: HotelListItem } & RowHandlers) {
   const dropdownId = `hs-hotel-actions-${hotel.id}`;
+  const isStopped = hotel.deleteScheduledAt !== null;
 
   return (
     <div className="hs-dropdown relative inline-flex [--placement:bottom-right]">
@@ -109,13 +147,15 @@ function RowActions({ hotel }: { hotel: HotelListItem }) {
         aria-labelledby={dropdownId}
       >
         <div className="space-y-0.5 p-1">
-          <Link
-            className={dropdownItemClass}
-            href={`/provider/hotels/${hotel.id}/edit`}
-          >
-            <HotelIcon name="edit" />
-            Chỉnh sửa
-          </Link>
+          {isStopped ? null : (
+            <Link
+              className={dropdownItemClass}
+              href={`/provider/hotels/${hotel.id}/edit`}
+            >
+              <HotelIcon name="edit" />
+              Chỉnh sửa
+            </Link>
+          )}
           <button className={dropdownItemClass} type="button">
             <HotelIcon name="eye" />
             Xem chi tiết
@@ -125,21 +165,39 @@ function RowActions({ hotel }: { hotel: HotelListItem }) {
             Quản lý phòng
           </button>
         </div>
-        <div className="space-y-0.5 border-t border-dropdown-divider p-1">
-          <button
-            className="flex w-full items-center gap-x-3 rounded-lg px-3 py-2 text-start text-sm text-red-600 hover:bg-red-50 focus:bg-red-50 focus:outline-hidden"
-            type="button"
-          >
-            <HotelIcon name="trash" />
-            Xóa khách sạn
-          </button>
-        </div>
+        {isStopped ? (
+          <div className="space-y-0.5 border-t border-dropdown-divider p-1">
+            <button
+              className={`${dropdownItemClass} disabled:pointer-events-none disabled:opacity-50`}
+              disabled={isRestoring}
+              onClick={() => onRestore(hotel)}
+              type="button"
+            >
+              <HotelIcon name="reset" />
+              Khôi phục khách sạn
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-0.5 border-t border-dropdown-divider p-1">
+            <button
+              className="flex w-full items-center gap-x-3 rounded-lg px-3 py-2 text-start text-sm text-red-600 hover:bg-red-50 focus:bg-red-50 focus:outline-hidden"
+              onClick={() => onDelete(hotel)}
+              type="button"
+            >
+              <HotelIcon name="trash" />
+              Xóa khách sạn
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function HotelRow({ hotel }: { hotel: HotelListItem }) {
+function HotelRow({
+  hotel,
+  ...handlers
+}: { hotel: HotelListItem } & RowHandlers) {
   return (
     <tr className="hover:bg-layer-hover">
       <td className="min-w-80 px-6 py-4 align-middle">
@@ -159,7 +217,7 @@ function HotelRow({ hotel }: { hotel: HotelListItem }) {
             </span>
             <span className="mt-0.5 inline-flex items-center gap-x-1.5 text-xs text-muted-foreground-1">
               <span
-                className={`size-1.5 rounded-full ${statusMeta[hotel.status].dotClass}`}
+                className={`size-1.5 rounded-full ${statusMeta[getDisplayStatus(hotel)].dotClass}`}
               />
               {hotel.provinceName}
             </span>
@@ -207,11 +265,11 @@ function HotelRow({ hotel }: { hotel: HotelListItem }) {
       </td>
 
       <td className="px-6 py-4 align-middle">
-        <StatusBadge status={hotel.status} />
+        <StatusBadge hotel={hotel} />
       </td>
 
       <td className="px-6 py-4 text-end align-middle whitespace-nowrap">
-        <RowActions hotel={hotel} />
+        <RowActions hotel={hotel} {...handlers} />
       </td>
     </tr>
   );
@@ -248,9 +306,14 @@ export function HotelsManager({ hotels }: { hotels: HotelListItem[] }) {
   const [isRefreshing, startRefresh] = useTransition();
   const [search, setSearch] = useState("");
   const [provinceFilter, setProvinceFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<ServiceStatus | "all">(
-    "all",
+  const [statusFilter, setStatusFilter] = useState<
+    HotelDisplayStatus | "all"
+  >("all");
+  const [deletingHotel, setDeletingHotel] = useState<HotelListItem | null>(
+    null,
   );
+  const [isRestoring, startRestore] = useTransition();
+  const [restoreError, setRestoreError] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
 
@@ -272,7 +335,7 @@ export function HotelsManager({ hotels }: { hotels: HotelListItem[] }) {
       const matchesProvince =
         provinceFilter === "all" || hotel.provinceName === provinceFilter;
       const matchesStatus =
-        statusFilter === "all" || hotel.status === statusFilter;
+        statusFilter === "all" || getDisplayStatus(hotel) === statusFilter;
       return matchesSearch && matchesProvince && matchesStatus;
     });
   }, [hotels, search, provinceFilter, statusFilter]);
@@ -289,6 +352,18 @@ export function HotelsManager({ hotels }: { hotels: HotelListItem[] }) {
   useEffect(() => {
     (window as HSWindow).HSDropdown?.autoInit();
   }, [paginatedHotels]);
+
+  const handleRestore = (hotel: HotelListItem) => {
+    setRestoreError("");
+    startRestore(async () => {
+      const result = await restoreHotelAction(hotel.id);
+      if (result.status !== "success") {
+        setRestoreError(result.formError ?? "Không thể khôi phục khách sạn.");
+        return;
+      }
+      router.refresh();
+    });
+  };
 
   const handleReset = () => {
     setSearch("");
@@ -345,7 +420,7 @@ export function HotelsManager({ hotels }: { hotels: HotelListItem[] }) {
             aria-label="Lọc theo trạng thái"
             className={`${inputClass} ps-3 pe-9`}
             onChange={(event) => {
-              setStatusFilter(event.target.value as ServiceStatus | "all");
+              setStatusFilter(event.target.value as HotelDisplayStatus | "all");
               setPage(1);
             }}
             value={statusFilter}
@@ -372,6 +447,12 @@ export function HotelsManager({ hotels }: { hotels: HotelListItem[] }) {
           </button>
         </div>
       </div>
+
+      {restoreError ? (
+        <p className="border-b border-card-line bg-red-50 px-6 py-3 text-sm text-red-700">
+          {restoreError}
+        </p>
+      ) : null}
 
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-table-line">
@@ -414,7 +495,13 @@ export function HotelsManager({ hotels }: { hotels: HotelListItem[] }) {
               </tr>
             ) : (
               paginatedHotels.map((hotel) => (
-                <HotelRow key={hotel.id} hotel={hotel} />
+                <HotelRow
+                  hotel={hotel}
+                  isRestoring={isRestoring}
+                  key={hotel.id}
+                  onDelete={setDeletingHotel}
+                  onRestore={handleRestore}
+                />
               ))
             )}
           </tbody>
@@ -486,6 +573,13 @@ export function HotelsManager({ hotels }: { hotels: HotelListItem[] }) {
           </button>
         </nav>
       </div>
+
+      {deletingHotel ? (
+        <DeleteHotelDialog
+          hotel={deletingHotel}
+          onClose={() => setDeletingHotel(null)}
+        />
+      ) : null}
     </div>
   );
 }

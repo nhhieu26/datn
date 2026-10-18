@@ -16,13 +16,21 @@ import type {
 
 type UploadedImage = { url: string; fileId: string };
 
+// Booking chưa kết thúc: khách sạn còn các booking này thì chưa được xóa mềm
+const ACTIVE_BOOKING_STATUSES: BookingStatus[] = [
+  "pending_payment",
+  "pending_confirmation",
+  "paid",
+  "confirmed",
+];
+
 export function findBySlug(slug: string): Promise<Hotel | null> {
   return prisma.hotel.findUnique({ where: { slug } });
 }
 
 export function findPublishedDetailBySlug(slug: string) {
   return prisma.hotel.findFirst({
-    where: { slug, status: "published" },
+    where: { slug, status: "published", deletedAt: null },
     include: {
       province: true,
       tags: { include: { tag: true } },
@@ -35,7 +43,7 @@ export function findAllByProviderProfileId(
   providerProfileId: string
 ): Promise<HotelForProviderList[]> {
   return prisma.hotel.findMany({
-    where: { providerProfileId },
+    where: { providerProfileId, deletedAt: null },
     include: {
       province: true,
       tags: { include: { tag: true } },
@@ -47,6 +55,10 @@ export function findAllByProviderProfileId(
                 where: { status: { in: ["paid", "confirmed", "completed"] } },
               },
             },
+          },
+          bookings: {
+            where: { status: { in: ACTIVE_BOOKING_STATUSES } },
+            select: { id: true },
           },
         },
       },
@@ -92,19 +104,12 @@ export function create(input: {
   });
 }
 
-const ACTIVE_BOOKING_STATUSES: BookingStatus[] = [
-  "pending_payment",
-  "pending_confirmation",
-  "paid",
-  "confirmed",
-];
-
 export function findByIdForProvider(
   id: string,
   providerProfileId: string
 ): Promise<HotelForProvider | null> {
   return prisma.hotel.findFirst({
-    where: { id, providerProfileId },
+    where: { id, providerProfileId, deletedAt: null },
     include: {
       province: true,
       tags: { include: { tag: true } },
@@ -180,9 +185,56 @@ export function remove(id: string): Promise<Hotel> {
   return prisma.hotel.delete({ where: { id } });
 }
 
+/** Dừng bán khách sạn và hẹn ngày xóa. Trả về số khách sạn bị ảnh hưởng (0 nếu không tìm thấy hoặc đã dừng). */
+export async function scheduleDeletion(
+  id: string,
+  providerProfileId: string,
+  deleteAt: Date
+): Promise<number> {
+  const { count } = await prisma.hotel.updateMany({
+    where: { id, providerProfileId, deletedAt: null, deleteScheduledAt: null },
+    data: { status: "paused", deleteScheduledAt: deleteAt },
+  });
+  return count;
+}
+
+/** Hủy lịch xóa, mở bán lại khách sạn đã dừng. Trả về 0 nếu khách sạn không ở trạng thái đã dừng. */
+export async function cancelDeletion(
+  id: string,
+  providerProfileId: string
+): Promise<number> {
+  const { count } = await prisma.hotel.updateMany({
+    where: {
+      id,
+      providerProfileId,
+      deletedAt: null,
+      deleteScheduledAt: { not: null },
+    },
+    data: { status: "published", deleteScheduledAt: null },
+  });
+  return count;
+}
+
+/** Xóa mềm các khách sạn đã tới hạn xóa và không còn booking chưa kết thúc. */
+export async function softDeleteExpired(now: Date): Promise<number> {
+  const { count } = await prisma.hotel.updateMany({
+    where: {
+      deleteScheduledAt: { lte: now },
+      deletedAt: null,
+      rooms: {
+        none: {
+          bookings: { some: { status: { in: ACTIVE_BOOKING_STATUSES } } },
+        },
+      },
+    },
+    data: { deletedAt: now },
+  });
+  return count;
+}
+
 export function findRecent(take: number) {
   return prisma.hotel.findMany({
-    where: { status: "published" },
+    where: { status: "published", deletedAt: null },
     include: { province: true, rooms: true },
     orderBy: { createdAt: "desc" },
     take,
@@ -192,6 +244,7 @@ export function findRecent(take: number) {
 export async function findPaged(filter: ListFilter) {
   const where: Prisma.HotelWhereInput = {
     status: "published",
+    deletedAt: null,
     ...(filter.province && { province: { name: filter.province } }),
     ...(filter.tag && { tags: { some: { tag: { name: filter.tag } } } }),
     ...(filter.q && {

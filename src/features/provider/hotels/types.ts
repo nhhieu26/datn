@@ -17,6 +17,8 @@ export type HotelListItem = {
   rating: number | null;
   reviewCount: number;
   status: ServiceStatus;
+  deleteScheduledAt: string | null;
+  activeBookings: number;
 };
 
 export type HotelsSummary = {

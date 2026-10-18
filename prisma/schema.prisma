@@ -234,6 +234,9 @@ model Hotel {
   status            ServiceStatus   @default(published)
   ratingAvg         Decimal         @default(0) @db.Decimal(2, 1)
   reviewCount       Int             @default(0)
+  // Provider xóa khách sạn: dừng ngay, cron xóa mềm khi tới hạn
+  deleteScheduledAt DateTime?
+  deletedAt         DateTime?
 
   tags    HotelTag[]
   rooms   Room[]
@@ -241,6 +244,8 @@ model Hotel {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([deleteScheduledAt])
 }
 
 model HotelTag {

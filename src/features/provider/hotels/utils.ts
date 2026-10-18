@@ -67,6 +67,11 @@ export function mapHotelToListItem(hotel: HotelForProviderList): HotelListItem {
     rating: null,
     reviewCount: 0,
     status: hotel.status,
+    deleteScheduledAt: hotel.deleteScheduledAt?.toISOString() ?? null,
+    activeBookings: hotel.rooms.reduce(
+      (total, room) => total + room.bookings.length,
+      0,
+    ),
   };
 }
 

@@ -64,7 +64,7 @@ export function createHeld(customerId: string, input: CreateHotelBookingInput) {
       where: {
         id: input.roomId,
         status: "published",
-        hotel: { status: "published" },
+        hotel: { status: "published", deletedAt: null },
       },
       include: { hotel: true },
     });
