@@ -6,7 +6,14 @@ import {
   NotFoundError,
 } from "@/shared/lib/errors";
 import type { CreateReviewInput } from "./schema";
-import type { ReviewableBooking, ReviewItem, ReviewKind } from "./type";
+import type {
+  ProviderReviewFilter,
+  ProviderReviewItem,
+  ProviderReviewSummary,
+  ReviewableBooking,
+  ReviewItem,
+  ReviewKind,
+} from "./type";
 
 type Tx = Prisma.TransactionClient;
 
@@ -37,6 +44,82 @@ export async function findManyByService(
     ...row,
     customerName: customer.fullname,
   }));
+}
+
+function providerWhere(
+  kind: ReviewKind,
+  providerProfileId: string
+): Prisma.ReviewWhereInput {
+  if (kind === "tour") return { tour: { providerProfileId } };
+  if (kind === "hotel") return { hotel: { providerProfileId } };
+  return { restaurant: { providerProfileId } };
+}
+
+/** Review của các dịch vụ thuộc một hồ sơ provider, mới nhất trước. */
+export async function findPageByProviderProfileId(
+  kind: ReviewKind,
+  providerProfileId: string,
+  filter: ProviderReviewFilter,
+  { skip, take }: { skip: number; take: number }
+): Promise<{ items: ProviderReviewItem[]; total: number }> {
+  const where: Prisma.ReviewWhereInput = {
+    ...providerWhere(kind, providerProfileId),
+    ...(filter.rating ? { rating: filter.rating } : {}),
+  };
+  const [rows, total] = await Promise.all([
+    prisma.review.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take,
+      select: {
+        id: true,
+        rating: true,
+        content: true,
+        createdAt: true,
+        customer: { select: { fullname: true } },
+        tour: { select: { title: true, slug: true } },
+        hotel: { select: { name: true, slug: true } },
+        restaurant: { select: { name: true, slug: true } },
+      },
+    }),
+    prisma.review.count({ where }),
+  ]);
+  const items = rows.map(({ customer, tour, hotel, restaurant, ...row }) => {
+    const service = tour
+      ? { serviceName: tour.title, serviceSlug: tour.slug }
+      : hotel
+        ? { serviceName: hotel.name, serviceSlug: hotel.slug }
+        : { serviceName: restaurant?.name ?? "", serviceSlug: restaurant?.slug ?? "" };
+    return { ...row, customerName: customer.fullname, ...service };
+  });
+  return { items, total };
+}
+
+/** Điểm trung bình và phân bố sao của provider (không phụ thuộc bộ lọc). */
+export async function summarizeByProviderProfileId(
+  kind: ReviewKind,
+  providerProfileId: string
+): Promise<ProviderReviewSummary> {
+  const groups = await prisma.review.groupBy({
+    by: ["rating"],
+    where: providerWhere(kind, providerProfileId),
+    _count: { _all: true },
+  });
+  const distribution: ProviderReviewSummary["distribution"] = [0, 0, 0, 0, 0];
+  let sum = 0;
+  let total = 0;
+  for (const g of groups) {
+    if (g.rating < 1 || g.rating > 5) continue;
+    distribution[g.rating - 1] = g._count._all;
+    sum += g.rating * g._count._all;
+    total += g._count._all;
+  }
+  return {
+    total,
+    average: total ? Math.round((sum / total) * 10) / 10 : 0,
+    distribution,
+  };
 }
 
 export async function findReviewableBookings(
