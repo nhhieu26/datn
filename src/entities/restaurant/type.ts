@@ -13,3 +13,12 @@ export type RestaurantWithRelations = Prisma.RestaurantGetPayload<{
     timeSlots: true;
   };
 }>;
+
+export type RestaurantForProviderList = Prisma.RestaurantGetPayload<{
+  include: {
+    province: true;
+    tags: { include: { tag: true } };
+    timeSlots: true;
+    _count: { select: { bookings: true } };
+  };
+}>;

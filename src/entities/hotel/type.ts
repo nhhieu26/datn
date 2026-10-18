@@ -26,3 +26,11 @@ export type HotelForProvider = Prisma.HotelGetPayload<{
     rooms: { include: { _count: { select: { bookings: true } } } };
   };
 }>;
+
+export type HotelForProviderList = Prisma.HotelGetPayload<{
+  include: {
+    province: true;
+    tags: { include: { tag: true } };
+    rooms: { include: { _count: { select: { bookings: true } } } };
+  };
+}>;

@@ -181,6 +181,13 @@ function RestaurantRow({ restaurant }: { restaurant: RestaurantListItem }) {
         </span>
       </td>
 
+      <td className="px-6 py-4 align-middle whitespace-nowrap">
+        <span className="block text-sm font-medium text-foreground">
+          {restaurant.totalBookings}
+        </span>
+        <span className="block text-xs text-muted-foreground-1">lượt đặt</span>
+      </td>
+
       <td className="px-6 py-4 align-middle">
         <StatusBadge status={restaurant.status} />
       </td>
@@ -358,6 +365,7 @@ export function RestaurantsManager({
                 "Giá thấp nhất / Địa chỉ",
                 "Sức chứa",
                 "Thực đơn",
+                "Tổng booking",
                 "Trạng thái",
               ].map((label) => (
                 <th
@@ -382,7 +390,7 @@ export function RestaurantsManager({
               <tr>
                 <td
                   className="px-6 py-10 text-center text-sm text-muted-foreground-1"
-                  colSpan={6}
+                  colSpan={7}
                 >
                   Không tìm thấy nhà hàng phù hợp với bộ lọc.
                 </td>

@@ -1,4 +1,7 @@
-import type { RestaurantWithRelations } from "@/entities/restaurant";
+import type {
+  RestaurantForProviderList,
+  RestaurantWithRelations,
+} from "@/entities/restaurant";
 import { formatEntityCode } from "@/lib/utils";
 import type { RestaurantListItem, RestaurantsSummary } from "./types";
 import type { RestaurantFormState } from "./components/restaurant-form";
@@ -40,7 +43,7 @@ function findLowestMenuPrice(menu: unknown): number | null {
 }
 
 export function mapRestaurantToListItem(
-  restaurant: RestaurantWithRelations
+  restaurant: RestaurantForProviderList
 ): RestaurantListItem {
   const menuItems = extractMenuItems(restaurant.menu);
 
@@ -56,6 +59,7 @@ export function mapRestaurantToListItem(
     menuItemCount: menuItems.length,
     lowestMenuPrice: findLowestMenuPrice(restaurant.menu),
     tagNames: restaurant.tags.map((item) => item.tag.name),
+    totalBookings: restaurant._count.bookings,
     status: restaurant.status,
   };
 }

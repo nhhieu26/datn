@@ -1,4 +1,8 @@
-import type { HotelForProvider, HotelWithRelations } from "@/entities/hotel";
+import type {
+  HotelForProvider,
+  HotelForProviderList,
+  HotelWithRelations,
+} from "@/entities/hotel";
 import { formatEntityCode } from "@/lib/utils";
 import { HotelListItem, HotelsSummary } from "./types";
 import type {
@@ -40,7 +44,7 @@ function findAverageRoomBasePrice(
   return total / rooms.length;
 }
 
-export function mapHotelToListItem(hotel: HotelWithRelations): HotelListItem {
+export function mapHotelToListItem(hotel: HotelForProviderList): HotelListItem {
   const code = formatEntityCode("HT", hotel.id);
 
   return {
@@ -56,7 +60,10 @@ export function mapHotelToListItem(hotel: HotelWithRelations): HotelListItem {
     lowestRoomPrice: findLowestRoomBasePrice(hotel.rooms),
     averageRoomPrice: findAverageRoomBasePrice(hotel.rooms),
     tagNames: hotel.tags.map((item) => item.tag.name),
-    totalBookings: 0,
+    totalBookings: hotel.rooms.reduce(
+      (total, room) => total + room._count.bookings,
+      0,
+    ),
     rating: null,
     reviewCount: 0,
     status: hotel.status,

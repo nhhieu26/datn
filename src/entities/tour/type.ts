@@ -18,3 +18,11 @@ export type TourWithRelations = Prisma.TourGetPayload<{
     departures: true;
   };
 }>;
+
+export type TourForProvider = Prisma.TourGetPayload<{
+  include: {
+    province: true;
+    tags: { include: { tag: true } };
+    departures: { include: { _count: { select: { bookings: true } } } };
+  };
+}>;

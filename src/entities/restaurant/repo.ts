@@ -9,6 +9,7 @@ import {
 import type {
   CreateRestaurantInput,
   Restaurant,
+  RestaurantForProviderList,
   RestaurantWithRelations,
   UpdateRestaurantInput,
 } from "./type";
@@ -30,13 +31,20 @@ export function findPublishedDetailBySlug(slug: string) {
 
 export function findAllByProviderProfileId(
   providerProfileId: string
-): Promise<RestaurantWithRelations[]> {
+): Promise<RestaurantForProviderList[]> {
   return prisma.restaurant.findMany({
     where: { providerProfileId },
     include: {
       province: true,
       tags: { include: { tag: true } },
       timeSlots: true,
+      _count: {
+        select: {
+          bookings: {
+            where: { status: { in: ["paid", "confirmed", "completed"] } },
+          },
+        },
+      },
     },
     orderBy: { createdAt: "desc" },
   });

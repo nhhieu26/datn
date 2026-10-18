@@ -9,7 +9,7 @@ import {
 import type {
   Hotel,
   HotelForProvider,
-  HotelWithRelations,
+  HotelForProviderList,
   RoomDraftInput,
   UpdateHotelInput,
 } from "./type";
@@ -33,13 +33,23 @@ export function findPublishedDetailBySlug(slug: string) {
 
 export function findAllByProviderProfileId(
   providerProfileId: string
-): Promise<HotelWithRelations[]> {
+): Promise<HotelForProviderList[]> {
   return prisma.hotel.findMany({
     where: { providerProfileId },
     include: {
       province: true,
       tags: { include: { tag: true } },
-      rooms: true,
+      rooms: {
+        include: {
+          _count: {
+            select: {
+              bookings: {
+                where: { status: { in: ["paid", "confirmed", "completed"] } },
+              },
+            },
+          },
+        },
+      },
     },
     orderBy: { createdAt: "desc" },
   });

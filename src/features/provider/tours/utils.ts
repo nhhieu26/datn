@@ -1,4 +1,4 @@
-import type { TourWithRelations } from "@/entities/tour";
+import type { TourForProvider, TourWithRelations } from "@/entities/tour";
 import { TourListItem, ToursSummary } from "./types";
 import type {
   ItineraryDay,
@@ -37,7 +37,7 @@ function findNearestScheduledDeparture(
   return upcoming.length > 0 ? upcoming[0].departureDate.toISOString() : null;
 }
 
-export function mapTourToListItem(tour: TourWithRelations): TourListItem {
+export function mapTourToListItem(tour: TourForProvider): TourListItem {
   const code = formatEntityCode("TR", tour.id);
   const category =
     tour.tags.map((tourTag) => tourTag.tag.name).join(", ") || "Chưa phân loại";
@@ -54,7 +54,10 @@ export function mapTourToListItem(tour: TourWithRelations): TourListItem {
     durationNights: tour.durationNights,
     basePrice: Number(tour.basePrice),
     nearestDepartureDate: findNearestScheduledDeparture(tour.departures),
-    totalBookings: 0,
+    totalBookings: tour.departures.reduce(
+      (total, departure) => total + departure._count.bookings,
+      0,
+    ),
     rating: null,
     reviewCount: 0,
     status: tour.status,

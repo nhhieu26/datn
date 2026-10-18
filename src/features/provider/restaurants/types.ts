@@ -12,6 +12,7 @@ export type RestaurantListItem = {
   menuItemCount: number;
   lowestMenuPrice: number | null;
   tagNames: string[];
+  totalBookings: number;
   status: ServiceStatus;
 };
 

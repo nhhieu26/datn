@@ -195,6 +195,13 @@ function HotelRow({ hotel }: { hotel: HotelListItem }) {
       </td>
 
       <td className="px-6 py-4 align-middle whitespace-nowrap">
+        <span className="block text-sm font-medium text-foreground">
+          {hotel.totalBookings}
+        </span>
+        <span className="block text-xs text-muted-foreground-1">lượt đặt</span>
+      </td>
+
+      <td className="px-6 py-4 align-middle whitespace-nowrap">
         <Rating hotel={hotel} />
       </td>
 
@@ -364,6 +371,7 @@ export function HotelsManager({ hotels }: { hotels: HotelListItem[] }) {
                 "Khách sạn & Địa điểm",
                 "Giá thấp nhất / Địa chỉ",
                 "Loại phòng",
+                "Tổng booking",
                 "Đánh giá",
                 "Trạng thái",
               ].map((label) => (
@@ -389,7 +397,7 @@ export function HotelsManager({ hotels }: { hotels: HotelListItem[] }) {
               <tr>
                 <td
                   className="px-6 py-10 text-center text-sm text-muted-foreground-1"
-                  colSpan={6}
+                  colSpan={7}
                 >
                   Không tìm thấy khách sạn phù hợp với bộ lọc.
                 </td>

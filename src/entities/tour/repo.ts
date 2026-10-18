@@ -4,6 +4,7 @@ import { type ListFilter, priceOrder, priceRange } from "../list-filter";
 import type {
   CreateTourInput,
   Tour,
+  TourForProvider,
   TourWithRelations,
   UpdateTourInput,
 } from "./type";
@@ -28,13 +29,23 @@ export function findPublishedDetailBySlug(slug: string) {
 
 export function findAllByProviderProfileId(
   providerProfileId: string
-): Promise<TourWithRelations[]> {
+): Promise<TourForProvider[]> {
   return prisma.tour.findMany({
     where: { providerProfileId },
     include: {
       province: true,
       tags: { include: { tag: true } },
-      departures: true,
+      departures: {
+        include: {
+          _count: {
+            select: {
+              bookings: {
+                where: { status: { in: ["paid", "confirmed", "completed"] } },
+              },
+            },
+          },
+        },
+      },
     },
     orderBy: { createdAt: "desc" },
   });
