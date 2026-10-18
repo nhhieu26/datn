@@ -11,6 +11,15 @@ export function findBySlug(slug: string): Promise<Destination | null> {
   return prisma.destination.findUnique({ where: { slug } });
 }
 
+export function findById(
+  id: string
+): Promise<DestinationWithRelations | null> {
+  return prisma.destination.findUnique({
+    where: { id },
+    include: { province: true, tags: { include: { tag: true } } },
+  });
+}
+
 export function findPublishedDetailBySlug(slug: string) {
   return prisma.destination.findFirst({
     where: { slug, isPublished: true },
@@ -53,6 +62,28 @@ export function create(
         create: tagIds.map((tagId) => ({ tagId })),
       },
     },
+  });
+}
+
+export function update(
+  id: string,
+  input: CreateDestinationInput & {
+    images: { url: string; fileId: string }[];
+  }
+): Promise<Destination> {
+  const { tagIds, description, images, ...rest } = input;
+  return prisma.$transaction(async (tx) => {
+    const destination = await tx.destination.update({
+      where: { id },
+      data: { ...rest, description: description || null, images },
+    });
+
+    await tx.destinationTag.deleteMany({ where: { destinationId: id } });
+    await tx.destinationTag.createMany({
+      data: tagIds.map((tagId) => ({ destinationId: id, tagId })),
+    });
+
+    return destination;
   });
 }
 

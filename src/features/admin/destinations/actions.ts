@@ -23,6 +23,7 @@ import { tagRepo } from "@/entities/tag";
 import type { ActionState } from "@/shared/lib/action-state";
 
 export type CreateDestinationActionState = ActionState;
+export type UpdateDestinationActionState = ActionState;
 
 type UploadedImage = { url: string; fileId: string };
 type CreationStage =
@@ -103,6 +104,34 @@ async function hasValidImageSignature(file: File): Promise<boolean> {
     pngSignature.every((byte, index) => bytes[index] === byte);
 
   return isJpeg || isPng;
+}
+
+async function validatePhotos(
+  photos: File[]
+): Promise<CreateDestinationActionState | null> {
+  for (const photo of photos) {
+    if (
+      !ALLOWED_PHOTO_TYPES.includes(photo.type) ||
+      photo.size > MAX_PHOTO_SIZE ||
+      !(await hasValidImageSignature(photo))
+    ) {
+      return {
+        status: "error",
+        fieldErrors: {
+          photos: ["Ảnh phải là PNG/JPG hợp lệ và dưới 5MB."],
+        },
+      };
+    }
+  }
+  return null;
+}
+
+function parseStoredImages(images: unknown): UploadedImage[] {
+  if (!Array.isArray(images)) return [];
+  return images.filter(
+    (image): image is UploadedImage =>
+      typeof image?.url === "string" && typeof image?.fileId === "string"
+  );
 }
 
 async function retryCleanup(operation: () => Promise<unknown>): Promise<void> {
@@ -227,20 +256,8 @@ export async function createDestinationAction(
         fieldErrors: { photos: [`Tối đa ${MAX_PHOTOS} ảnh.`] },
       };
     }
-    for (const photo of photos) {
-      if (
-        !ALLOWED_PHOTO_TYPES.includes(photo.type) ||
-        photo.size > MAX_PHOTO_SIZE ||
-        !(await hasValidImageSignature(photo))
-      ) {
-        return {
-          status: "error",
-          fieldErrors: {
-            photos: ["Ảnh phải là PNG/JPG hợp lệ và dưới 5MB."],
-          },
-        };
-      }
-    }
+    const photoError = await validatePhotos(photos);
+    if (photoError) return photoError;
 
     const tagIds = [...new Set(parsed.data.tagIds)];
     const [province, tags] = await Promise.all([
@@ -428,4 +445,196 @@ export async function createDestinationFromLinksAction(
   }
 
   return { status: "success" };
+}
+
+export async function updateDestinationAction(
+  destinationId: string,
+  _prevState: UpdateDestinationActionState,
+  formData: FormData
+): Promise<UpdateDestinationActionState> {
+  const uploadedImages: UploadedImage[] = [];
+  let stage: CreationStage = "authorization";
+  let slug: string;
+  let removedImages: UploadedImage[];
+
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { status: "error", formError: "Vui lòng đăng nhập lại." };
+    }
+    if (session.user.role !== "admin") {
+      return {
+        status: "error",
+        formError: "Chỉ tài khoản quản trị mới có thể sửa địa điểm.",
+      };
+    }
+
+    const destination = await destinationRepo.findById(destinationId);
+    if (!destination) {
+      return { status: "error", formError: "Không tìm thấy địa điểm." };
+    }
+    slug = destination.slug;
+
+    stage = "validation";
+    const parsed = createDestinationSchema.safeParse({
+      name: formData.get("name"),
+      provinceId: formData.get("provinceId"),
+      address: formData.get("address"),
+      description: formData.get("description"),
+      latitude: formData.get("latitude"),
+      longitude: formData.get("longitude"),
+      ticketPrice: formData.get("ticketPrice"),
+      isPublished: formData.get("isPublished") ?? "true",
+      tagIds: parseJsonField<string[]>(formData, "tagIds", []),
+    });
+
+    if (!parsed.success) {
+      return {
+        status: "error",
+        fieldErrors: parsed.error.flatten().fieldErrors as Record<
+          string,
+          string[]
+        >,
+      };
+    }
+
+    const storedImages = parseStoredImages(destination.images);
+    const keptFileIds = new Set(
+      parseJsonField<string[]>(formData, "existingImageIds", [])
+    );
+    const keptImages = storedImages.filter((image) =>
+      keptFileIds.has(image.fileId)
+    );
+    removedImages = storedImages.filter(
+      (image) => !keptFileIds.has(image.fileId)
+    );
+
+    const photos = formData
+      .getAll("photos")
+      .filter((file): file is File => file instanceof File && file.size > 0);
+    const totalPhotos = keptImages.length + photos.length;
+    if (totalPhotos === 0) {
+      return {
+        status: "error",
+        fieldErrors: { photos: ["Cần ít nhất 1 ảnh cho địa điểm."] },
+      };
+    }
+    if (totalPhotos > MAX_PHOTOS) {
+      return {
+        status: "error",
+        fieldErrors: { photos: [`Tối đa ${MAX_PHOTOS} ảnh.`] },
+      };
+    }
+    // Chỉ kiểm tra file mới tải lên; ảnh cũ giữ lại đã hợp lệ từ lúc tạo
+    const photoError = await validatePhotos(photos);
+    if (photoError) return photoError;
+
+    const tagIds = [...new Set(parsed.data.tagIds)];
+    const [province, tags] = await Promise.all([
+      provinceRepo.findById(parsed.data.provinceId),
+      tagRepo.findManyByIds(tagIds),
+    ]);
+    if (!province) {
+      return {
+        status: "error",
+        fieldErrors: { provinceId: ["Tỉnh/thành đã chọn không tồn tại."] },
+      };
+    }
+    if (tags.length !== tagIds.length) {
+      return {
+        status: "error",
+        fieldErrors: { tagIds: ["Một hoặc nhiều thẻ đã chọn không tồn tại."] },
+      };
+    }
+
+    stage = "upload";
+    const uploadResults = await Promise.allSettled(
+      photos.map((photo) => uploadImage(photo, "destinations/admin"))
+    );
+    for (const result of uploadResults) {
+      if (result.status === "fulfilled") {
+        uploadedImages.push({
+          url: result.value.url,
+          fileId: result.value.fileId,
+        });
+      }
+    }
+    const uploadFailure = uploadResults.find(
+      (result): result is PromiseRejectedResult => result.status === "rejected"
+    );
+    if (uploadFailure) throw uploadFailure.reason;
+
+    stage = "database";
+    await destinationRepo.update(destination.id, {
+      ...parsed.data,
+      tagIds,
+      images: [...keptImages, ...uploadedImages],
+    });
+
+    try {
+      const embeddingText = [
+        parsed.data.name,
+        parsed.data.description,
+        province.fullName,
+        parsed.data.address,
+        tags.map((tag) => tag.name).join(", "),
+      ]
+        .filter(Boolean)
+        .join("\n");
+      const vector = await embedText(embeddingText);
+      await upsertDestinationEmbedding(destination.id, vector, {
+        name: parsed.data.name,
+        provinceId: parsed.data.provinceId,
+        tagIds,
+        isPublished: parsed.data.isPublished,
+      });
+    } catch (error) {
+      console.error("Cập nhật embedding địa điểm thất bại", {
+        destinationId: destination.id,
+        error,
+      });
+    }
+  } catch (error) {
+    const cleanupResults = await Promise.allSettled(
+      uploadedImages.map((image) =>
+        retryCleanup(() => deleteImage(image.fileId))
+      )
+    );
+
+    console.error("Cập nhật địa điểm thất bại", {
+      stage,
+      destinationId,
+      error,
+      cleanupFailures: cleanupResults.filter(
+        (result) => result.status === "rejected"
+      ),
+    });
+
+    return {
+      status: "error",
+      formError:
+        stage === "upload"
+          ? STAGE_ERROR_MESSAGES.upload
+          : "Không thể cập nhật địa điểm. Vui lòng thử lại.",
+    };
+  }
+
+  // Ảnh tạo từ link (seed) có fileId trùng url, không nằm trên ImageKit.
+  const imageCleanupResults = await Promise.allSettled(
+    removedImages
+      .filter((image) => image.fileId !== image.url)
+      .map((image) => retryCleanup(() => deleteImage(image.fileId)))
+  );
+  imageCleanupResults.forEach((result) => {
+    if (result.status === "rejected") {
+      console.error("Xóa ảnh địa điểm cũ thất bại", {
+        destinationId,
+        error: result.reason,
+      });
+    }
+  });
+
+  revalidatePath("/admin/destinations");
+  revalidatePath(`/destinations/${slug}`);
+  redirect("/admin/destinations");
 }

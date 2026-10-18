@@ -1,5 +1,6 @@
 import type { DestinationWithRelations } from "@/entities/destination";
 import { formatEntityCode } from "@/lib/utils";
+import type { DestinationFormState } from "./components/destination-form";
 import type { DestinationListItem, DestinationsSummary } from "./types";
 
 const FALLBACK_IMAGE = "/image-notfound.png";
@@ -41,5 +42,42 @@ export function getDestinationsSummary(
     total: destinations.length,
     published: destinations.filter((item) => item.isPublished).length,
     draft: destinations.filter((item) => !item.isPublished).length,
+  };
+}
+
+export function mapDestinationToFormValues(
+  destination: DestinationWithRelations
+): DestinationFormState {
+  const images = Array.isArray(destination.images)
+    ? (destination.images as { url?: unknown; fileId?: unknown }[])
+    : [];
+
+  return {
+    name: destination.name,
+    provinceId: destination.provinceId,
+    address: destination.address,
+    location:
+      destination.latitude === null || destination.longitude === null
+        ? null
+        : {
+            lat: Number(destination.latitude),
+            lng: Number(destination.longitude),
+          },
+    ticketPrice:
+      destination.ticketPrice === null ? "" : String(destination.ticketPrice),
+    isPublished: destination.isPublished,
+    description: destination.description ?? "",
+    tagIds: destination.tags.map((item) => item.tagId),
+    photos: images.flatMap((image) =>
+      typeof image?.url === "string" && typeof image?.fileId === "string"
+        ? [
+            {
+              kind: "existing" as const,
+              fileId: image.fileId,
+              previewUrl: image.url,
+            },
+          ]
+        : []
+    ),
   };
 }

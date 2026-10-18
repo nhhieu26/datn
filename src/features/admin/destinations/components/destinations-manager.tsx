@@ -71,6 +71,13 @@ function RowActions({ destination }: { destination: DestinationListItem }) {
         aria-labelledby={dropdownId}
       >
         <div className="space-y-0.5 p-1">
+          <Link
+            className={dropdownItemClass}
+            href={`/admin/destinations/${destination.id}/edit`}
+          >
+            <DestinationIcon name="draft" />
+            Chỉnh sửa
+          </Link>
           {destination.isPublished ? (
             <Link
               className={dropdownItemClass}
