@@ -25,9 +25,11 @@ export default async function CreateProfilePage({
   const existingTypes = await providerProfileRepo.findBusinessTypesByUserId(
     session.user.id
   );
+  const { paypal: paypalStatus, type: preferredType } = await searchParams;
+  // Đưa loại đang chọn ở menu lên đầu để form chọn sẵn loại đó.
   const availableBusinessTypes = ALL_BUSINESS_TYPES.filter(
     (type) => !existingTypes.includes(type)
-  );
+  ).sort((a, b) => Number(b === preferredType) - Number(a === preferredType));
 
   if (availableBusinessTypes.length === 0) {
     return (
@@ -59,7 +61,6 @@ export default async function CreateProfilePage({
     );
   }
 
-  const { paypal: paypalStatus } = await searchParams;
   const paypal = readPendingLink(
     (await cookies()).get(PENDING_COOKIE)?.value,
     session.user.id

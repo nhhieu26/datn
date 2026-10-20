@@ -5,6 +5,7 @@ import {
   ProfilesSummaryCards,
   ProfilesTable,
 } from "@/features/provider/profiles";
+import type { BusinessType } from "@/generated/prisma/client";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -13,11 +14,22 @@ export const metadata: Metadata = {
   title: "Roamly - Quản lý Hồ sơ Doanh nghiệp | Kênh Đối tác",
 };
 
-export default async function ProviderProfilesPage() {
+const BUSINESS_TYPES: BusinessType[] = ["tour", "hotel", "restaurant"];
+
+export default async function ProviderProfilesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const session = await auth();
   if (!session?.user?.id) redirect("/sign-in");
 
-  const profiles = await providerProfileRepo.findAllByUserId(session.user.id);
+  const { type } = await searchParams;
+  const businessType = BUSINESS_TYPES.find((t) => t === type) ?? "tour";
+
+  const profiles = (
+    await providerProfileRepo.findAllByUserId(session.user.id)
+  ).filter((p) => p.businessType === businessType);
 
   const summary = {
     total: profiles.length,
@@ -44,7 +56,7 @@ export default async function ProviderProfilesPage() {
           </div>
           <Link
             className="inline-flex shrink-0 items-center gap-x-2 self-start rounded-lg border border-primary-line bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover focus:bg-primary-focus focus:outline-hidden md:self-auto"
-            href="/provider/profiles/create"
+            href={`/provider/profiles/create?type=${businessType}`}
           >
             <ProfileIcon name="plus" />
             Thêm hồ sơ mới
