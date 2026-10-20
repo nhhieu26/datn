@@ -663,6 +663,27 @@ export function findUpcomingForProvider(providerProfileId: string, from: Date, t
   });
 }
 
+/** Đơn có ngày khởi hành trong [from, to), dùng cho lịch của provider. */
+export function findForCalendar(providerProfileId: string, from: Date, to: Date) {
+  return prisma.tourBooking.findMany({
+    where: {
+      providerProfileId,
+      status: { notIn: UNCOUNTED_STATUSES },
+      departureDate: { gte: from, lt: to },
+    },
+    select: {
+      code: true,
+      contactName: true,
+      tourTitle: true,
+      departureDate: true,
+      guests: true,
+      status: true,
+      totalAmount: true,
+    },
+    orderBy: [{ departureDate: "asc" }, { createdAt: "asc" }],
+  });
+}
+
 /** Các sự kiện gần nhất: đơn mới, đơn hủy, thanh toán và hoàn tiền thành công. */
 export async function findRecentActivityForProvider(providerProfileId: string, take: number) {
   const bookingSelect = { code: true, tourTitle: true, contactName: true } as const;

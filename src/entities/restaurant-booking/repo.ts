@@ -411,6 +411,27 @@ export function findUpcomingForProvider(providerProfileId: string, from: Date, t
   });
 }
 
+/** Đơn có ngày đặt bàn trong [from, to), dùng cho lịch của provider. */
+export function findForCalendar(providerProfileId: string, from: Date, to: Date) {
+  return prisma.restaurantBooking.findMany({
+    where: {
+      providerProfileId,
+      status: { not: "expired" },
+      reservationDate: { gte: from, lt: to },
+    },
+    select: {
+      code: true,
+      contactName: true,
+      restaurantName: true,
+      reservationDate: true,
+      startTime: true,
+      guests: true,
+      status: true,
+    },
+    orderBy: [{ reservationDate: "asc" }, { startTime: "asc" }],
+  });
+}
+
 /** Các sự kiện gần nhất: đơn mới và đơn hủy. */
 export async function findRecentActivityForProvider(providerProfileId: string, take: number) {
   const bookingSelect = { code: true, restaurantName: true, contactName: true, guests: true } as const;

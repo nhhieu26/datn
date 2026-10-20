@@ -13,6 +13,9 @@ const crumbLabels: Record<string, string> = {
   "/provider/bookings/tours": "Đặt tour",
   "/provider/bookings/hotels": "Đặt phòng",
   "/provider/bookings/restaurants": "Đặt bàn",
+  "/provider/calendar/tours": "Lịch đặt tour",
+  "/provider/calendar/hotels": "Lịch đặt phòng",
+  "/provider/calendar/restaurants": "Lịch đặt bàn",
 };
 
 function buildCrumbs(pathname: string) {

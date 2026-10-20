@@ -562,6 +562,32 @@ export function findUpcomingForProvider(providerProfileId: string, from: Date, t
   });
 }
 
+/** Đơn có thời gian lưu trú giao với [from, to), dùng cho lịch của provider. */
+export function findForCalendar(providerProfileId: string, from: Date, to: Date) {
+  return prisma.hotelBooking.findMany({
+    where: {
+      providerProfileId,
+      status: { notIn: UNCOUNTED_STATUSES },
+      checkInDate: { lt: to },
+      checkOutDate: { gt: from },
+    },
+    select: {
+      code: true,
+      contactName: true,
+      hotelName: true,
+      roomName: true,
+      checkInDate: true,
+      checkOutDate: true,
+      nights: true,
+      roomQuantity: true,
+      guests: true,
+      status: true,
+      totalAmount: true,
+    },
+    orderBy: [{ checkInDate: "asc" }, { createdAt: "asc" }],
+  });
+}
+
 /** Các sự kiện gần nhất: đơn mới, đơn hủy, thanh toán và hoàn tiền thành công. */
 export async function findRecentActivityForProvider(providerProfileId: string, take: number) {
   const bookingSelect = { code: true, hotelName: true, roomName: true, contactName: true } as const;

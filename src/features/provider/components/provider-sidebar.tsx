@@ -89,7 +89,7 @@ const SERVICE_TYPES: {
 ];
 
 const STORAGE_KEY = "provider-active-service";
-const SERVICE_SEGMENT = /^\/provider\/(?:(?:bookings|reviews)\/)?(tours|hotels|restaurants)(?:\/|$)/;
+const SERVICE_SEGMENT = /^\/provider\/(?:(?:bookings|calendar|reviews)\/)?(tours|hotels|restaurants)(?:\/|$)/;
 
 const DASHBOARD_PATH = "/provider";
 const PROFILES_PATH = "/provider/profiles";
@@ -114,12 +114,12 @@ function getServiceFromPath(
   return SERVICE_TYPES.find((s) => s.slug === slug)?.key ?? null;
 }
 
-// Giữ nguyên mục hiện tại (danh sách / đơn đặt / đánh giá) khi đổi loại dịch vụ.
+// Giữ nguyên mục hiện tại (danh sách / đơn đặt / lịch / đánh giá) khi đổi loại dịch vụ.
 function switchHref(pathname: string, service: (typeof SERVICE_TYPES)[number]) {
   const { slug } = service;
   if (pathname === DASHBOARD_PATH) return `${DASHBOARD_PATH}?type=${service.key}`;
   if (pathname === PROFILES_PATH) return `${PROFILES_PATH}?type=${service.key}`;
-  const section = /^\/provider\/(bookings|reviews)\//.exec(pathname)?.[1];
+  const section = /^\/provider\/(bookings|calendar|reviews)\//.exec(pathname)?.[1];
   return section ? `/provider/${section}/${slug}` : `/provider/${slug}`;
 }
 
@@ -215,10 +215,30 @@ function buildNavItems(service: (typeof SERVICE_TYPES)[number]): NavItem[] {
       href: `/provider/bookings/${service.slug}`,
       icon: (
         <Icon>
+          <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
+          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+          <path d="M12 11h4" />
+          <path d="M12 16h4" />
+          <path d="M8 11h.01" />
+          <path d="M8 16h.01" />
+        </Icon>
+      ),
+    },
+    {
+      label: "Lịch",
+      href: `/provider/calendar/${service.slug}`,
+      icon: (
+        <Icon>
           <path d="M8 2v4" />
           <path d="M16 2v4" />
           <rect width="18" height="18" x="3" y="4" rx="2" />
           <path d="M3 10h18" />
+          <path d="M8 14h.01" />
+          <path d="M12 14h.01" />
+          <path d="M16 14h.01" />
+          <path d="M8 18h.01" />
+          <path d="M12 18h.01" />
+          <path d="M16 18h.01" />
         </Icon>
       ),
     },
