@@ -357,3 +357,76 @@ export function cancelForProvider(
     });
   });
 }
+
+// ---- Bảng điều khiển provider ----
+
+/** Đơn tính lượt khách phục vụ (đặt bàn không thanh toán nên không có doanh thu). */
+const GUEST_STATUSES: BookingStatus[] = ["confirmed", "completed"];
+
+type DateRange = { from?: Date; to?: Date };
+
+const createdIn = ({ from, to }: DateRange) =>
+  from || to ? { createdAt: { gte: from, lt: to } } : {};
+
+export function countForDashboard(providerProfileId: string, range: DateRange = {}) {
+  return prisma.restaurantBooking.count({
+    where: { providerProfileId, status: { not: "expired" }, ...createdIn(range) },
+  });
+}
+
+export async function sumGuests(providerProfileId: string, range: DateRange = {}) {
+  const { _sum } = await prisma.restaurantBooking.aggregate({
+    where: { providerProfileId, status: { in: GUEST_STATUSES }, ...createdIn(range) },
+    _sum: { guests: true },
+  });
+  return _sum.guests ?? 0;
+}
+
+export async function findGuestRows(providerProfileId: string, from: Date) {
+  const rows = await prisma.restaurantBooking.findMany({
+    where: { providerProfileId, status: { in: GUEST_STATUSES }, createdAt: { gte: from } },
+    select: { createdAt: true, guests: true },
+  });
+  return rows.map((row) => ({ date: row.createdAt, value: row.guests }));
+}
+
+export function findUpcomingForProvider(providerProfileId: string, from: Date, take: number) {
+  return prisma.restaurantBooking.findMany({
+    where: {
+      providerProfileId,
+      status: { in: ACTIVE_STATUSES },
+      reservationDate: { gte: from },
+    },
+    select: {
+      code: true,
+      contactName: true,
+      restaurantName: true,
+      reservationDate: true,
+      startTime: true,
+      guests: true,
+      status: true,
+    },
+    orderBy: [{ reservationDate: "asc" }, { startTime: "asc" }],
+    take,
+  });
+}
+
+/** Các sự kiện gần nhất: đơn mới và đơn hủy. */
+export async function findRecentActivityForProvider(providerProfileId: string, take: number) {
+  const bookingSelect = { code: true, restaurantName: true, contactName: true, guests: true } as const;
+  const [created, cancelled] = await Promise.all([
+    prisma.restaurantBooking.findMany({
+      where: { providerProfileId, status: { not: "expired" } },
+      select: { ...bookingSelect, createdAt: true },
+      orderBy: { createdAt: "desc" },
+      take,
+    }),
+    prisma.restaurantBooking.findMany({
+      where: { providerProfileId, status: "cancelled", cancelledAt: { not: null } },
+      select: { ...bookingSelect, cancelledAt: true },
+      orderBy: { cancelledAt: "desc" },
+      take,
+    }),
+  ]);
+  return { created, cancelled };
+}

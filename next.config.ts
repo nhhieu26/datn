@@ -14,6 +14,10 @@ const tunnelOrigins = [
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: tunnelOrigins,
+  turbopack: {
+    // preline/dist/helper-apexcharts require("ApexCharts") viết hoa
+    resolveAlias: { ApexCharts: "apexcharts" },
+  },
   experimental: {
     serverActions: {
       // 5 photos x 5MB, plus multipart overhead and the remaining form fields.

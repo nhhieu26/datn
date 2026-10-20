@@ -285,3 +285,19 @@ export async function findPaged(filter: ListFilter) {
   ]);
   return { items, total };
 }
+
+/** Số khách sạn đang mở bán của provider (không tính bản đang chờ xóa); `createdFrom` lọc theo ngày tạo. */
+export function countActiveByProviderProfileId(
+  providerProfileId: string,
+  createdFrom?: Date
+): Promise<number> {
+  return prisma.hotel.count({
+    where: {
+      providerProfileId,
+      status: "published",
+      deletedAt: null,
+      deleteScheduledAt: null,
+      ...(createdFrom && { createdAt: { gte: createdFrom } }),
+    },
+  });
+}

@@ -91,18 +91,23 @@ const SERVICE_TYPES: {
 const STORAGE_KEY = "provider-active-service";
 const SERVICE_SEGMENT = /^\/provider\/(?:(?:bookings|reviews)\/)?(tours|hotels|restaurants)(?:\/|$)/;
 
+const DASHBOARD_PATH = "/provider";
 const PROFILES_PATH = "/provider/profiles";
 
 function isServiceKey(value: string | null): value is ServiceKey {
   return SERVICE_TYPES.some((s) => s.key === value);
 }
 
-// Trang hồ sơ không có segment loại dịch vụ trong đường dẫn nên dùng ?type=.
+// Trang tổng quan và hồ sơ không có segment loại dịch vụ trong đường dẫn nên dùng ?type=.
 function getServiceFromPath(
   pathname: string,
   typeParam: string | null,
 ): ServiceKey | null {
-  if (pathname === PROFILES_PATH || pathname.startsWith(`${PROFILES_PATH}/`)) {
+  if (
+    pathname === DASHBOARD_PATH ||
+    pathname === PROFILES_PATH ||
+    pathname.startsWith(`${PROFILES_PATH}/`)
+  ) {
     return isServiceKey(typeParam) ? typeParam : null;
   }
   const slug = SERVICE_SEGMENT.exec(pathname)?.[1];
@@ -112,6 +117,7 @@ function getServiceFromPath(
 // Giữ nguyên mục hiện tại (danh sách / đơn đặt / đánh giá) khi đổi loại dịch vụ.
 function switchHref(pathname: string, service: (typeof SERVICE_TYPES)[number]) {
   const { slug } = service;
+  if (pathname === DASHBOARD_PATH) return `${DASHBOARD_PATH}?type=${service.key}`;
   if (pathname === PROFILES_PATH) return `${PROFILES_PATH}?type=${service.key}`;
   const section = /^\/provider\/(bookings|reviews)\//.exec(pathname)?.[1];
   return section ? `/provider/${section}/${slug}` : `/provider/${slug}`;
@@ -151,7 +157,7 @@ function useActiveService(pathname: string): ServiceKey {
 
 const dashboardItem: NavItem = {
   label: "Bảng điều khiển",
-  href: "#",
+  href: DASHBOARD_PATH,
   icon: (
     <Icon>
       <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" />
@@ -191,7 +197,7 @@ const reportItem: NavItem = {
 
 function buildNavItems(service: (typeof SERVICE_TYPES)[number]): NavItem[] {
   return [
-    dashboardItem,
+    { ...dashboardItem, href: `${DASHBOARD_PATH}?type=${service.key}` },
     {
       label: `Quản lý ${service.label.toLowerCase()}`,
       href: `/provider/${service.slug}`,
@@ -235,6 +241,7 @@ const navLinkClass =
 
 function isActive(pathname: string, href: string) {
   const path = href.split("?")[0];
+  if (path === DASHBOARD_PATH) return pathname === path;
   return path !== "#" && (pathname === path || pathname.startsWith(`${path}/`));
 }
 

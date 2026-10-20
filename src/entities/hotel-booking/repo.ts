@@ -500,3 +500,96 @@ export function completeForProvider(code: string, providerProfileId: string) {
     };
   });
 }
+
+// ---- Bảng điều khiển provider ----
+
+/** Đơn đã thanh toán, tính vào doanh thu của provider. */
+const REVENUE_STATUSES: BookingStatus[] = ["paid", "confirmed", "completed"];
+/** Đơn còn hiệu lực chờ nhận phòng. */
+const UPCOMING_STATUSES: BookingStatus[] = ["pending_confirmation", "paid", "confirmed"];
+/** Đơn giữ phòng chưa thanh toán / hết hạn không tính là đơn đặt. */
+const UNCOUNTED_STATUSES: BookingStatus[] = ["pending_payment", "expired"];
+
+type DateRange = { from?: Date; to?: Date };
+
+const createdIn = ({ from, to }: DateRange) =>
+  from || to ? { createdAt: { gte: from, lt: to } } : {};
+
+export function countForDashboard(providerProfileId: string, range: DateRange = {}) {
+  return prisma.hotelBooking.count({
+    where: {
+      providerProfileId,
+      status: { notIn: UNCOUNTED_STATUSES },
+      ...createdIn(range),
+    },
+  });
+}
+
+export async function sumRevenue(providerProfileId: string, range: DateRange = {}) {
+  const { _sum } = await prisma.hotelBooking.aggregate({
+    where: { providerProfileId, status: { in: REVENUE_STATUSES }, ...createdIn(range) },
+    _sum: { providerAmount: true },
+  });
+  return Number(_sum.providerAmount ?? 0);
+}
+
+export async function findRevenueRows(providerProfileId: string, from: Date) {
+  const rows = await prisma.hotelBooking.findMany({
+    where: { providerProfileId, status: { in: REVENUE_STATUSES }, createdAt: { gte: from } },
+    select: { createdAt: true, providerAmount: true },
+  });
+  return rows.map((row) => ({ date: row.createdAt, value: Number(row.providerAmount) }));
+}
+
+export function findUpcomingForProvider(providerProfileId: string, from: Date, take: number) {
+  return prisma.hotelBooking.findMany({
+    where: {
+      providerProfileId,
+      status: { in: UPCOMING_STATUSES },
+      checkInDate: { gte: from },
+    },
+    select: {
+      code: true,
+      contactName: true,
+      hotelName: true,
+      roomName: true,
+      checkInDate: true,
+      status: true,
+      totalAmount: true,
+    },
+    orderBy: [{ checkInDate: "asc" }, { createdAt: "asc" }],
+    take,
+  });
+}
+
+/** Các sự kiện gần nhất: đơn mới, đơn hủy, thanh toán và hoàn tiền thành công. */
+export async function findRecentActivityForProvider(providerProfileId: string, take: number) {
+  const bookingSelect = { code: true, hotelName: true, roomName: true, contactName: true } as const;
+  const [created, cancelled, payments, refunds] = await Promise.all([
+    prisma.hotelBooking.findMany({
+      where: { providerProfileId, status: { notIn: UNCOUNTED_STATUSES } },
+      select: { ...bookingSelect, createdAt: true },
+      orderBy: { createdAt: "desc" },
+      take,
+    }),
+    prisma.hotelBooking.findMany({
+      where: { providerProfileId, status: "cancelled", cancelledAt: { not: null } },
+      select: { ...bookingSelect, cancelledAt: true },
+      orderBy: { cancelledAt: "desc" },
+      take,
+    }),
+    prisma.payment.findMany({
+      where: { hotelBooking: { providerProfileId }, status: "succeeded", paidAt: { not: null } },
+      select: { amount: true, paidAt: true, hotelBooking: { select: bookingSelect } },
+      orderBy: { paidAt: "desc" },
+      take,
+    }),
+    prisma.refund.findMany({
+      where: { hotelBooking: { providerProfileId }, status: "succeeded", processedAt: { not: null } },
+      select: { amount: true, processedAt: true, hotelBooking: { select: bookingSelect } },
+      orderBy: { processedAt: "desc" },
+      take,
+    }),
+  ]);
+  return { created, cancelled, payments, refunds };
+}
