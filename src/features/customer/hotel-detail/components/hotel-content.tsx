@@ -70,19 +70,13 @@ function RoomCard({ room }: { room: HotelRoom }) {
             </ul>
           )}
         </div>
-        <div className="flex flex-col items-end gap-3">
+        <div className="flex flex-col items-end">
           <p className="text-new-paragraph">
             <span className="text-2xl font-bold text-new-title">
               {formatPrice(room.basePrice)}
             </span>{" "}
             /đêm
           </p>
-          <button
-            className="cursor-pointer rounded bg-new-teal px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-new-teal-hover"
-            type="button"
-          >
-            Chọn phòng
-          </button>
         </div>
       </div>
     </article>
