@@ -42,7 +42,7 @@ export function AskPlanTravelAiSection() {
 
           <Link
             className="inline-flex items-center justify-center gap-3 px-8 py-4 rounded-full text-white font-bold text-sm sm:text-base shadow-md hover:shadow-lg hover:scale-105 transition duration-200 bg-new-teal-cta"
-            href="/explore"
+            href="/chat"
           >
             <span>Trò chuyện với Roamly AI</span>
             <svg
