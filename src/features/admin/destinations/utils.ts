@@ -63,6 +63,8 @@ export function mapDestinationToFormValues(
             lat: Number(destination.latitude),
             lng: Number(destination.longitude),
           },
+    openTime: destination.openTime,
+    closeTime: destination.closeTime,
     ticketPrice:
       destination.ticketPrice === null ? "" : String(destination.ticketPrice),
     isPublished: destination.isPublished,

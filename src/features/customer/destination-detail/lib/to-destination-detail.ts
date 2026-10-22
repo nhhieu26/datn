@@ -15,6 +15,8 @@ export type DestinationDetail = {
   tags: string[];
   latitude: number | null;
   longitude: number | null;
+  openTime: string;
+  closeTime: string;
   ticketPrice: number | null;
 };
 
@@ -32,6 +34,8 @@ export function toDestinationDetail(d: DestinationRow): DestinationDetail {
     tags: d.tags.map((t) => t.tag.name),
     latitude: d.latitude == null ? null : Number(d.latitude),
     longitude: d.longitude == null ? null : Number(d.longitude),
+    openTime: d.openTime,
+    closeTime: d.closeTime,
     ticketPrice: d.ticketPrice == null ? null : Number(d.ticketPrice),
   };
 }

@@ -65,6 +65,11 @@ export function DestinationContent({
             }
           />
           <InfoItem
+            icon="schedule"
+            label="Giờ mở cửa"
+            value={`${destination.openTime} - ${destination.closeTime}`}
+          />
+          <InfoItem
             icon="map"
             label="Tỉnh/Thành phố"
             value={destination.location}

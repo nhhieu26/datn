@@ -30,6 +30,8 @@ function toPreviewDetail(
     tags: tagNames,
     latitude: form.location?.lat ?? null,
     longitude: form.location?.lng ?? null,
+    openTime: form.openTime,
+    closeTime: form.closeTime,
     ticketPrice: ticketPrice > 0 ? ticketPrice : null,
   };
 }

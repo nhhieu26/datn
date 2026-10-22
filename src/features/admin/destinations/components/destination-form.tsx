@@ -42,6 +42,8 @@ export type DestinationFormState = {
   provinceId: string;
   address: string;
   location: LatLng | null;
+  openTime: string;
+  closeTime: string;
   ticketPrice: string;
   isPublished: boolean;
   description: string;
@@ -104,6 +106,8 @@ function createInitialState(provinces: Province[]): DestinationFormState {
     provinceId: provinces[0]?.id ?? "",
     address: "",
     location: null,
+    openTime: "08:00",
+    closeTime: "17:00",
     ticketPrice: "",
     isPublished: true,
     description: "",
@@ -184,6 +188,8 @@ export function DestinationForm({
     fd.append("description", form.description);
     fd.append("latitude", form.location ? String(form.location.lat) : "");
     fd.append("longitude", form.location ? String(form.location.lng) : "");
+    fd.append("openTime", form.openTime);
+    fd.append("closeTime", form.closeTime);
     fd.append("ticketPrice", form.ticketPrice);
     fd.append("isPublished", form.isPublished ? "true" : "false");
     fd.append("tagIds", JSON.stringify(form.tagIds));
@@ -310,6 +316,32 @@ export function DestinationForm({
                     </option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="openTime">
+                  Giờ mở cửa {requiredMark}
+                </label>
+                <input
+                  className={inputClass}
+                  id="openTime"
+                  onChange={(event) => update("openTime", event.target.value)}
+                  required
+                  type="time"
+                  value={form.openTime}
+                />
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="closeTime">
+                  Giờ đóng cửa {requiredMark}
+                </label>
+                <input
+                  className={inputClass}
+                  id="closeTime"
+                  onChange={(event) => update("closeTime", event.target.value)}
+                  required
+                  type="time"
+                  value={form.closeTime}
+                />
               </div>
               <div>
                 <label className={labelClass} htmlFor="ticketPrice">

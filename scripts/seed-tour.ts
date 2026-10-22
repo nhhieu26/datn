@@ -28,88 +28,7 @@ type TourSeed = {
 
 const TOURS: TourSeed[] = [
   {
-    title: "Hà Nội - Vịnh Hạ Long 2 ngày 1 đêm trên du thuyền",
-    provinceName: "Quảng Ninh",
-    tagNames: ["Biển", "Thiên nhiên", "Nghỉ dưỡng", "Gia đình", "Cặp đôi"],
-    durationDays: 2,
-    durationNights: 1,
-    basePrice: 2950000,
-    description:
-      "Hành trình khám phá kỳ quan thiên nhiên thế giới Vịnh Hạ Long với hàng nghìn đảo đá vôi và hang động kỳ vĩ. Du khách nghỉ đêm trên du thuyền tiêu chuẩn, thưởng thức hải sản tươi sống, chèo kayak giữa vịnh và ngắm hoàng hôn buông xuống mặt nước xanh ngọc bích. Tour khởi hành từ Hà Nội, phù hợp cho gia đình và cặp đôi muốn kỳ nghỉ ngắn ngày trọn vẹn.",
-    includeServices: [
-      "Xe đưa đón khứ hồi Hà Nội - Hạ Long",
-      "Du thuyền nghỉ đêm 4 sao, phòng máy lạnh",
-      "Hướng dẫn viên tiếng Việt suốt tuyến",
-      "3 bữa ăn chính theo chương trình",
-      "Vé tham quan vịnh và hang động",
-      "Chèo kayak và bữa tiệc hải sản tối",
-    ],
-    excludeServices: [
-      "Chi phí cá nhân, đồ uống ngoài chương trình",
-      "Phí làm hộ chiếu/thủ tục biên giới",
-      "Tiền tip cho hướng dẫn viên và tài xế",
-    ],
-    itinerary: [
-      {
-        title: "Ngày 1: Hà Nội - Bến tàu Tuần Châu - Vịnh Hạ Long",
-        description:
-          "06h00 xe và hướng dẫn viên đón tại khách sạn trong khu phố cổ Hà Nội. 07h30 khởi hành đi Quảng Ninh, nghỉ chân và ăn sáng tự túc tại trạm dừng Hạ Long. 11h30 đến bến tàu Tuần Châu, làm thủ tục lên du thuyền, dùng bữa trưa trên tàu khi tàu rời bến. Buổi chiều tham quan hang Sửng Sốt và đảo Ti Tốp, chèo kayak len lỏi giữa các đảo đá. 18h00 tàu neo đậu qua đêm, dùng tiệc hải sản và tham gia hoạt động câu mực trên boong.",
-      },
-      {
-        title: "Ngày 2: Vịnh Hạ Long - Tuần Châu - Hà Nội",
-        description:
-          "06h00 tập yoga và ngắm bình minh trên vịnh, dùng điểm tâm nhẹ. 07h30 tham quan làng chài Cửa Vạn bằng thuyền nan, tìm hiểu đời sống cư dân chài. 09h30 trở về tàu, ăn brunch và làm thủ tục trả phòng. 11h00 tàu cập bến Tuần Châu, xe đưa đoàn về Hà Nội. 15h30 kết thúc tour, chia tay đoàn tại điểm đón ban đầu.",
-      },
-    ],
-    departureStartDays: 7,
-    departureEveryDays: 7,
-    totalSlots: 40,
-  },
-  {
-    title: "Sa Pa - Fansipan - Bản Cát Cát 3 ngày 2 đêm",
-    provinceName: "Lào Cai",
-    tagNames: ["Núi", "Thiên nhiên", "Phượt", "Phiêu lưu mạo hiểm", "Giá rẻ"],
-    durationDays: 3,
-    durationNights: 2,
-    basePrice: 3650000,
-    description:
-      "Chinh phục nóc nhà Đông Dương Fansipan cao 3.143m bằng cáp treo hiện đại, khám phá thị trấn Sa Pa trong sương và bản Cát Cát của người H'Mông. Du khách trải nghiệm trekking nhẹ nhàng qua ruộng bậc thang, thưởng thức đặc sản vùng cao như thắng cố, cá hồi Sa Pa và ngắm biển mây buổi sớm. Tour phù hợp cả người lớn tuổi và các bạn trẻ mê khám phá.",
-    includeServices: [
-      "Xe giường nằm khứ hồi Hà Nội - Sa Pa",
-      "Khách sạn 3 sao trung tâm, 2 đêm",
-      "Vé cáp treo Fansipan khứ hồi",
-      "Hướng dẫn viên địa phương nhiệt tình",
-      "Các bữa ăn theo chương trình",
-      "Vé tham quan bản Cát Cát",
-    ],
-    excludeServices: [
-      "Đồ uống, chi phí cá nhân",
-      "Phí thuê trang phục chụp ảnh",
-      "Bảo hiểm du lịch tự nguyện",
-    ],
-    itinerary: [
-      {
-        title: "Ngày 1: Hà Nội - Sa Pa - Bản Cát Cát",
-        description:
-          "21h00 tập trung tại bến xe Mỹ Đình, lên xe giường nằm đi Sa Pa. Ngủ đêm trên xe, đến Sa Pa khoảng 06h00 sáng hôm sau. Nhận phòng khách sạn, ăn sáng và nghỉ ngơi. Buổi chiều đi bộ xuống bản Cát Cát của người H'Mông đen, tham quan thác nước, cầu mây và tìm hiểu nghề dệt thổ cẩm. Tối tự do dạo phố, thưởng thức đồ nướng và ngắm thị trấn trong sương.",
-      },
-      {
-        title: "Ngày 2: Chinh phục đỉnh Fansipan",
-        description:
-          "06h30 ăn sáng tại khách sạn, 07h30 di chuyển đến ga cáp treo Fansipan. Trải nghiệm cáp treo dài gần 6,3km ngắm toàn cảnh dãy Hoàng Liên Sơn hùng vĩ. Từ ga trên độ cao 3.000m, tiếp tục chinh phục 600 bậc đá lên đỉnh Fansipan, chụp ảnh tại cột mốc 3.143m. Ăn trưa tự túc tại khu ẩm thực. Chiều về tham quan quảng trường Sa Pa, nhà thờ đá cổ. Tối nghỉ tại khách sạn.",
-      },
-      {
-        title: "Ngày 3: Sa Pa - Hà Nội",
-        description:
-          "Sáng tự do mua sắm đặc sản tại chợ Sa Pa, thưởng thức cà phê view núi. 10h00 trả phòng, ăn trưa tại nhà hàng địa phương. 13h00 lên xe giường nằm về Hà Nội. Khoảng 20h00 về đến bến xe Mỹ Đình, kết thúc chương trình, chia tay đoàn.",
-      },
-    ],
-    departureStartDays: 5,
-    departureEveryDays: 4,
-    totalSlots: 30,
-  },
-  {
-    title: "Tràng An - Bái Đính - Hang Múa 1 ngày",
+    title: "Hà Nội - Tràng An - Bái Đính - Hang Múa 1 ngày",
     provinceName: "Ninh Bình",
     tagNames: [
       "Văn hóa - lịch sử",
@@ -120,430 +39,567 @@ const TOURS: TourSeed[] = [
     ],
     durationDays: 1,
     durationNights: 0,
-    basePrice: 850000,
+    basePrice: 890000,
     description:
-      "Tour trong ngày khám phá cố đô Ninh Bình với quần thể danh thắng Tràng An được UNESCO công nhận. Du khách ngồi thuyền nan len lỏi qua các hang động ngập nước, tham quan chùa Bái Đính nguy nga và leo núi Hang Múa ngắm toàn cảnh Tam Cốc từ trên cao. Chương trình nhẹ nhàng, phù hợp cho mọi lứa tuổi.",
+      "Tour trong ngày từ Hà Nội khám phá ba điểm nổi bật nhất Ninh Bình: chùa Bái Đính lớn nhất Đông Nam Á, quần thể danh thắng Tràng An bằng thuyền nan và Hang Múa với 486 bậc đá ngắm toàn cảnh. Bữa trưa thưởng thức đặc sản dê núi và cơm cháy. Phù hợp gia đình và nhóm bạn có ít thời gian.",
     includeServices: [
       "Xe đưa đón khứ hồi Hà Nội - Ninh Bình",
+      "Vé thuyền Tràng An",
+      "Vé tham quan Hang Múa",
+      "Bữa trưa đặc sản dê núi",
       "Hướng dẫn viên suốt tuyến",
-      "Bữa trưa đặc sản Ninh Bình",
-      "Vé thuyền Tràng An và tham quan các điểm",
-      "Nước uống và khăn lạnh",
     ],
     excludeServices: [
-      "Vé leo Hang Múa (100.000đ/người)",
-      "Chi phí cá nhân, đồ uống",
-      "Tiền tip hướng dẫn viên",
+      "Chi phí cá nhân, đồ uống ngoài chương trình",
+      "Tiền tip cho hướng dẫn viên và tài xế",
     ],
     itinerary: [
       {
-        title: "Sáng: Hà Nội - chùa Bái Đính",
+        title: "Ngày 1: Hà Nội - Bái Đính - Tràng An - Hang Múa - Hà Nội",
         description:
-          "07h00 xe đón đoàn tại khách sạn khu phố cổ, khởi hành đi Ninh Bình theo cao tốc Pháp Vân - Cầu Giẽ. 09h30 đến quần thể chùa Bái Đính - ngôi chùa lớn nhất Việt Nam với hành lang La Hán dài nhất châu Á, bảo tháp và tượng Phật bằng đồng. Hướng dẫn viên thuyết minh về lịch sử Phật giáo và kiến trúc độc đáo.",
-      },
-      {
-        title: "Trưa: Ăn trưa đặc sản",
-        description:
-          "11h30 đoàn dùng bữa trưa tại nhà hàng địa phương với đặc sản cơm cháy, thịt dê núi và nem Yên Mạc. Nghỉ ngơi khoảng 30 phút trước khi tiếp tục hành trình.",
-      },
-      {
-        title: "Chiều: Tràng An - Hang Múa - về Hà Nội",
-        description:
-          "13h00 lên thuyền nan khám phá quần thể Tràng An, len lỏi qua các hang tối như hang Sáng, hang Tối, hang Nấu Rượu và thăm phim trường Kong: Skull Island. 15h30 leo gần 500 bậc đá lên đỉnh Hang Múa, ngắm toàn cảnh Tam Cốc với dòng sông uốn lượn giữa núi đá vôi. 17h00 lên xe về Hà Nội, khoảng 19h30 về đến điểm đón, kết thúc tour.",
+          "07h00 xe đón tại khu phố cổ Hà Nội, 09h30 đến chùa Bái Đính tham quan chùa mới, bảo tháp và hành lang La Hán. 11h30 dùng bữa trưa đặc sản. 13h00 đi thuyền nan qua các hang Tràng An. 15h30 leo Hang Múa ngắm toàn cảnh Tam Cốc. 17h00 khởi hành về Hà Nội, kết thúc tour khoảng 19h30.",
       },
     ],
     departureStartDays: 3,
-    departureEveryDays: 2,
-    totalSlots: 45,
-  },
-  {
-    title: "Đà Nẵng - Hội An - Bà Nà Hills 4 ngày 3 đêm",
-    provinceName: "Đà Nẵng",
-    tagNames: ["Biển", "Nghỉ dưỡng", "Gia đình", "Cặp đôi", "Sang trọng"],
-    durationDays: 4,
-    durationNights: 3,
-    basePrice: 5990000,
-    description:
-      "Kỳ nghỉ trọn vẹn tại thành phố đáng sống nhất Việt Nam với bãi biển Mỹ Khê quyến rũ, Cầu Rồng phun lửa và phố cổ Hội An lung linh đèn lồng. Du khách chinh phục Bà Nà Hills với Cầu Vàng nổi tiếng thế giới, vui chơi tại Fantasy Park và thưởng thức ẩm thực miền Trung. Lịch trình cân bằng giữa tham quan và nghỉ dưỡng, phù hợp gia đình và cặp đôi.",
-    includeServices: [
-      "Vé máy bay khứ hồi (tuỳ điểm khởi hành)",
-      "Khách sạn 4 sao gần biển Mỹ Khê, 3 đêm",
-      "Vé cáp treo và vui chơi Bà Nà Hills",
-      "Xe đưa đón theo chương trình",
-      "Hướng dẫn viên suốt tuyến",
-      "Các bữa ăn theo lịch trình",
-    ],
-    excludeServices: [
-      "Chi phí cá nhân, đồ uống",
-      "Vé tham quan ngoài chương trình",
-      "Bảo hiểm du lịch",
-    ],
-    itinerary: [
-      {
-        title: "Ngày 1: Đón sân bay - Bãi biển Mỹ Khê - Cầu Rồng",
-        description:
-          "Xe và hướng dẫn viên đón đoàn tại sân bay Đà Nẵng, đưa về khách sạn nhận phòng. Chiều tự do tắm biển Mỹ Khê, một trong những bãi biển đẹp nhất hành tinh. Tối dùng bữa hải sản tại nhà hàng ven biển, sau đó dạo bộ ngắm Cầu Rồng và xem màn phun lửa, phun nước vào cuối tuần. Nghỉ đêm tại Đà Nẵng.",
-      },
-      {
-        title: "Ngày 2: Bà Nà Hills - Cầu Vàng",
-        description:
-          "07h30 ăn sáng, di chuyển đến Bà Nà Hills. Trải nghiệm tuyến cáp treo đạt nhiều kỷ lục thế giới, tham quan Cầu Vàng nằm trên đôi bàn tay khổng lồ, làng Pháp cổ kính và vườn hoa Le Jardin D'Amour. Ăn trưa buffet tại khu du lịch. Chiều vui chơi tự do tại Fantasy Park trong nhà. 17h00 xuống núi về khách sạn, tối tự do khám phá ẩm thực đường phố Đà Nẵng.",
-      },
-      {
-        title: "Ngày 3: Hội An - Phố cổ đèn lồng",
-        description:
-          "Sáng tham quan Ngũ Hành Sơn và làng đá mỹ nghệ Non Nước. Trưa di chuyển về Hội An, nhận phòng khách sạn. Chiều tham quan phố cổ Hội An: Chùa Cầu, nhà cổ Tấn Ký, hội quán Phúc Kiến, xưởng thủ công truyền thống. Tối thả đèn hoa đăng trên sông Hoài, ngắm phố cổ lung linh trong ánh đèn lồng. Nghỉ đêm tại Hội An.",
-      },
-      {
-        title: "Ngày 4: Hội An - Đà Nẵng - Tiễn sân bay",
-        description:
-          "Buổi sáng tự do đạp xe khám phá làng rau Trà Quế hoặc mua sắm đặc sản. 11h00 trả phòng, ăn trưa và di chuyển ra sân bay Đà Nẵng. Hướng dẫn viên tiễn đoàn, kết thúc chương trình tốt đẹp.",
-      },
-    ],
-    departureStartDays: 6,
-    departureEveryDays: 5,
-    totalSlots: 35,
-  },
-  {
-    title: "Nha Trang - Vinpearl Land - Hòn Mun 4 ngày 3 đêm",
-    provinceName: "Khánh Hòa",
-    tagNames: ["Biển", "Gần biển", "Nghỉ dưỡng", "Gia đình", "Bạn bè"],
-    durationDays: 4,
-    durationNights: 3,
-    basePrice: 5490000,
-    description:
-      "Khám phá thành phố biển Nha Trang xinh đẹp với bãi biển cát trắng dài, vịnh đảo hoang sơ và khu vui chơi giải trí Vinpearl Land trên đảo Hòn Tre. Du khách lặn biển ngắm san hô tại Hòn Mun, thư giãn tại bùn khoáng I-Resort và thưởng thức hải sản tươi ngon. Chương trình kết hợp nghỉ dưỡng và vui chơi, lý tưởng cho gia đình và nhóm bạn.",
-    includeServices: [
-      "Khách sạn 4 sao trung tâm Nha Trang, 3 đêm",
-      "Vé cáp treo và vui chơi Vinpearl Land",
-      "Tour 4 đảo bao gồm Hòn Mun, Hòn Tằm",
-      "Tắm bùn khoáng I-Resort",
-      "Hướng dẫn viên và xe đưa đón",
-      "Các bữa ăn theo chương trình",
-    ],
-    excludeServices: [
-      "Vé máy bay khứ hồi",
-      "Chi phí cá nhân, đồ uống",
-      "Các dịch vụ tự chọn ngoài chương trình",
-    ],
-    itinerary: [
-      {
-        title: "Ngày 1: Đón sân bay - Tắm bùn khoáng",
-        description:
-          "Xe đón đoàn tại sân bay Cam Ranh, đưa về khách sạn trung tâm nhận phòng. Chiều thư giãn tại I-Resort với dịch vụ tắm bùn khoáng nóng và hồ khoáng nóng, giúp thư giãn cơ thể sau chuyến bay. Tối dùng bữa hải sản và dạo biển Nha Trang. Nghỉ đêm tại thành phố.",
-      },
-      {
-        title: "Ngày 2: Vinpearl Land - Hòn Tre",
-        description:
-          "08h00 di chuyển đến cảng, trải nghiệm cáp treo vượt biển dài 3.320m đến đảo Hòn Tre. Cả ngày vui chơi tại Vinpearl Land: công viên nước, trò chơi cảm giác mạnh, thuỷ cung và khu vui chơi trong nhà. Tối xem show nhạc nước hoành tráng, sau đó trở về đất liền. Nghỉ đêm tại Nha Trang.",
-      },
-      {
-        title: "Ngày 3: Tour 4 đảo - Hòn Mun",
-        description:
-          "08h30 khởi hành tour 4 đảo: Hòn Mun, Hòn Một, Hòn Tằm và Bãi Tranh. Du khách lặn ống thở ngắm rạn san hô tại khu bảo tồn biển Hòn Mun, tắm biển và tham gia các trò chơi nước. Ăn trưa hải sản trên đảo. Chiều về đất liền, tối tự do khám phá chợ đêm Nha Trang.",
-      },
-      {
-        title: "Ngày 4: Nha Trang - Tiễn sân bay",
-        description:
-          "Buổi sáng tự do tắm biển, mua sắm đặc sản như yến sào, hải sản khô. 11h00 trả phòng, xe đưa đoàn ra sân bay Cam Ranh. Kết thúc chương trình, chia tay đoàn.",
-      },
-    ],
-    departureStartDays: 8,
-    departureEveryDays: 6,
+    departureEveryDays: 1,
     totalSlots: 40,
   },
   {
-    title: "Đà Lạt - Thung lũng Tình Yêu - Langbiang 3 ngày 2 đêm",
-    provinceName: "Lâm Đồng",
-    tagNames: ["Núi", "Nghỉ dưỡng", "Cặp đôi", "Bạn bè", "Thiên nhiên"],
-    durationDays: 3,
-    durationNights: 2,
-    basePrice: 3290000,
-    description:
-      "Hành trình về với thành phố ngàn hoa Đà Lạt mộng mơ với khí hậu se lạnh quanh năm. Du khách dạo bước giữa rừng thông xanh mát, chèo thuyền trên hồ Tuyền Lâm, ngắm đồi chè Cầu Đất và săn mây tại đỉnh Langbiang. Chương trình nhẹ nhàng, lãng mạn, rất phù hợp cho cặp đôi và nhóm bạn muốn nghỉ ngơi.",
-    includeServices: [
-      "Xe khách chất lượng cao khứ hồi",
-      "Khách sạn trung tâm Đà Lạt, 2 đêm",
-      "Xe jeep lên đỉnh Langbiang",
-      "Hướng dẫn viên địa phương",
-      "Các bữa ăn theo chương trình",
-      "Vé tham quan các điểm trong lịch trình",
-    ],
-    excludeServices: [
-      "Vé máy bay (nếu chọn khởi hành từ xa)",
-      "Đồ uống, chi phí cá nhân",
-      "Các trò chơi tự chọn tại các điểm tham quan",
-    ],
-    itinerary: [
-      {
-        title: "Ngày 1: Đến Đà Lạt - Thung lũng Tình Yêu - Đồi chè Cầu Đất",
-        description:
-          "Xe đón đoàn từ sáng sớm, đến Đà Lạt khoảng trưa, nhận phòng khách sạn và ăn trưa. Chiều tham quan Thung lũng Tình Yêu với hồ Đa Thiện thơ mộng, đồi thông và vườn hoa rực rỡ. Tiếp tục đến đồi chè Cầu Đất, chụp ảnh giữa những luống chè trải dài tít tắp. Tối tự do dạo chợ đêm Đà Lạt, thưởng thức sữa đậu nành nóng và bánh căn.",
-      },
-      {
-        title: "Ngày 2: Langbiang - Hồ Tuyền Lâm - Thiền viện Trúc Lâm",
-        description:
-          "07h00 ăn sáng, di chuyển đến núi Langbiang. Đi xe jeep lên đỉnh Radar ngắm toàn cảnh Đà Lạt từ trên cao và săn mây buổi sáng. Trưa ăn đặc sản vùng cao. Chiều tham quan hồ Tuyền Lâm, ngồi thuyền ngắm cảnh và viếng Thiền viện Trúc Lâm yên tĩnh bên hồ. Tối nghỉ tại khách sạn.",
-      },
-      {
-        title: "Ngày 3: Dinh Bảo Đại - Chợ Đà Lạt - về lại",
-        description:
-          "Sáng tham quan Dinh III Bảo Đại và vườn hoa thành phố. Mua sắm đặc sản tại chợ Đà Lạt. 11h00 trả phòng, ăn trưa và lên xe về. Kết thúc chương trình, chia tay đoàn tại điểm khởi hành.",
-      },
-    ],
-    departureStartDays: 4,
-    departureEveryDays: 3,
-    totalSlots: 35,
-  },
-  {
-    title: "Miền Tây sông nước - Cần Thơ - Chợ nổi Cái Răng 2 ngày 1 đêm",
-    provinceName: "Cần Thơ",
-    tagNames: [
-      "Đặc sản địa phương",
-      "Thiên nhiên",
-      "Giá rẻ",
-      "Gia đình",
-      "Văn hóa - lịch sử",
-    ],
+    title: "Ninh Bình 2 ngày 1 đêm: Tràng An - Tam Cốc - Hang Múa homestay",
+    provinceName: "Ninh Bình",
+    tagNames: ["Thiên nhiên", "Cặp đôi", "Bạn bè", "Homestay", "Nghỉ dưỡng"],
     durationDays: 2,
     durationNights: 1,
-    basePrice: 1450000,
+    basePrice: 1950000,
     description:
-      "Trải nghiệm nhịp sống sông nước miền Tây chân thật với chợ nổi Cái Răng họp từ tinh mơ trên sông Hậu, vườn trái cây sum suê và những căn nhà cổ trăm năm. Du khách ăn sáng hủ tiếu ngay trên ghe, nghe đờn ca tài tử và thưởng thức đặc sản miền Tây. Tour ngắn ngày, chi phí hợp lý, phù hợp cho gia đình và nhóm bạn.",
+      "Hành trình 2 ngày nghỉ đêm tại homestay giữa đồng lúa Tam Cốc, cho phép trải nghiệm Ninh Bình chậm rãi. Ngày đầu đi thuyền Tràng An và thăm cố đô Hoa Lư, ngày hai ngắm bình minh trên Hang Múa, chèo thuyền Tam Cốc và đạp xe qua làng quê. Lý tưởng cho cặp đôi và nhóm bạn.",
     includeServices: [
-      "Xe đưa đón khứ hồi từ TP.HCM",
-      "Thuyền tham quan chợ nổi và cồn Sơn",
-      "Homestay/khách sạn 1 đêm tại Cần Thơ",
-      "Hướng dẫn viên miền Tây vui tính",
-      "Các bữa ăn đặc sản theo chương trình",
-      "Đờn ca tài tử và trái cây miễn phí",
+      "Xe đưa đón khứ hồi Hà Nội",
+      "1 đêm homestay tiêu chuẩn",
+      "Vé thuyền Tràng An và Tam Cốc",
+      "Vé Hang Múa và Hoa Lư",
+      "3 bữa ăn theo chương trình",
+      "Thuê xe đạp 1 ngày",
     ],
     excludeServices: [
-      "Chi phí cá nhân, đồ uống",
-      "Tiền tip hướng dẫn viên",
+      "Chi phí cá nhân, đồ uống ngoài chương trình",
+      "Tiền tip cho hướng dẫn viên và tài xế",
+      "Bữa tối ngoài chương trình",
     ],
     itinerary: [
       {
-        title: "Ngày 1: TP.HCM - Mỹ Tho - Cần Thơ",
+        title: "Ngày 1: Hà Nội - Hoa Lư - Tràng An",
         description:
-          "06h00 xe đón đoàn tại TP.HCM, khởi hành đi Mỹ Tho. Lên thuyền dạo sông Tiền, tham quan cồn Thới Sơn, nghe đờn ca tài tử và thưởng thức mật ong trà. Đi xe ngựa qua làng quê, chèo xuồng ba lá len lỏi trong rạch dừa nước. Ăn trưa đặc sản miền Tây. Chiều di chuyển đến Cần Thơ, nhận phòng. Tối tự do dạo bến Ninh Kiều, ăn tối trên du thuyền sông Hậu.",
+          "07h30 xe đón khởi hành, 10h00 tham quan cố đô Hoa Lư, đền vua Đinh và vua Lê. 12h00 ăn trưa đặc sản dê núi. Chiều đi thuyền nan Tràng An xuyên các hang động. Tối nhận phòng homestay và thưởng thức bữa tối đồng quê.",
       },
       {
-        title: "Ngày 2: Chợ nổi Cái Răng - Cồn Sơn - TP.HCM",
+        title: "Ngày 2: Hang Múa - Tam Cốc - Hà Nội",
         description:
-          "05h30 lên thuyền ra chợ nổi Cái Răng, ăn sáng hủ tiếu ngay trên ghe giữa chợ. Tham quan các ghe bán trái cây, tìm hiểu văn hoá thương hồ. Ghé cồn Sơn tham quan vườn trái cây, thử làm bánh dân gian và cho cá ăn. 10h00 trở về, ăn trưa tại Cần Thơ. 13h00 lên xe về TP.HCM, khoảng 17h00 kết thúc tour.",
+          "05h30 dậy sớm ngắm bình minh, leo Hang Múa. 08h00 ăn sáng, đi thuyền Tam Cốc và ghé chùa Bích Động. 11h30 ăn trưa, 13h00 xe đưa đoàn về Hà Nội, kết thúc tour khoảng 16h30.",
+      },
+    ],
+    departureStartDays: 5,
+    departureEveryDays: 3,
+    totalSlots: 30,
+  },
+  {
+    title: "Cúc Phương trekking 2 ngày 1 đêm",
+    provinceName: "Ninh Bình",
+    tagNames: ["Thiên nhiên", "Phiêu lưu mạo hiểm", "Phượt", "Gia đình", "Núi"],
+    durationDays: 2,
+    durationNights: 1,
+    basePrice: 2350000,
+    description:
+      "Chuyến đi khám phá vườn quốc gia Cúc Phương với trekking đến cây chò ngàn năm tuổi, động Người Xưa và trung tâm cứu hộ linh trưởng. Đêm nghỉ nhà sàn trong rừng, nghe tiếng chim thú. Phù hợp du khách yêu thiên nhiên và hoạt động ngoài trời.",
+    includeServices: [
+      "Xe đưa đón khứ hồi",
+      "1 đêm nhà sàn trong vườn quốc gia",
+      "Vé vào vườn quốc gia",
+      "Hướng dẫn viên rừng",
+      "3 bữa ăn theo chương trình",
+    ],
+    excludeServices: [
+      "Chi phí cá nhân, đồ uống ngoài chương trình",
+      "Tiền tip cho hướng dẫn viên và tài xế",
+      "Bảo hiểm du lịch tự nguyện",
+    ],
+    itinerary: [
+      {
+        title: "Ngày 1: Hà Nội - Cúc Phương - Cây chò ngàn năm",
+        description:
+          "07h00 khởi hành, 10h00 đến Cúc Phương, tham quan trung tâm cứu hộ linh trưởng. Chiều trekking 5km đến cây chò ngàn năm tuổi, về nghỉ nhà sàn, dùng bữa tối BBQ ngoài trời.",
+      },
+      {
+        title: "Ngày 2: Động Người Xưa - Hà Nội",
+        description:
+          "07h00 ăn sáng, leo bậc đá đến động Người Xưa, quan sát bướm và chim rừng. 11h00 ăn trưa, 13h00 về Hà Nội, kết thúc tour khoảng 17h30.",
+      },
+    ],
+    departureStartDays: 6,
+    departureEveryDays: 7,
+    totalSlots: 20,
+  },
+  {
+    title: "Vân Long - Thung Nham - Bái Đính 1 ngày",
+    provinceName: "Ninh Bình",
+    tagNames: ["Thiên nhiên", "Gia đình", "Cặp đôi", "Một mình"],
+    durationDays: 1,
+    durationNights: 0,
+    basePrice: 990000,
+    description:
+      "Tour kết hợp đầm Vân Long, nơi sống của loài voọc mông trắng, vườn chim Thung Nham và chùa Bái Đính. Du khách đi thuyền yên bình trên đầm, xuyên hang Chợ Mơ và ngắm đàn chim trở về chiều tối.",
+    includeServices: [
+      "Xe đưa đón khứ hồi",
+      "Vé thuyền Vân Long",
+      "Vé vườn chim Thung Nham",
+      "Bữa trưa đặc sản",
+      "Hướng dẫn viên",
+    ],
+    excludeServices: [
+      "Chi phí cá nhân, đồ uống ngoài chương trình",
+      "Tiền tip cho hướng dẫn viên và tài xế",
+    ],
+    itinerary: [
+      {
+        title: "Ngày 1: Hà Nội - Vân Long - Thung Nham - Hà Nội",
+        description:
+          "07h00 khởi hành, 09h30 đi thuyền Vân Long qua hang Chợ Mơ. 12h00 ăn trưa tại nhà hàng bên đầm. 14h00 tham quan Thung Nham và vườn chim. 17h00 ngắm đàn chim về tổ, 17h30 xe về Hà Nội.",
       },
     ],
     departureStartDays: 4,
     departureEveryDays: 2,
-    totalSlots: 45,
-  },
-  {
-    title: "Huế - Đại Nội - Chùa Thiên Mụ - Sông Hương 2 ngày 1 đêm",
-    provinceName: "Huế",
-    tagNames: [
-      "Văn hóa - lịch sử",
-      "Đặc sản địa phương",
-      "Gia đình",
-      "Cặp đôi",
-      "Giá rẻ",
-    ],
-    durationDays: 2,
-    durationNights: 1,
-    basePrice: 1790000,
-    description:
-      "Hành trình về miền di sản cố đô Huế với Đại Nội cổ kính, lăng tẩm các vị vua triều Nguyễn và chùa Thiên Mụ bên bờ sông Hương. Du khách nghe ca Huế trên sông, thưởng thức ẩm thực cung đình và khám phá nét trầm mặc của xứ Huế. Chương trình giàu giá trị văn hoá, phù hợp cho người yêu lịch sử và ẩm thực.",
-    includeServices: [
-      "Xe đưa đón theo chương trình",
-      "Khách sạn trung tâm Huế 1 đêm",
-      "Vé tham quan Đại Nội và lăng tẩm",
-      "Thuyền ca Huế trên sông Hương",
-      "Hướng dẫn viên thuyết minh lịch sử",
-      "Các bữa ăn đặc sản Huế",
-    ],
-    excludeServices: [
-      "Vé máy bay/tàu khứ hồi",
-      "Chi phí cá nhân, đồ uống",
-      "Tiền tip hướng dẫn viên",
-    ],
-    itinerary: [
-      {
-        title: "Ngày 1: Đại Nội - Chùa Thiên Mụ - Ca Huế sông Hương",
-        description:
-          "Sáng xe đón đoàn, nhận phòng khách sạn. Tham quan Đại Nội - hoàng thành triều Nguyễn với Ngọ Môn, điện Thái Hoà, Tử Cấm Thành. Ăn trưa đặc sản bún bò Huế và bánh bèo. Chiều viếng chùa Thiên Mụ cổ kính bên bờ sông Hương, tham quan lăng Tự Đức. Tối đi thuyền nghe ca Huế, thả đèn hoa đăng trên sông. Nghỉ đêm tại Huế.",
-      },
-      {
-        title: "Ngày 2: Lăng Khải Định - Chợ Đông Ba - kết thúc",
-        description:
-          "Sáng tham quan lăng Khải Định với kiến trúc giao thoa Đông - Tây độc đáo. Ghé làng hương Thuỷ Xuân và làng nón Tây Hồ. Mua sắm đặc sản tại chợ Đông Ba. Ăn trưa, trả phòng và xe đưa đoàn ra ga/sân bay. Kết thúc chương trình.",
-      },
-    ],
-    departureStartDays: 5,
-    departureEveryDays: 4,
-    totalSlots: 30,
-  },
-  {
-    title: "Cao Bằng - Thác Bản Giốc - Động Ngườm Ngao 2 ngày 1 đêm",
-    provinceName: "Cao Bằng",
-    tagNames: ["Núi", "Thiên nhiên", "Phượt", "Phiêu lưu mạo hiểm", "Giá rẻ"],
-    durationDays: 2,
-    durationNights: 1,
-    basePrice: 2190000,
-    description:
-      "Khám phá vùng đất địa đầu Tổ quốc Cao Bằng với thác Bản Giốc hùng vĩ - thác nước đẹp nhất Việt Nam nằm trên biên giới Việt - Trung. Du khách tham quan động Ngườm Ngao lung linh thạch nhũ, suối Lê Nin và di tích Pác Bó lịch sử. Cảnh sắc núi rừng trùng điệp đặc biệt ấn tượng vào mùa nước lũ.",
-    includeServices: [
-      "Xe đưa đón khứ hồi từ Hà Nội",
-      "Khách sạn/nhà sàn 1 đêm tại Cao Bằng",
-      "Vé tham quan thác Bản Giốc và động Ngườm Ngao",
-      "Thuyền tham quan chân thác",
-      "Hướng dẫn viên địa phương",
-      "Các bữa ăn đặc sản vùng cao",
-    ],
-    excludeServices: [
-      "Chi phí cá nhân, đồ uống",
-      "Phí thuê trang phục dân tộc",
-      "Tiền tip hướng dẫn viên",
-    ],
-    itinerary: [
-      {
-        title: "Ngày 1: Hà Nội - Cao Bằng - Động Ngườm Ngao",
-        description:
-          "06h00 xe đón đoàn tại Hà Nội, khởi hành đi Cao Bằng theo quốc lộ 3. Ăn trưa tại thị trấn Trùng Khánh. Chiều tham quan động Ngườm Ngao dài gần 2.144m với hệ thạch nhũ lung linh đủ hình thù. Tiếp tục đến khu du lịch thác Bản Giốc, ngắm thác đổ trắng xoá giữa núi rừng. Tối về nhận phòng nghỉ, ăn tối đặc sản vịt quay, bánh cuốn Cao Bằng.",
-      },
-      {
-        title: "Ngày 2: Suối Lê Nin - Pác Bó - Hà Nội",
-        description:
-          "Sáng tham quan suối Lê Nin xanh ngắt và di tích Pác Bó - cội nguồn cách mạng Việt Nam với hang Cốc Bó và bàn đá Bác Hồ làm việc. Ăn trưa tại địa phương. 13h00 lên xe về Hà Nội, khoảng 20h00 về đến điểm đón, kết thúc tour.",
-      },
-    ],
-    departureStartDays: 9,
-    departureEveryDays: 7,
-    totalSlots: 30,
-  },
-  {
-    title: "Mộc Châu - Đồi chè trái tim - Hang Dơi 2 ngày 1 đêm",
-    provinceName: "Sơn La",
-    tagNames: ["Núi", "Thiên nhiên", "Cặp đôi", "Bạn bè", "Giá rẻ"],
-    durationDays: 2,
-    durationNights: 1,
-    basePrice: 1650000,
-    description:
-      "Chạm vào cao nguyên Mộc Châu xanh mướt với đồi chè trái tim nổi tiếng, thác Dải Yếm trắng xoá và rừng thông bản Áng thơ mộng. Du khách thưởng thức sữa bò tươi, bò nướng lá mắc mật và ngắm cao nguyên trong sương sớm. Chuyến đi ngắn, gần Hà Nội, phù hợp cho cặp đôi và nhóm bạn muốn đổi gió cuối tuần.",
-    includeServices: [
-      "Xe đưa đón khứ hồi từ Hà Nội",
-      "Homestay/khách sạn 1 đêm tại Mộc Châu",
-      "Vé tham quan các điểm trong chương trình",
-      "Hướng dẫn viên địa phương",
-      "Các bữa ăn theo chương trình",
-      "Thưởng thức sữa bò tươi tại nông trại",
-    ],
-    excludeServices: [
-      "Chi phí cá nhân, đồ uống",
-      "Các trò chơi tự chọn (đu quay, cầu kính...)",
-      "Tiền tip hướng dẫn viên",
-    ],
-    itinerary: [
-      {
-        title: "Ngày 1: Hà Nội - Mộc Châu - Đồi chè trái tim",
-        description:
-          "06h30 xe đón đoàn tại Hà Nội, khởi hành đi Mộc Châu theo quốc lộ 6. Nghỉ chân tại đèo Thung Khe, ngắm toàn cảnh thung lũng Mai Châu. Ăn trưa tại Mộc Châu. Chiều tham quan đồi chè trái tim - điểm check-in nổi tiếng, tham quan nông trại bò sữa và thưởng thức sữa tươi. Ghé thác Dải Yếm và rừng thông bản Áng. Tối ăn bò nướng lá mắc mật, nghỉ đêm tại homestay.",
-      },
-      {
-        title: "Ngày 2: Hang Dơi - Rừng thông bản Áng - Hà Nội",
-        description:
-          "Sáng tham quan hang Dơi với hệ thạch nhũ đẹp, ngắm cao nguyên Mộc Châu trong sương sớm. Ghé cầu kính Bạch Long (tự túc) nếu muốn trải nghiệm. Ăn trưa tại địa phương, mua đặc sản chè, sữa, mận. 13h30 lên xe về Hà Nội, khoảng 19h00 kết thúc chương trình.",
-      },
-    ],
-    departureStartDays: 5,
-    departureEveryDays: 3,
     totalSlots: 35,
   },
   {
-    title: "Cát Bà - Vịnh Lan Hạ 2 ngày 1 đêm",
+    title: "Food tour Ninh Bình: dê núi, cơm cháy, ốc núi 1 ngày",
+    provinceName: "Ninh Bình",
+    tagNames: [
+      "Đặc sản địa phương",
+      "Ẩm thực đường phố",
+      "Bạn bè",
+      "Giá rẻ",
+      "Văn hóa - lịch sử",
+    ],
+    durationDays: 1,
+    durationNights: 0,
+    basePrice: 790000,
+    description:
+      "Tour ẩm thực dành cho người mê ăn, nếm thử dê núi, cơm cháy, ốc núi, miến lươn và nem Yên Mạc cùng người dẫn địa phương. Kết hợp ghé chợ quê và tham quan cố đô Hoa Lư.",
+    includeServices: [
+      "Xe đưa đón trong ngày",
+      "Các bữa ăn và món nếm thử theo chương trình",
+      "Vé cố đô Hoa Lư",
+      "Hướng dẫn viên ẩm thực",
+    ],
+    excludeServices: [
+      "Chi phí cá nhân, đồ uống ngoài chương trình",
+      "Tiền tip cho hướng dẫn viên và tài xế",
+    ],
+    itinerary: [
+      {
+        title: "Ngày 1: Hà Nội - Ninh Bình food tour",
+        description:
+          "07h00 xe đón từ Hà Nội. 09h30 ăn sáng miến lươn, tham quan chợ. 11h00 thăm cố đô Hoa Lư. 12h30 thưởng thức dê núi, cơm cháy. 15h00 ốc núi và nem Yên Mạc. 17h30 về Hà Nội.",
+      },
+    ],
+    departureStartDays: 2,
+    departureEveryDays: 2,
+    totalSlots: 25,
+  },
+  {
+    title: "Ninh Bình - Phát Diệm - Kim Sơn 1 ngày",
+    provinceName: "Ninh Bình",
+    tagNames: ["Văn hóa - lịch sử", "Một mình", "Giá rẻ", "Bạn bè"],
+    durationDays: 1,
+    durationNights: 0,
+    basePrice: 850000,
+    description:
+      "Chuyến đi về miền đất Kim Sơn với nhà thờ đá Phát Diệm, kiến trúc độc đáo kết hợp Đông - Tây, và đền thờ Nguyễn Công Trứ. Kết thúc bằng bữa cơm hải sản dân dã vùng ven biển.",
+    includeServices: [
+      "Xe đưa đón khứ hồi",
+      "Hướng dẫn viên",
+      "Bữa trưa hải sản",
+      "Vé tham quan",
+    ],
+    excludeServices: [
+      "Chi phí cá nhân, đồ uống ngoài chương trình",
+      "Tiền tip cho hướng dẫn viên và tài xế",
+    ],
+    itinerary: [
+      {
+        title: "Ngày 1: Hà Nội - Phát Diệm - Kim Sơn - Hà Nội",
+        description:
+          "07h00 khởi hành, 09h30 tham quan nhà thờ đá Phát Diệm, dạo hồ và các nhà nguyện. 11h30 ăn trưa hải sản. 14h00 thăm đền Nguyễn Công Trứ và vùng cửa biển. 17h00 về Hà Nội.",
+      },
+    ],
+    departureStartDays: 3,
+    departureEveryDays: 4,
+    totalSlots: 35,
+  },
+  {
+    title: "Ninh Bình 3 ngày 2 đêm nghỉ dưỡng cho cặp đôi",
+    provinceName: "Ninh Bình",
+    tagNames: ["Nghỉ dưỡng", "Sang trọng", "Cặp đôi", "Thiên nhiên"],
+    durationDays: 3,
+    durationNights: 2,
+    basePrice: 5450000,
+    description:
+      "Kỳ nghỉ 3 ngày 2 đêm dành cho cặp đôi tại resort 5 sao giữa vườn sen. Chương trình gồm chèo thuyền Tràng An, bữa tối riêng tư bên hồ, spa thư giãn, đạp xe qua làng quê và bình minh trên Hang Múa.",
+    includeServices: [
+      "Xe riêng đưa đón khứ hồi",
+      "2 đêm resort 5 sao",
+      "Vé thuyền và tham quan",
+      "Bữa tối lãng mạn 1 buổi",
+      "Spa 60 phút cho 2 người",
+      "Hướng dẫn viên riêng",
+    ],
+    excludeServices: [
+      "Chi phí cá nhân, đồ uống ngoài chương trình",
+      "Tiền tip cho hướng dẫn viên và tài xế",
+    ],
+    itinerary: [
+      {
+        title: "Ngày 1: Hà Nội - Ninh Bình - Tràng An",
+        description:
+          "08h00 xe riêng đón, 10h30 nhận phòng resort. Chiều đi thuyền Tràng An, tối bữa tối riêng bên hồ sen.",
+      },
+      {
+        title: "Ngày 2: Hang Múa - Tam Cốc - Spa",
+        description:
+          "Sáng sớm ngắm bình minh Hang Múa, ăn sáng tại resort. Đi thuyền Tam Cốc, chiều spa thư giãn 60 phút.",
+      },
+      {
+        title: "Ngày 3: Cố đô Hoa Lư - Hà Nội",
+        description:
+          "Sáng tự do thư giãn, 10h00 thăm cố đô Hoa Lư, 12h00 ăn trưa, 14h00 về Hà Nội.",
+      },
+    ],
+    departureStartDays: 7,
+    departureEveryDays: 7,
+    totalSlots: 12,
+  },
+  {
+    title: "Hành hương Bái Đính - Tràng An - Cố đô Hoa Lư 1 ngày",
+    provinceName: "Ninh Bình",
+    tagNames: ["Văn hóa - lịch sử", "Chay", "Gia đình", "Một mình", "Giá rẻ"],
+    durationDays: 1,
+    durationNights: 0,
+    basePrice: 820000,
+    description:
+      "Chương trình hành hương dành cho du khách thích không gian tâm linh, thăm chùa Bái Đính, đền vua Đinh, vua Lê và đi thuyền Tràng An. Bữa trưa chay thanh tịnh tại quán gần chùa.",
+    includeServices: [
+      "Xe đưa đón khứ hồi",
+      "Vé thuyền Tràng An",
+      "Bữa trưa chay",
+      "Hướng dẫn viên",
+    ],
+    excludeServices: [
+      "Chi phí cá nhân, đồ uống ngoài chương trình",
+      "Tiền tip cho hướng dẫn viên và tài xế",
+    ],
+    itinerary: [
+      {
+        title: "Ngày 1: Hà Nội - Bái Đính - Hoa Lư - Tràng An",
+        description:
+          "06h30 khởi hành, 09h00 thăm chùa Bái Đính. 11h30 dùng cơm chay. 13h30 tham quan cố đô Hoa Lư. 15h30 đi thuyền Tràng An. 17h30 về Hà Nội.",
+      },
+    ],
+    departureStartDays: 4,
+    departureEveryDays: 3,
+    totalSlots: 40,
+  },
+  {
+    title: "Hà Nội - Cát Bà 2 ngày 1 đêm",
     provinceName: "Hải Phòng",
-    tagNames: ["Biển", "Thiên nhiên", "Nghỉ dưỡng", "Gia đình", "Bạn bè"],
+    tagNames: ["Biển", "Gần biển", "Gia đình", "Bạn bè", "Hải sản"],
     durationDays: 2,
     durationNights: 1,
     basePrice: 2450000,
     description:
-      "Khám phá đảo Cát Bà - quần đảo lớn nhất vịnh Bắc Bộ với vịnh Lan Hạ hoang sơ, nước biển trong xanh và những bãi cát trắng nguyên sơ. Du khách chèo kayak giữa vịnh, tham quan vườn quốc gia Cát Bà và ngắm hoàng hôn trên biển. Điểm đến lý tưởng cho kỳ nghỉ cuối tuần gần Hà Nội.",
+      "Chuyến đi 2 ngày đến đảo Cát Bà bằng tàu cao tốc, tắm biển Cát Cò, thăm pháo đài Thần Công, tham quan vườn quốc gia Cát Bà và thưởng thức hải sản tươi. Phù hợp gia đình và nhóm bạn muốn kỳ nghỉ ngắn ven biển.",
     includeServices: [
-      "Xe đưa đón khứ hồi từ Hà Nội",
-      "Tàu cao tốc/lan khứ hồi ra đảo",
-      "Khách sạn 3 sao trên đảo 1 đêm",
-      "Tàu tham quan vịnh Lan Hạ",
-      "Chèo kayak và bữa hải sản",
-      "Hướng dẫn viên suốt tuyến",
+      "Xe và tàu cao tốc khứ hồi",
+      "1 đêm khách sạn 3 sao",
+      "Vé tham quan",
+      "3 bữa ăn theo chương trình",
+      "Hướng dẫn viên",
     ],
     excludeServices: [
-      "Vé tham quan vườn quốc gia Cát Bà",
-      "Chi phí cá nhân, đồ uống",
-      "Các trò chơi tự chọn",
+      "Chi phí cá nhân, đồ uống ngoài chương trình",
+      "Tiền tip cho hướng dẫn viên và tài xế",
     ],
     itinerary: [
       {
-        title: "Ngày 1: Hà Nội - Cát Bà - Vịnh Lan Hạ",
+        title: "Ngày 1: Hà Nội - Cát Bà - Cát Cò",
         description:
-          "06h00 xe đón đoàn tại Hà Nội đi Hải Phòng. 09h00 lên tàu cao tốc ra đảo Cát Bà, nhận phòng khách sạn. Ăn trưa hải sản tại thị trấn Cát Bà. Chiều lên tàu tham quan vịnh Lan Hạ, chèo kayak len lỏi giữa các đảo đá vôi, tắm biển tại bãi tắm hoang sơ. Tối tự do dạo phố, ăn hải sản nướng. Nghỉ đêm trên đảo.",
+          "06h30 xe đón khởi hành, 09h30 lên tàu cao tốc sang Cát Bà. 11h30 nhận phòng, ăn trưa hải sản. Chiều tắm biển Cát Cò. Tối tự do dạo chợ đêm.",
       },
       {
-        title: "Ngày 2: Vườn quốc gia Cát Bà - Hà Nội",
+        title: "Ngày 2: Pháo đài Thần Công - Hà Nội",
         description:
-          "Sáng tham quan vườn quốc gia Cát Bà với hệ động thực vật phong phú, leo lên đỉnh Ngự Lâm ngắm toàn cảnh đảo. Ghé bãi biển Cát Cò 1, 2, 3. Ăn trưa tại địa phương, mua đặc sản mực khô, tu hài. 14h00 lên tàu về đất liền, xe đưa đoàn về Hà Nội. Khoảng 19h30 kết thúc tour.",
+          "Sáng thăm pháo đài Thần Công, 10h00 ăn sáng muộn, trả phòng. 13h00 tàu về đất liền, 17h00 về Hà Nội.",
       },
     ],
-    departureStartDays: 7,
-    departureEveryDays: 5,
+    departureStartDays: 5,
+    departureEveryDays: 3,
+    totalSlots: 35,
+  },
+  {
+    title: "Cát Bà - Vịnh Lan Hạ chèo kayak 1 ngày",
+    provinceName: "Hải Phòng",
+    tagNames: [
+      "Biển",
+      "Thiên nhiên",
+      "Phiêu lưu mạo hiểm",
+      "Bạn bè",
+      "Cặp đôi",
+    ],
+    durationDays: 1,
+    durationNights: 0,
+    basePrice: 1250000,
+    description:
+      "Một ngày trên Vịnh Lan Hạ, du thuyền len qua đảo đá vôi, chèo kayak vào hang Ba Trái Đào, tắm biển bãi Ba Trái Đào và thưởng thức bữa trưa hải sản. Cảnh đẹp không kém Vịnh Hạ Long nhưng yên tĩnh hơn.",
+    includeServices: [
+      "Du thuyền Lan Hạ",
+      "Kayak và áo phao",
+      "Bữa trưa hải sản trên tàu",
+      "Hướng dẫn viên",
+      "Vé tham quan vịnh",
+    ],
+    excludeServices: [
+      "Chi phí cá nhân, đồ uống ngoài chương trình",
+      "Tiền tip cho hướng dẫn viên và tài xế",
+    ],
+    itinerary: [
+      {
+        title: "Ngày 1: Cát Bà - Lan Hạ - Cát Bà",
+        description:
+          "08h30 xuống du thuyền tại cảng Cát Bà. 09h30 chèo kayak qua hang. 12h00 ăn trưa trên tàu. 14h00 tắm biển, câu cá. 16h30 về cảng.",
+      },
+    ],
+    departureStartDays: 3,
+    departureEveryDays: 2,
+    totalSlots: 30,
+  },
+  {
+    title: "Hải Phòng food tour: bánh đa cua, nem cua bể, bánh mì cay",
+    provinceName: "Hải Phòng",
+    tagNames: [
+      "Ẩm thực đường phố",
+      "Đặc sản địa phương",
+      "Bạn bè",
+      "Giá rẻ",
+      "Trung tâm thành phố",
+    ],
+    durationDays: 1,
+    durationNights: 0,
+    basePrice: 890000,
+    description:
+      "Tour khám phá ẩm thực đường phố Hải Phòng với bánh đa cua, nem cua bể, bánh mì cay, ốc Tam Bạc và cà phê trứng. Có hướng dẫn viên người địa phương kể về văn hóa ẩm thực của thành phố Cảng.",
+    includeServices: [
+      "Xe đưa đón từ Hà Nội",
+      "Các món ăn thử theo chương trình",
+      "Hướng dẫn viên ẩm thực",
+    ],
+    excludeServices: [
+      "Chi phí cá nhân, đồ uống ngoài chương trình",
+      "Tiền tip cho hướng dẫn viên và tài xế",
+    ],
+    itinerary: [
+      {
+        title: "Ngày 1: Hà Nội - Hải Phòng food tour",
+        description:
+          "07h30 xe đón khởi hành, 09h30 ăn bánh đa cua. 11h30 nem cua bể, chả mực. 14h00 bánh mì cay và cà phê trứng. 16h30 ốc Tam Bạc, 18h00 về Hà Nội.",
+      },
+    ],
+    departureStartDays: 2,
+    departureEveryDays: 2,
+    totalSlots: 25,
+  },
+  {
+    title: "Đồ Sơn - Hòn Dấu 1 ngày",
+    provinceName: "Hải Phòng",
+    tagNames: ["Biển", "Gần biển", "Gia đình", "Văn hóa - lịch sử"],
+    durationDays: 1,
+    durationNights: 0,
+    basePrice: 790000,
+    description:
+      "Chuyến đi trong ngày đến Đồ Sơn, tắm biển, ghé đền Bà Đế, đảo Hòn Dấu và hải đăng cổ. Phù hợp gia đình và nhóm bạn muốn nghỉ ngơi cuối tuần.",
+    includeServices: [
+      "Xe đưa đón khứ hồi",
+      "Vé đảo Hòn Dấu",
+      "Bữa trưa hải sản",
+      "Hướng dẫn viên",
+    ],
+    excludeServices: [
+      "Chi phí cá nhân, đồ uống ngoài chương trình",
+      "Tiền tip cho hướng dẫn viên và tài xế",
+    ],
+    itinerary: [
+      {
+        title: "Ngày 1: Hà Nội - Đồ Sơn - Hòn Dấu",
+        description:
+          "07h00 khởi hành, 09h30 tắm biển Đồ Sơn. 11h30 ăn trưa hải sản. 13h30 thăm đền Bà Đế và đảo Hòn Dấu. 16h30 về Hà Nội.",
+      },
+    ],
+    departureStartDays: 3,
+    departureEveryDays: 3,
     totalSlots: 40,
   },
   {
-    title: "Tây Ninh - Núi Bà Đen - Tòa thánh Cao Đài 1 ngày",
-    provinceName: "Tây Ninh",
+    title: "Cát Bà 3 ngày 2 đêm nghỉ dưỡng biển",
+    provinceName: "Hải Phòng",
+    tagNames: ["Biển", "Nghỉ dưỡng", "Sang trọng", "Cặp đôi", "Resort"],
+    durationDays: 3,
+    durationNights: 2,
+    basePrice: 4950000,
+    description:
+      "Kỳ nghỉ 3 ngày tại resort 5 sao ven biển Cát Bà với hồ bơi vô cực, spa và nhà hàng hải sản. Chương trình gồm tour Vịnh Lan Hạ, thư giãn bãi biển riêng và một buổi tối BBQ hải sản.",
+    includeServices: [
+      "Tàu cao tốc khứ hồi",
+      "2 đêm resort 5 sao",
+      "Tour Vịnh Lan Hạ",
+      "Bữa tối BBQ hải sản",
+      "Hướng dẫn viên",
+    ],
+    excludeServices: [
+      "Chi phí cá nhân, đồ uống ngoài chương trình",
+      "Tiền tip cho hướng dẫn viên và tài xế",
+    ],
+    itinerary: [
+      {
+        title: "Ngày 1: Hà Nội - Cát Bà",
+        description:
+          "08h00 xuất phát, 11h00 sang đảo bằng tàu cao tốc, nhận phòng resort. Chiều tự do tắm biển, tối thưởng thức hải sản.",
+      },
+      {
+        title: "Ngày 2: Vịnh Lan Hạ",
+        description:
+          "Cả ngày đi du thuyền Lan Hạ, chèo kayak, tắm biển. Tối BBQ ngoài trời.",
+      },
+      {
+        title: "Ngày 3: Spa - Hà Nội",
+        description:
+          "Sáng spa thư giãn, trả phòng, 13h00 tàu về đất liền, 17h00 về Hà Nội.",
+      },
+    ],
+    departureStartDays: 7,
+    departureEveryDays: 7,
+    totalSlots: 12,
+  },
+  {
+    title: "Vườn quốc gia Cát Bà trekking 2 ngày 1 đêm",
+    provinceName: "Hải Phòng",
+    tagNames: ["Thiên nhiên", "Phiêu lưu mạo hiểm", "Núi", "Phượt", "Homestay"],
+    durationDays: 2,
+    durationNights: 1,
+    basePrice: 2150000,
+    description:
+      "Hai ngày trekking trong vườn quốc gia Cát Bà, leo đỉnh Ngự Lâm ngắm toàn cảnh đảo, thăm hang Trung Trang và nghỉ đêm homestay làng chài. Có hướng dẫn viên rừng đồng hành.",
+    includeServices: [
+      "Xe và tàu khứ hồi",
+      "1 đêm homestay",
+      "Vé vườn quốc gia",
+      "Hướng dẫn viên rừng",
+      "3 bữa ăn theo chương trình",
+    ],
+    excludeServices: [
+      "Chi phí cá nhân, đồ uống ngoài chương trình",
+      "Tiền tip cho hướng dẫn viên và tài xế",
+      "Bảo hiểm du lịch tự nguyện",
+    ],
+    itinerary: [
+      {
+        title: "Ngày 1: Hà Nội - Cát Bà - Trekking Ngự Lâm",
+        description:
+          "07h00 khởi hành, 10h30 đến Cát Bà. Chiều trekking lên đỉnh Ngự Lâm. Tối nghỉ homestay làng chài.",
+      },
+      {
+        title: "Ngày 2: Hang Trung Trang - Hà Nội",
+        description:
+          "Sáng thăm hang Trung Trang, 11h00 ăn trưa, 13h00 về đất liền, 17h00 về Hà Nội.",
+      },
+    ],
+    departureStartDays: 6,
+    departureEveryDays: 5,
+    totalSlots: 20,
+  },
+  {
+    title: "Hải Phòng city tour: Nhà hát lớn - Bảo tàng - Chùa Dư Hàng",
+    provinceName: "Hải Phòng",
     tagNames: [
       "Văn hóa - lịch sử",
-      "Núi",
+      "Trung tâm thành phố",
       "Gia đình",
+      "Một mình",
       "Giá rẻ",
-      "Bạn bè",
     ],
     durationDays: 1,
     durationNights: 0,
     basePrice: 690000,
     description:
-      "Tour trong ngày khám phá vùng đất thánh Tây Ninh với núi Bà Đen - ngọn núi cao nhất Nam Bộ và Tòa thánh Cao Đài độc đáo. Du khách cáp treo lên đỉnh núi, chiêm bái tượng Phật Tây Bổ Đà Sơn nổi tiếng linh thiêng và ngắm toàn cảnh đồng bằng từ trên cao. Chương trình nhẹ nhàng, chi phí hợp lý, khởi hành từ TP.HCM.",
+      "Một ngày khám phá di sản thành phố Cảng với Nhà hát lớn kiến trúc Pháp, Bảo tàng Hải Phòng, chùa Dư Hàng cổ kính và bữa trưa đặc sản bánh đa cua. Phù hợp du khách thích lịch sử và văn hóa.",
     includeServices: [
-      "Xe đưa đón khứ hồi từ TP.HCM",
-      "Vé cáp treo núi Bà Đen khứ hồi",
-      "Hướng dẫn viên suốt tuyến",
-      "Bữa trưa đặc sản Tây Ninh",
-      "Vé tham quan Tòa thánh Cao Đài",
-      "Nước uống và khăn lạnh",
+      "Xe đưa đón khứ hồi",
+      "Vé bảo tàng",
+      "Bữa trưa đặc sản",
+      "Hướng dẫn viên",
     ],
     excludeServices: [
-      "Chi phí cá nhân, đồ uống",
-      "Vé các khu vui chơi trên núi",
-      "Tiền tip hướng dẫn viên",
+      "Chi phí cá nhân, đồ uống ngoài chương trình",
+      "Tiền tip cho hướng dẫn viên và tài xế",
     ],
     itinerary: [
       {
-        title: "Sáng: TP.HCM - Tòa thánh Cao Đài",
+        title: "Ngày 1: Hà Nội - Hải Phòng city tour",
         description:
-          "06h00 xe đón đoàn tại trung tâm TP.HCM, khởi hành đi Tây Ninh. 08h30 tham quan Tòa thánh Cao Đài - công trình kiến trúc độc đáo kết hợp nhiều tôn giáo, dự lễ phẩm nếu đúng giờ. Hướng dẫn viên thuyết minh về đạo Cao Đài và lịch sử hình thành.",
-      },
-      {
-        title: "Trưa: Ăn trưa đặc sản",
-        description:
-          "11h30 đoàn dùng bữa trưa với đặc sản Tây Ninh như bánh canh Trảng Bàng, bò tơ và muối tôm. Nghỉ ngơi trước khi lên núi.",
-      },
-      {
-        title: "Chiều: Núi Bà Đen - về TP.HCM",
-        description:
-          "13h00 di chuyển đến khu du lịch núi Bà Đen. Đi cáp treo lên đỉnh núi cao 986m, chiêm bái tượng Phật Tây Bổ Đà Sơn bằng đá sa thạch lớn nhất Việt Nam và tham quan hệ thống chùa linh thiêng. Ngắm toàn cảnh đồng bằng Nam Bộ và hồ Dầu Tiếng từ trên cao. 16h00 xuống núi, lên xe về TP.HCM. Khoảng 19h00 kết thúc tour.",
+          "07h30 khởi hành, 09h30 thăm Nhà hát lớn và phố cổ Pháp. 10h30 tham quan Bảo tàng Hải Phòng. 12h00 ăn trưa bánh đa cua. 14h00 thăm chùa Dư Hàng. 16h00 về Hà Nội.",
       },
     ],
     departureStartDays: 3,
-    departureEveryDays: 2,
-    totalSlots: 45,
+    departureEveryDays: 4,
+    totalSlots: 40,
+  },
+  {
+    title: "Hạ Long - Lan Hạ - Cát Bà 3 ngày 2 đêm",
+    provinceName: "Hải Phòng",
+    tagNames: ["Biển", "Thiên nhiên", "Gia đình", "Cặp đôi", "Nghỉ dưỡng"],
+    durationDays: 3,
+    durationNights: 2,
+    basePrice: 4250000,
+    description:
+      "Hành trình kết nối ba vịnh đẹp của vùng biển Đông Bắc, bắt đầu bằng chuyến du thuyền Hạ Long, đi qua Lan Hạ và nghỉ ở Cát Bà. Du khách chèo kayak, tắm biển, thưởng thức hải sản và khám phá hệ sinh thái đảo.",
+    includeServices: [
+      "Xe và tàu khứ hồi",
+      "1 đêm du thuyền và 1 đêm khách sạn Cát Bà",
+      "Vé tham quan",
+      "6 bữa ăn",
+      "Hướng dẫn viên",
+    ],
+    excludeServices: [
+      "Chi phí cá nhân, đồ uống ngoài chương trình",
+      "Tiền tip cho hướng dẫn viên và tài xế",
+    ],
+    itinerary: [
+      {
+        title: "Ngày 1: Hà Nội - Hạ Long",
+        description:
+          "07h00 khởi hành, 11h30 lên du thuyền Hạ Long, tham quan hang động và chèo kayak. Đêm nghỉ trên du thuyền.",
+      },
+      {
+        title: "Ngày 2: Lan Hạ - Cát Bà",
+        description:
+          "Sáng tàu đưa đoàn qua Lan Hạ, tắm biển. Chiều đến Cát Bà, nhận phòng khách sạn.",
+      },
+      {
+        title: "Ngày 3: Cát Bà - Hà Nội",
+        description:
+          "Sáng dạo bãi Cát Cò và chợ hải sản, 13h00 tàu về đất liền, 17h30 về Hà Nội.",
+      },
+    ],
+    departureStartDays: 6,
+    departureEveryDays: 7,
+    totalSlots: 20,
   },
 ];
 
@@ -635,12 +691,12 @@ export async function seedTours() {
     formData.set("departures", JSON.stringify(buildDepartures(tour)));
     formData.set("imageUrls", JSON.stringify(IMAGES));
 
-    const result = await createTourFromLinksAction({ status: "idle" }, formData);
+    const result = await createTourFromLinksAction(
+      { status: "idle" },
+      formData,
+    );
     if (result.status === "error") {
-      console.error(
-        `✗ ${tour.title}`,
-        result.formError ?? result.fieldErrors,
-      );
+      console.error(`✗ ${tour.title}`, result.formError ?? result.fieldErrors);
     } else {
       console.log(`✓ ${tour.title}`);
     }
