@@ -524,6 +524,349 @@ export const RESTAURANTS = [
     timeSlots: [{ startTime: "08:00", endTime: "20:30" }],
   },
   {
+    name: "Nhà hàng Vịnh Bắc Bộ",
+    provinceName: "Hải Phòng",
+    address: "Lô 3C Đường Lê Hồng Phong, Đông Khê, Ngô Quyền, Hải Phòng",
+    phone: "02253826868",
+    capacity: 400,
+    description:
+      "Nhà hàng hải sản nổi tiếng của trung tâm Hải Phòng, được nhiều người mệnh danh là vua hải sản với nguyên liệu tươi đánh bắt trong ngày. Không gian sang trọng, có bàn VIP riêng và phòng tập thể, phù hợp tiệc doanh nghiệp và họp mặt gia đình.",
+    latitude: 20.8568,
+    longitude: 106.6888,
+    tagNames: [
+      "Hải sản",
+      "Sang trọng",
+      "Gia đình",
+      "Trung tâm thành phố",
+      "Đặc sản địa phương",
+    ],
+    menu: [
+      {
+        name: "Lẩu hải sản Vịnh Bắc Bộ",
+        description:
+          "Lẩu nước dùng ngọt xương, gồm ghẹ, tôm, mực, ngao cho 4 người.",
+        price: 750000,
+      },
+      {
+        name: "Ghẹ hấp bia",
+        description: "Ghẹ bể tươi hấp bia, ăn kèm muối tiêu chanh.",
+        price: 420000,
+      },
+      {
+        name: "Gỏi hàu chua cay",
+        description: "Hàu sữa tươi trộn gỏi chanh, ớt, hành tây.",
+        price: 220000,
+      },
+    ],
+    timeSlots: [{ startTime: "10:00", endTime: "22:00" }],
+  },
+  {
+    name: "Nhà hàng Gió Biển",
+    provinceName: "Hải Phòng",
+    address: "Bãi tắm trung tâm khu 1 và khu 2, Vạn Sơn, Đồ Sơn, Hải Phòng",
+    phone: "0924390518",
+    capacity: 500,
+    description:
+      "Nhà hàng nằm sát bãi tắm trung tâm Đồ Sơn, nổi tiếng với lẩu hải sản giá phải chăng và các món hấp, nướng theo thời giá. Quán mát gió biển, luôn tấp nập mùa hè, hợp cả gia đình lẫn nhóm bạn ghé tắm biển.",
+    latitude: 20.7148,
+    longitude: 106.7858,
+    tagNames: ["Hải sản", "Gần biển", "Gia đình", "Bạn bè", "Giá rẻ"],
+    menu: [
+      {
+        name: "Lẩu hải sản Gió Biển",
+        description:
+          "Lẩu hải sản đầy đủ ghẹ, tôm, mực, nấm cho nhóm 4 - 6 người.",
+        price: 560000,
+      },
+      {
+        name: "Bề bề nướng",
+        description: "Bề bề tươi nướng than hoa, chấm muối chanh ớt.",
+        price: 180000,
+      },
+      {
+        name: "Ốc xào bơ tỏi",
+        description: "Ốc bể xào bơ tỏi thơm béo, ăn nóng.",
+        price: 150000,
+      },
+    ],
+    timeSlots: [{ startTime: "09:00", endTime: "22:30" }],
+  },
+  {
+    name: "Nhà hàng Nổi 559",
+    provinceName: "Hải Phòng",
+    address: "Số 228 Đường 1/4, thị trấn Cát Bà, Cát Hải, Hải Phòng",
+    phone: "0979333559",
+    capacity: 300,
+    description:
+      "Nhà hàng hải sản nổi trên mặt vịnh ven đường 1/4 thị trấn Cát Bà, nhiều góc check-in view biển. Hải sản tươi lấy từ tàu cá cập bến, giá niêm yết theo thời giá, phù hợp đoàn khách sau tour thuyền Lan Hạ.",
+    latitude: 20.7283,
+    longitude: 107.0437,
+    tagNames: [
+      "Hải sản",
+      "Gần biển",
+      "Gia đình",
+      "Bạn bè",
+      "Đặc sản địa phương",
+    ],
+    menu: [
+      {
+        name: "Tôm hùm hấp bia",
+        description: "Tôm hùm Cát Bà hấp bia, thịt ngọt chắc.",
+        price: 1450000,
+      },
+      {
+        name: "Cá hồng hấp xì dầu",
+        description: "Cá hồng hấp xì dầu hành gừng, thịt mềm.",
+        price: 480000,
+      },
+      {
+        name: "Cơm rang hải sản",
+        description: "Cơm rang với tôm, mực, trứng và rau cục.",
+        price: 120000,
+      },
+    ],
+    timeSlots: [{ startTime: "10:00", endTime: "22:00" }],
+  },
+  {
+    name: "Nhà hàng Tằng Hậu",
+    provinceName: "Hải Phòng",
+    address: "Khu 1, Bến Thốc, Vạn Hương, Đồ Sơn, Hải Phòng",
+    phone: "02253861509",
+    capacity: 350,
+    description:
+      "Nhà hàng hải sản lâu đời của Đồ Sơn, tựa lưng đồi, mặt tiền hướng biển. Nổi tiếng với cua biển hấp bia, tôm càng xanh hấp bia, ghẹ rang me, sò huyết rang me và gỏi hàu. Không gian rộng, phục vụ được đoàn đông.",
+    latitude: 20.7122,
+    longitude: 106.7895,
+    tagNames: [
+      "Hải sản",
+      "Gần biển",
+      "Gia đình",
+      "Sang trọng",
+      "Đặc sản địa phương",
+    ],
+    menu: [
+      {
+        name: "Cua biển hấp bia",
+        description: "Cua gạch hấp bia nguyên con, thịt chắc ngọt.",
+        price: 680000,
+      },
+      {
+        name: "Ghẹ rang me",
+        description: "Ghẹ xanh rang me chua ngọt cay nhẹ.",
+        price: 380000,
+      },
+      {
+        name: "Sò huyết rang me",
+        description: "Sò huyết tươi rang me, ăn kèm rau răm.",
+        price: 190000,
+      },
+    ],
+    timeSlots: [{ startTime: "09:00", endTime: "22:00" }],
+  },
+  {
+    name: "Nhà hàng Lẩu Nướng Sơn Tùng Cát Bà",
+    provinceName: "Hải Phòng",
+    address: "Số 209 Đường Núi Ngọc, thị trấn Cát Bà, Cát Hải, Hải Phòng",
+    phone: "0922937938",
+    capacity: 200,
+    description:
+      "Nhà hàng lẩu nướng trên đường Núi Ngọc, cách bến tàu du lịch Cát Bà 5 phút đi bộ. Nổi bật với lẩu cá mú chua ngọt, cá mú nướng muối ớt, ghẹ rang me và sò điệp nướng mỡ hành, phục vụ cả món Á - Âu.",
+    latitude: 20.7267,
+    longitude: 107.0494,
+    tagNames: ["Hải sản", "Gần biển", "Bạn bè", "Gia đình", "Giá rẻ"],
+    menu: [
+      {
+        name: "Lẩu cá mú chua ngọt",
+        description: "Cá mú tươi cắt khúc nấu lẩu chua ngọt cho 4 người.",
+        price: 620000,
+      },
+      {
+        name: "Cá mú nướng muối ớt",
+        description: "Cá mú nướng muối ớt giữ tròn vị ngọt nguyên con.",
+        price: 460000,
+      },
+      {
+        name: "Sò điệp nướng mỡ hành",
+        description: "Sò điệp nướng mỡ hành, đậu phộng rang.",
+        price: 150000,
+      },
+    ],
+    timeSlots: [{ startTime: "10:00", endTime: "22:00" }],
+  },
+  {
+    name: "Nhà hàng Dê Nướng Hùng Sơn",
+    provinceName: "Ninh Bình",
+    address: "Thôn Hải Nham, Ninh Hải, Hoa Lư, Ninh Bình",
+    phone: "02293911221",
+    capacity: 220,
+    description:
+      "Nhà hàng dê núi ven đường Tam Cốc, chuyên dê nướng tảng, dê hấp tía tô và dê nướng mật ong. Trang trại dê tự chăn thả nên thịt chắc, ngọt, phục vụ suốt ngày cho khách tham quan Tam Cốc - Hang Múa.",
+    latitude: 20.2148,
+    longitude: 105.9297,
+    tagNames: [
+      "Đặc sản địa phương",
+      "Gia đình",
+      "Bạn bè",
+      "Thiên nhiên",
+    ],
+    menu: [
+      {
+        name: "Dê nướng tảng mật ong",
+        description:
+          "Dê núi nướng than xát mật ong, cắt tảng ăn kèm tương ớt chanh.",
+        price: 320000,
+      },
+      {
+        name: "Dê hấp tía tô",
+        description: "Dê hấp tía tô mềm, ăn kèm bánh đa nướng và chấm mắm gừng.",
+        price: 280000,
+      },
+      {
+        name: "Cơm cháy chà bông",
+        description: "Cơm cháy Ninh Bình giòn, phủ chà bông.",
+        price: 80000,
+      },
+    ],
+    timeSlots: [
+      { startTime: "10:00", endTime: "14:30" },
+      { startTime: "16:30", endTime: "21:30" },
+    ],
+  },
+  {
+    name: "Cơm Cháy Sơn Đá Tràng An",
+    provinceName: "Ninh Bình",
+    address: "Thôn Yên Thượng, Trường Yên, Hoa Lư, Ninh Bình",
+    phone: "02293822133",
+    capacity: 160,
+    description:
+      "Cơm cháy nướng tận nơi gần bến thuyền Tràng An, cơm giòn rụm ăn cùng sốt thịt dê hoặc chà bông. Quán thêm món cá chép nướng, gà đồi, giá bình dân, phục vụ nhanh cho khách đi thuyền xong đói bụng.",
+    latitude: 20.2472,
+    longitude: 105.9163,
+    tagNames: [
+      "Đặc sản địa phương",
+      "Giá rẻ",
+      "Gia đình",
+      "Bạn bè",
+    ],
+    menu: [
+      {
+        name: "Cơm cháy sốt thịt dê",
+        description: "Cơm cháy cỡ bàn tay, sốt thịt dê đậm đà.",
+        price: 120000,
+      },
+      {
+        name: "Cá chép nướng",
+        description: "Cá chép sông nướng than, chấm chanh muối ớt.",
+        price: 190000,
+      },
+      {
+        name: "Gà đồi luộc",
+        description: "Gà thả vườn luộc, chấm chanh muối ớt cay.",
+        price: 240000,
+      },
+    ],
+    timeSlots: [{ startTime: "09:30", endTime: "21:00" }],
+  },
+  {
+    name: "Nhà hàng Đồng Quê Vân Long",
+    provinceName: "Ninh Bình",
+    address: "Thôn Gia Hòa, Gia Viễn, Ninh Bình",
+    phone: "02293872244",
+    capacity: 130,
+    description:
+      "Quán ăn đồng quê ven đầm Vân Long, chuyên cá chép om dưa, cá rô kho tộ, gà thả vườn và cơm cháy. Nguyên liệu mua trong ngày từ ngư dân quanh đầm, không gian sân vườn thoáng sạch, hợp gia đình.",
+    latitude: 20.3642,
+    longitude: 105.8716,
+    tagNames: [
+      "Đặc sản địa phương",
+      "Thiên nhiên",
+      "Gia đình",
+      "Giá rẻ",
+    ],
+    menu: [
+      {
+        name: "Cá chép om dưa",
+        description: "Cá chép đầm Vân Long om dưa chua, thơm gừng.",
+        price: 190000,
+      },
+      {
+        name: "Cá rô kho tộ",
+        description: "Cá rô đồng kho nước màu đậm đà, ăn cơm trắng.",
+        price: 160000,
+      },
+      {
+        name: "Canh riêu cua đồng",
+        description: "Cua đồng giã riêu nấu cà chua, ăn kèm rau sống.",
+        price: 90000,
+      },
+    ],
+    timeSlots: [{ startTime: "10:00", endTime: "20:30" }],
+  },
+  {
+    name: "Quán Ốc Hương Hoa Lư",
+    provinceName: "Ninh Bình",
+    address: "Số 5 Đường Đinh Tiên Hoàng, Đông Thành, Ninh Bình",
+    phone: "02293932255",
+    capacity: 100,
+    description:
+      "Quán ốc trên phố Đinh Tiên Hoàng trong thành phố Ninh Bình, mở cả ca chiều tối cho khách đi Tràng An về muộn. Ốc hương hấp sả ớt, ốc nướng tiêu xanh, ốc xào bơ tỏi, giá bình dân, nhiều chỗ ngồi vỉa hè.",
+    latitude: 20.2452,
+    longitude: 105.9722,
+    tagNames: ["Ẩm thực đường phố", "Giá rẻ", "Bạn bè", "Đặc sản địa phương"],
+    menu: [
+      {
+        name: "Ốc hương hấp sả ớt",
+        description: "Ốc hương tươi hấp sả, chấm muối tiêu chanh.",
+        price: 170000,
+      },
+      {
+        name: "Ốc bướng nướng tiêu",
+        description: "Ốc bướng nướng tiêu xanh, thơm cay đậm đà.",
+        price: 140000,
+      },
+      {
+        name: "Ốc xào bơ tỏi",
+        description: "Ốc xào bơ tỏi béo thơm, dùng khi còn nóng.",
+        price: 150000,
+      },
+    ],
+    timeSlots: [{ startTime: "15:00", endTime: "22:30" }],
+  },
+  {
+    name: "Nhà hàng Hoa Lư Xưa",
+    provinceName: "Ninh Bình",
+    address: "Thôn Yên Thành, Trường Yên, Hoa Lư, Ninh Bình",
+    phone: "02293833266",
+    capacity: 260,
+    description:
+      "Nhà hàng cổ điện cạnh khu cố đô Hoa Lư, phục vụ bữa cơm hoàng đế với dê, cơm cháy, cá chép và rượu nếp, nhân viên mặc trang phục Đinh - Lê. Thích hợp đoàn khách muốn trải nghiệm văn hóa cổ đi kèm tham quan đền thờ vua Đinh.",
+    latitude: 20.2832,
+    longitude: 105.906,
+    tagNames: [
+      "Đặc sản địa phương",
+      "Văn hóa - lịch sử",
+      "Gia đình",
+      "Sang trọng",
+    ],
+    menu: [
+      {
+        name: "Bữa cơm hoàng đế 6 món",
+        description:
+          "Dê, cơm cháy, cá chép, rau luộc và canh, phục vụ theo mâm 6 người.",
+        price: 680000,
+      },
+      {
+        name: "Dê cân hấp",
+        description: "Dê núi hấp nguyên cân bọc bánh đa nem, chấm chua ngọt.",
+        price: 300000,
+      },
+    ],
+    timeSlots: [
+      { startTime: "10:00", endTime: "14:30" },
+      { startTime: "17:00", endTime: "21:00" },
+    ],
+  },
+  {
     name: "Nhà hàng Cua Biển Cát Hải",
     provinceName: "Hải Phòng",
     address: "Số 20 Hoàng Châu, Cát Hải, Hải Phòng",
