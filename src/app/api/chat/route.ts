@@ -1,4 +1,4 @@
-import { createGoogle } from "@ai-sdk/google";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import {
   convertToModelMessages,
   createUIMessageStreamResponse,
@@ -6,19 +6,21 @@ import {
   toUIMessageStream,
   type UIMessage,
 } from "ai";
+import { chatTools } from "@/features/customer/chat/lib/ai-tools";
 import { CHAT_INSTRUCTIONS, CHAT_MODEL } from "@/features/customer/chat/lib/prompt";
 
 export const maxDuration = 30;
 
-// Chatbot dùng key riêng; nếu chưa đặt thì AI SDK tự dùng GOOGLE_GENERATIVE_AI_API_KEY
-const google = createGoogle({ apiKey: process.env.GOOGLE_CHAT_API_KEY });
+// Chatbot dùng key riêng; nếu chưa đặt thì provider tự dùng OPENROUTER_API_KEY
+const openrouter = createOpenRouter({ apiKey: process.env.OPENROUTER_CHAT_API_KEY });
 
 export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
 
   const result = streamText({
-    model: google(CHAT_MODEL),
+    model: openrouter.chat(CHAT_MODEL),
     instructions: CHAT_INSTRUCTIONS,
+    tools: chatTools,
     messages: await convertToModelMessages(messages),
   });
 

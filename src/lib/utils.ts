@@ -129,3 +129,5 @@ export function reservationInstant(date: Date | string, startTime: string): Date
 export function todayIsoDate(now = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(now);
 }
+
+export { cn } from "cn";
