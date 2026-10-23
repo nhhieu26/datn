@@ -1,7 +1,8 @@
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { createVertex } from "@ai-sdk/google-vertex";
 import {
   convertToModelMessages,
   createUIMessageStreamResponse,
+  isStepCount,
   streamText,
   toUIMessageStream,
   type UIMessage,
@@ -11,16 +12,18 @@ import { CHAT_INSTRUCTIONS, CHAT_MODEL } from "@/features/customer/chat/lib/prom
 
 export const maxDuration = 30;
 
-// Chatbot dùng key riêng; nếu chưa đặt thì provider tự dùng OPENROUTER_API_KEY
-const openrouter = createOpenRouter({ apiKey: process.env.OPENROUTER_CHAT_API_KEY });
+// Vertex express mode: xác thực bằng API key, không cần project/location/ADC
+const vertex = createVertex({ apiKey: process.env.GOOGLE_VERTEX_API_KEY });
 
 export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
 
   const result = streamText({
-    model: openrouter.chat(CHAT_MODEL),
+    model: vertex(CHAT_MODEL),
     instructions: CHAT_INSTRUCTIONS,
     tools: chatTools,
+    // Cho model chạy tiếp sau khi tool tìm kiếm trả kết quả để viết câu trả lời
+    stopWhen: isStepCount(5),
     messages: await convertToModelMessages(messages),
   });
 
