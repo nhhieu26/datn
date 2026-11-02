@@ -96,3 +96,78 @@ export async function deleteDestinationEmbedding(id: string): Promise<void> {
 export async function clearDestinationEmbeddings(): Promise<void> {
   await getDestinationIndex().deleteAll();
 }
+
+function buildProvinceFilter(provinceIds?: string[]) {
+  if (!provinceIds?.length) return {};
+  return {
+    provinceId:
+      provinceIds.length === 1
+        ? { $eq: provinceIds[0] }
+        : { $in: provinceIds },
+  };
+}
+
+export async function queryTourEmbeddings(
+  vector: number[],
+  topK: number,
+  provinceIds?: string[]
+): Promise<string[]> {
+  const res = await getTourIndex().query({
+    vector,
+    topK,
+    filter: {
+      status: { $eq: "published" },
+      ...buildProvinceFilter(provinceIds),
+    },
+  });
+  return res.matches.map((m) => m.id);
+}
+
+export async function queryHotelEmbeddings(
+  vector: number[],
+  topK: number,
+  provinceIds?: string[]
+): Promise<string[]> {
+  const res = await getHotelIndex().query({
+    vector,
+    topK,
+    filter: {
+      status: { $eq: "published" },
+      ...buildProvinceFilter(provinceIds),
+    },
+  });
+  return res.matches.map((m) => m.id);
+}
+
+export async function queryRestaurantEmbeddings(
+  vector: number[],
+  topK: number,
+  provinceIds?: string[]
+): Promise<string[]> {
+  const res = await getRestaurantIndex().query({
+    vector,
+    topK,
+    filter: {
+      status: { $eq: "published" },
+      ...buildProvinceFilter(provinceIds),
+    },
+  });
+  return res.matches.map((m) => m.id);
+}
+
+export async function queryDestinationEmbeddings(
+  vector: number[],
+  topK: number,
+  provinceIds?: string[]
+): Promise<string[]> {
+  const res = await getDestinationIndex().query({
+    vector,
+    topK,
+    filter: {
+      isPublished: { $eq: true },
+      ...buildProvinceFilter(provinceIds),
+    },
+  });
+  return res.matches.map((m) => m.id);
+}
+

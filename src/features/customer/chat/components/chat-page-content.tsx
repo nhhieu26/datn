@@ -2,8 +2,9 @@
 
 import { useChat } from "@ai-sdk/react";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
-import { ArrowUpIcon, SquareIcon } from "lucide-react";
+import { ArrowUpIcon, ExternalLinkIcon, SparklesIcon, SquareIcon } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import Markdown from "react-markdown";
 import { useState, type FormEvent, type KeyboardEvent } from "react";
 import { Message, MessageContent } from "@/components/ui/message";
@@ -16,16 +17,17 @@ import {
   MessageScrollerProvider,
   MessageScrollerViewport,
 } from "@/components/ui/message-scroller";
+import { formatVnd } from "@/features/customer/components/cards/card-parts";
 import { PageBanner } from "@/features/customer/components/page-banner";
 import type { ChatMessage } from "@/features/customer/chat/lib/ai-tools";
 
 const ROBOT_IMAGE = "/AIbanner.png";
 
 const SUGGESTIONS = [
-  "Gợi ý lịch trình 3 ngày 2 đêm ở Đà Lạt",
-  "Nên đi Phú Quốc vào tháng mấy?",
-  "Những món ăn phải thử khi đến Hà Nội",
-  "Cần chuẩn bị gì khi đi trekking Sa Pa?",
+  "Lịch trình 2 ngày 1 đêm khám phá Ninh Bình trọn gói",
+  "Ở Ninh Bình có nhà hàng nào ăn dê núi cơm cháy ngon?",
+  "Tìm tour đi thuyền ngắm vịnh Lan Hạ - Cát Bà",
+  "Gợi ý khách sạn/resort nghỉ dưỡng gần biển ở Cát Bà",
 ];
 
 export function ChatPageContent() {
@@ -57,10 +59,12 @@ export function ChatPageContent() {
     if (pendingQuestion) break;
   }
 
-  // Hiện bubble 3 chấm khi chờ AI, tới lúc AI bắt đầu có nội dung để hiển thị
+  // Hiện bubble trạng thái khi chờ AI hoặc khi AI đang chạy tool tìm kiếm
   const lastMessage = messages.at(-1);
+  const activeToolLabel = isBusy ? getActiveToolLabel(lastMessage) : null;
   const showTyping =
-    isBusy && (!lastMessage || !hasVisibleContent(lastMessage));
+    isBusy &&
+    (!lastMessage || !hasVisibleContent(lastMessage) || Boolean(activeToolLabel));
 
   function send(text: string) {
     const trimmed = text.trim();
@@ -91,14 +95,14 @@ export function ChatPageContent() {
       <section className="page-x py-10">
         <div className="flex flex-col gap-[30px] lg:flex-row lg:items-start">
           {/* Giới thiệu + gợi ý: cùng kiểu panel với sidebar tài khoản */}
-          <aside className="hidden min-w-0 flex-1 rounded-md bg-new-section-bg p-6 lg:flex lg:h-[720px] lg:flex-col">
+          <aside className="hidden min-w-0 flex-1 rounded-md bg-new-section-bg p-6 lg:flex lg:h-[740px] lg:flex-col">
             <div className="flex min-h-0 flex-1 items-center justify-center rounded bg-white p-6">
               <Image
                 alt="Trợ lý du lịch Roamly AI"
-                className="h-full max-h-[400px] w-full object-contain"
+                className="h-full max-h-[380px] w-full object-contain"
                 height={1024}
                 priority
-                sizes="55vw"
+                sizes="50vw"
                 src={ROBOT_IMAGE}
                 width={1536}
               />
@@ -107,8 +111,8 @@ export function ChatPageContent() {
               Roamly AI đồng hành cùng chuyến đi của bạn
             </h2>
             <p className="mb-5 mt-1.5 text-sm">
-              Gợi ý lịch trình, địa điểm và trải nghiệm phù hợp chỉ trong vài
-              giây.
+              Tìm kiếm theo ngữ nghĩa, tư vấn thực đơn & lịch trình chi tiết từ
+              dữ liệu thực tế trên Roamly.
             </p>
             <div className="grid grid-cols-2 gap-3">
               {SUGGESTIONS.map((suggestion) => (
@@ -123,12 +127,18 @@ export function ChatPageContent() {
             </div>
           </aside>
 
-          {/* Khung chat: panel xám + thẻ trắng như trang "Đơn đặt tour" */}
-          <div className="flex h-[720px] max-h-[calc(100dvh-6rem)] min-h-[520px] w-full flex-col rounded-md bg-new-section-bg p-6 lg:w-[460px] lg:shrink-0">
-            <div className="mb-4 flex items-center">
-              <h1 className="text-lg font-semibold text-new-title">
-                Trò chuyện với Roamly AI
-              </h1>
+          {/* Khung chat: mở rộng để hiển thị lịch trình & thẻ dịch vụ trực quan */}
+          <div className="flex h-[740px] max-h-[calc(100dvh-6rem)] min-h-[540px] w-full flex-col rounded-md bg-new-section-bg p-6 lg:w-[540px] xl:w-[580px] lg:shrink-0">
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <SparklesIcon className="size-5 text-new-teal-cta" />
+                <h1 className="text-lg font-semibold text-new-title">
+                  Trò chuyện với Roamly AI
+                </h1>
+              </div>
+              <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-new-teal-cta">
+                Semantic AI
+              </span>
             </div>
 
             <div className="relative min-h-0 flex-1 rounded bg-white p-4">
@@ -138,11 +148,11 @@ export function ChatPageContent() {
                     chat
                   </span>
                   <p className="text-base font-medium text-new-title">
-                    Xin chào! Bạn muốn đi đâu?
+                    Xin chào! Bạn muốn đi đâu hay trải nghiệm gì?
                   </p>
                   <p className="max-w-xs text-sm">
-                    Hỏi Roamly AI về lịch trình, điểm đến, ẩm thực hay kinh
-                    nghiệm du lịch.
+                    Mô tả tự nhiên sở thích, món ăn muốn thử hoặc nhờ Roamly AI
+                    lên lịch trình trọn gói.
                   </p>
                   <div className="mt-2 grid w-full max-w-xs grid-cols-1 gap-2 lg:hidden">
                     {SUGGESTIONS.map((suggestion) => (
@@ -165,9 +175,17 @@ export function ChatPageContent() {
                       >
                         {messages.map((message) => {
                           const isUser = message.role === "user";
-                          // Tin nhắn AI chưa có nội dung (mới có step/reasoning/tool đang stream) → không render bubble rỗng
+                          // Tin nhắn AI chưa có nội dung hiển thị được → không render bubble rỗng
                           if (!isUser && !hasVisibleContent(message))
                             return null;
+
+                          const isStreamingMessage =
+                            isBusy && message.id === lastMessage?.id;
+                          const serviceCards =
+                            isUser || isStreamingMessage
+                              ? []
+                              : collectServiceCards(message);
+
                           return (
                             <MessageScrollerItem
                               key={message.id}
@@ -175,7 +193,7 @@ export function ChatPageContent() {
                               scrollAnchor={isUser || undefined}
                             >
                               <Message align={isUser ? "end" : "start"}>
-                                <MessageContent>
+                                <MessageContent className="max-w-full">
                                   <Bubble
                                     align={isUser ? "end" : "start"}
                                     variant={isUser ? "default" : "muted"}
@@ -214,6 +232,12 @@ export function ChatPageContent() {
                                         }
                                         return null;
                                       })}
+
+                                      {serviceCards.length > 0 && (
+                                        <ChatServiceCards
+                                          items={serviceCards}
+                                        />
+                                      )}
                                     </BubbleContent>
                                   </Bubble>
                                 </MessageContent>
@@ -227,21 +251,28 @@ export function ChatPageContent() {
                               <MessageContent>
                                 <Bubble align="start" variant="muted">
                                   <BubbleContent className="rounded bg-new-section-bg px-4 py-3 text-sm text-new-paragraph">
-                                    <span
+                                    <div
                                       aria-label="Roamly AI đang trả lời"
-                                      className="flex gap-1"
+                                      className="flex items-center gap-2.5"
                                       role="status"
                                     >
-                                      {[0, 150, 300].map((delay) => (
-                                        <span
-                                          className="size-1.5 animate-bounce rounded-full bg-new-teal-cta"
-                                          key={delay}
-                                          style={{
-                                            animationDelay: `${delay}ms`,
-                                          }}
-                                        />
-                                      ))}
-                                    </span>
+                                      <span className="flex gap-1">
+                                        {[0, 150, 300].map((delay) => (
+                                          <span
+                                            className="size-1.5 animate-bounce rounded-full bg-new-teal-cta"
+                                            key={delay}
+                                            style={{
+                                              animationDelay: `${delay}ms`,
+                                            }}
+                                          />
+                                        ))}
+                                      </span>
+                                      {activeToolLabel && (
+                                        <span className="text-xs font-medium text-new-title">
+                                          {activeToolLabel}
+                                        </span>
+                                      )}
+                                    </div>
                                   </BubbleContent>
                                 </Bubble>
                               </MessageContent>
@@ -295,7 +326,7 @@ export function ChatPageContent() {
                     className="max-h-40 min-h-[49px] w-full resize-none rounded border border-new-input-border bg-white px-3.5 py-3 text-base text-new-title placeholder:text-new-placeholder focus:border-new-teal focus:outline-none focus:ring-1 focus:ring-new-teal"
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Nhập câu hỏi của bạn..."
+                    placeholder="Ví dụ: Đi Ninh Bình 2N1Đ ăn dê núi, ở homestay nào đẹp?..."
                     rows={1}
                     value={input}
                   />
@@ -465,12 +496,213 @@ type AskUserPart = Extract<
   { type: "tool-askUser" }
 >;
 
+type ServiceCardItem = {
+  kind: "Tour" | "Khách sạn" | "Nhà hàng" | "Điểm đến";
+  title: string;
+  url: string;
+  image: string;
+  province: string;
+  meta?: string | null;
+  highlight?: string | null;
+  priceLabel: string;
+  rating?: number | null;
+  reviewCount?: number;
+};
+
+function collectServiceCards(message: ChatMessage): ServiceCardItem[] {
+  const cards: ServiceCardItem[] = [];
+  const seenUrls = new Set<string>();
+
+  for (const part of message.parts) {
+    if (part.type === "tool-searchTours" && part.state === "output-available") {
+      for (const item of part.output) {
+        if (!item?.url || seenUrls.has(item.url)) continue;
+        seenUrls.add(item.url);
+        cards.push({
+          kind: "Tour",
+          title: item.title,
+          url: item.url,
+          image: item.image || "/image-notfound.png",
+          province: item.province,
+          meta: item.duration,
+          highlight: item.itinerary?.[0]?.title ?? item.tags?.slice(0, 2).join(" • "),
+          priceLabel: item.price ? formatVnd(item.price) : "Liên hệ",
+          rating: item.rating,
+          reviewCount: item.reviewCount,
+        });
+      }
+    } else if (
+      part.type === "tool-searchHotels" &&
+      part.state === "output-available"
+    ) {
+      for (const item of part.output) {
+        if (!item?.url || seenUrls.has(item.url)) continue;
+        seenUrls.add(item.url);
+        cards.push({
+          kind: "Khách sạn",
+          title: item.name,
+          url: item.url,
+          image: item.image || "/image-notfound.png",
+          province: item.province,
+          meta: item.rooms?.length ? `${item.rooms.length} hạng phòng` : null,
+          highlight: item.amenities?.slice(0, 3).join(" • "),
+          priceLabel: item.priceFrom ? `Từ ${formatVnd(item.priceFrom)}/đêm` : "Liên hệ",
+          rating: item.rating,
+          reviewCount: item.reviewCount,
+        });
+      }
+    } else if (
+      part.type === "tool-searchRestaurants" &&
+      part.state === "output-available"
+    ) {
+      for (const item of part.output) {
+        if (!item?.url || seenUrls.has(item.url)) continue;
+        seenUrls.add(item.url);
+        const topDishes = item.dishes
+          ?.slice(0, 2)
+          .map((d) => d.name)
+          .join(", ");
+        cards.push({
+          kind: "Nhà hàng",
+          title: item.name,
+          url: item.url,
+          image: item.image || "/image-notfound.png",
+          province: item.province,
+          meta: item.hours,
+          highlight: topDishes ? `Món nổi bật: ${topDishes}` : null,
+          priceLabel: item.avgPrice ? `~${formatVnd(item.avgPrice)}/món` : "Xem menu",
+          rating: item.rating,
+          reviewCount: item.reviewCount,
+        });
+      }
+    } else if (
+      part.type === "tool-searchDestinations" &&
+      part.state === "output-available"
+    ) {
+      for (const item of part.output) {
+        if (!item?.url || seenUrls.has(item.url)) continue;
+        seenUrls.add(item.url);
+        cards.push({
+          kind: "Điểm đến",
+          title: item.name,
+          url: item.url,
+          image: item.image || "/image-notfound.png",
+          province: item.province,
+          meta: item.hours,
+          highlight: item.tags?.slice(0, 2).join(" • "),
+          priceLabel: item.ticketPrice ? `Vé ${formatVnd(item.ticketPrice)}` : "Miễn phí",
+        });
+      }
+    }
+  }
+
+  return cards.slice(0, 8);
+}
+
+function getActiveToolLabel(message?: ChatMessage): string | null {
+  if (!message || message.role !== "assistant") return null;
+  for (const part of [...message.parts].reverse()) {
+    switch (part.type) {
+      case "tool-searchTours":
+        if (part.state !== "output-available" && part.state !== "output-error")
+          return "Đang tìm kiếm tour & lịch trình phù hợp...";
+        break;
+      case "tool-searchHotels":
+        if (part.state !== "output-available" && part.state !== "output-error")
+          return "Đang tìm khách sạn & hạng phòng...";
+        break;
+      case "tool-searchRestaurants":
+        if (part.state !== "output-available" && part.state !== "output-error")
+          return "Đang tra cứu nhà hàng & thực đơn món ăn...";
+        break;
+      case "tool-searchDestinations":
+        if (part.state !== "output-available" && part.state !== "output-error")
+          return "Đang tìm địa điểm tham quan...";
+        break;
+      case "tool-getWeather":
+        if (part.state !== "output-available" && part.state !== "output-error")
+          return "Đang kiểm tra dự báo thời tiết...";
+        break;
+    }
+  }
+  return null;
+}
+
 // Chỉ tính nội dung hiển thị được: chữ, hoặc câu hỏi ngược đã được trả lời
 function hasVisibleContent(message: ChatMessage) {
   return message.parts.some(
     (part) =>
       (part.type === "text" && part.text.length > 0) ||
       (part.type === "tool-askUser" && part.state === "output-available"),
+  );
+}
+
+function ChatServiceCards({ items }: { items: ServiceCardItem[] }) {
+  return (
+    <div className="mt-3 border-t border-new-chip pt-3">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-new-title">
+        Dịch vụ gợi ý trên Roamly ({items.length})
+      </p>
+      <div className="flex flex-col gap-2">
+        {items.map((item) => (
+          <Link
+            className="group flex items-center gap-3 rounded border border-new-chip bg-white p-2.5 transition-all hover:border-new-teal-cta hover:shadow-xs"
+            href={item.url}
+            key={item.url}
+            target="_blank"
+          >
+            <div className="relative size-16 shrink-0 overflow-hidden rounded">
+              <Image
+                alt={item.title}
+                className="object-cover"
+                fill
+                sizes="64px"
+                src={item.image}
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 text-[11px] font-medium">
+                <span className="rounded bg-new-section-bg px-1.5 py-0.5 text-new-teal-cta">
+                  {item.kind}
+                </span>
+                <span className="truncate text-new-paragraph">
+                  {item.province}
+                  {item.meta ? ` • ${item.meta}` : ""}
+                </span>
+              </div>
+              <p className="mt-0.5 truncate text-sm font-semibold text-new-title group-hover:text-new-teal-cta">
+                {item.title}
+              </p>
+              {item.highlight && (
+                <p className="truncate text-xs text-new-paragraph">
+                  {item.highlight}
+                </p>
+              )}
+              <div className="mt-1 flex items-center justify-between gap-2">
+                <span className="text-xs font-bold text-new-teal-cta">
+                  {item.priceLabel}
+                </span>
+                <div className="flex items-center gap-2">
+                  {item.rating != null && item.reviewCount ? (
+                    <span className="flex items-center gap-0.5 text-xs font-medium text-new-title">
+                      <span
+                        aria-hidden
+                        className="material-symbols-outlined text-xs! text-[#ffb400]"
+                        style={{ fontVariationSettings: "'FILL' 1" }}
+                      >
+                        star
+                      </span>
+                      {item.rating.toFixed(1)} ({item.reviewCount})
+                    </span>
+                  ) : null}
+                  <ExternalLinkIcon className="size-3.5 text-new-placeholder group-hover:text-new-teal-cta" />
+                </div>
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
   );
 }
 

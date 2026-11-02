@@ -22,8 +22,8 @@ export async function POST(req: Request) {
     model: vertex(CHAT_MODEL),
     instructions: CHAT_INSTRUCTIONS,
     tools: chatTools,
-    // Cho model chạy tiếp sau khi tool tìm kiếm trả kết quả để viết câu trả lời
-    stopWhen: isStepCount(5),
+    // Cho phép gọi kết hợp nhiều tool (điểm đến + tour + khách sạn + nhà hàng + thời tiết) rồi tổng hợp câu trả lời
+    stopWhen: isStepCount(8),
     messages: await convertToModelMessages(messages),
   });
 
