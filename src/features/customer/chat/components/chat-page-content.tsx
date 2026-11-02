@@ -2,11 +2,22 @@
 
 import { useChat } from "@ai-sdk/react";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
-import { ArrowUpIcon, ExternalLinkIcon, SparklesIcon, SquareIcon } from "lucide-react";
+import {
+  ArrowUpIcon,
+  ExternalLinkIcon,
+  MapPinIcon,
+  SparklesIcon,
+  SquareIcon,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import Markdown from "react-markdown";
-import { useState, type FormEvent, type KeyboardEvent } from "react";
+import {
+  useMemo,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from "react";
 import { Message, MessageContent } from "@/components/ui/message";
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
 import {
@@ -19,6 +30,10 @@ import {
 } from "@/components/ui/message-scroller";
 import { formatVnd } from "@/features/customer/components/cards/card-parts";
 import { PageBanner } from "@/features/customer/components/page-banner";
+import {
+  ChatServiceMap,
+  type ServiceMapItem,
+} from "@/features/customer/chat/components/chat-service-map";
 import type { ChatMessage } from "@/features/customer/chat/lib/ai-tools";
 
 const ROBOT_IMAGE = "/AIbanner.png";
@@ -44,8 +59,41 @@ export function ChatPageContent() {
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
   });
   const [input, setInput] = useState("");
+  const [activeServiceUrl, setActiveServiceUrl] = useState<string | null>(null);
 
   const isBusy = status === "submitted" || status === "streaming";
+
+  // Lấy các dịch vụ có tọa độ từ câu trả lời gần nhất của AI để hiển thị lên bản đồ
+  const latestMapKey = (() => {
+    for (const message of [...messages].reverse()) {
+      if (message.role !== "assistant") continue;
+      const mappable = toServiceMapItems(collectServiceCards(message));
+      if (mappable.length > 0) {
+        return `${message.id}:${mappable.map((i) => i.url).join("|")}`;
+      }
+    }
+    return "";
+  })();
+
+  const latestMapItems = useMemo<ServiceMapItem[]>(() => {
+    if (!latestMapKey) return [];
+    for (const message of [...messages].reverse()) {
+      if (message.role !== "assistant") continue;
+      const mappable = toServiceMapItems(collectServiceCards(message));
+      if (mappable.length > 0) return mappable;
+    }
+    return [];
+    // Chỉ tính lại khi danh sách địa điểm gợi ý gần nhất thay đổi
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [latestMapKey]);
+
+  const mapIndexByUrl = useMemo(() => {
+    const map = new Map<string, number>();
+    latestMapItems.forEach((item, idx) => {
+      map.set(item.url, idx + 1);
+    });
+    return map;
+  }, [latestMapItems]);
 
   // Câu hỏi hỏi-ngược gần nhất chưa được trả lời → thay ô input bằng các nút lựa chọn
   let pendingQuestion: AskUserPart | null = null;
@@ -94,51 +142,62 @@ export function ChatPageContent() {
 
       <section className="page-x py-10">
         <div className="flex flex-col gap-[30px] lg:flex-row lg:items-start">
-          {/* Giới thiệu + gợi ý: cùng kiểu panel với sidebar tài khoản */}
-          <aside className="hidden min-w-0 flex-1 rounded-md bg-new-section-bg p-6 lg:flex lg:h-[740px] lg:flex-col">
-            <div className="flex min-h-0 flex-1 items-center justify-center rounded bg-white p-6">
-              <Image
-                alt="Trợ lý du lịch Roamly AI"
-                className="h-full max-h-[380px] w-full object-contain"
-                height={1024}
-                priority
-                sizes="50vw"
-                src={ROBOT_IMAGE}
-                width={1536}
+          {/* Cột trái: hiển thị bản đồ khi có gợi ý dịch vụ định vị được, ngược lại hiển thị giới thiệu + gợi ý prompt */}
+          <aside
+            className={
+              latestMapItems.length > 0
+                ? "flex h-[420px] min-w-0 flex-col rounded-md bg-new-section-bg p-6 lg:h-[740px] lg:flex-1"
+                : "hidden min-w-0 flex-1 rounded-md bg-new-section-bg p-6 lg:flex lg:h-[740px] lg:flex-col"
+            }
+          >
+            {latestMapItems.length > 0 ? (
+              <ChatServiceMap
+                activeUrl={activeServiceUrl}
+                items={latestMapItems}
+                onSelectUrl={setActiveServiceUrl}
               />
-            </div>
-            <h2 className="mt-6 text-2xl font-semibold text-new-title">
-              Roamly AI đồng hành cùng chuyến đi của bạn
-            </h2>
-            <p className="mb-5 mt-1.5 text-sm">
-              Tìm kiếm theo ngữ nghĩa, tư vấn thực đơn & lịch trình chi tiết từ
-              dữ liệu thực tế trên Roamly.
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              {SUGGESTIONS.map((suggestion) => (
-                <SuggestionButton
-                  disabled={isBusy}
-                  key={suggestion}
-                  onClick={() => send(suggestion)}
-                >
-                  {suggestion}
-                </SuggestionButton>
-              ))}
-            </div>
+            ) : (
+              <>
+                <div className="flex min-h-0 flex-1 items-center justify-center rounded bg-white p-6">
+                  <Image
+                    alt="Trợ lý du lịch Roamly AI"
+                    className="h-full max-h-[380px] w-full object-contain"
+                    height={1024}
+                    priority
+                    sizes="50vw"
+                    src={ROBOT_IMAGE}
+                    width={1536}
+                  />
+                </div>
+                <h2 className="mt-6 text-2xl font-semibold text-new-title">
+                  Roamly AI đồng hành cùng chuyến đi của bạn
+                </h2>
+                <p className="mb-5 mt-1.5 text-sm">
+                  Tìm kiếm theo ngữ nghĩa, tư vấn thực đơn & lịch trình chi tiết
+                  từ dữ liệu thực tế trên Roamly.
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {SUGGESTIONS.map((suggestion) => (
+                    <SuggestionButton
+                      disabled={isBusy}
+                      key={suggestion}
+                      onClick={() => send(suggestion)}
+                    >
+                      {suggestion}
+                    </SuggestionButton>
+                  ))}
+                </div>
+              </>
+            )}
           </aside>
 
           {/* Khung chat: mở rộng để hiển thị lịch trình & thẻ dịch vụ trực quan */}
           <div className="flex h-[740px] max-h-[calc(100dvh-6rem)] min-h-[540px] w-full flex-col rounded-md bg-new-section-bg p-6 lg:w-[540px] xl:w-[580px] lg:shrink-0">
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <SparklesIcon className="size-5 text-new-teal-cta" />
-                <h1 className="text-lg font-semibold text-new-title">
-                  Trò chuyện với Roamly AI
-                </h1>
-              </div>
-              <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-new-teal-cta">
-                Semantic AI
-              </span>
+            <div className="mb-4 flex items-center gap-2">
+              <SparklesIcon className="size-5 text-new-teal-cta" />
+              <h1 className="text-lg font-semibold text-new-title">
+                Trò chuyện với Roamly AI
+              </h1>
             </div>
 
             <div className="relative min-h-0 flex-1 rounded bg-white p-4">
@@ -235,7 +294,10 @@ export function ChatPageContent() {
 
                                       {serviceCards.length > 0 && (
                                         <ChatServiceCards
+                                          activeUrl={activeServiceUrl}
                                           items={serviceCards}
+                                          mapIndexByUrl={mapIndexByUrl}
+                                          onHoverItem={setActiveServiceUrl}
                                         />
                                       )}
                                     </BubbleContent>
@@ -502,12 +564,32 @@ type ServiceCardItem = {
   url: string;
   image: string;
   province: string;
+  address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   meta?: string | null;
   highlight?: string | null;
   priceLabel: string;
   rating?: number | null;
   reviewCount?: number;
 };
+
+function toServiceMapItems(cards: ServiceCardItem[]): ServiceMapItem[] {
+  return cards.filter(
+    (
+      card,
+    ): card is ServiceCardItem & {
+      kind: "Khách sạn" | "Nhà hàng" | "Điểm đến";
+      latitude: number;
+      longitude: number;
+    } =>
+      card.kind !== "Tour" &&
+      card.latitude != null &&
+      card.longitude != null &&
+      Number.isFinite(card.latitude) &&
+      Number.isFinite(card.longitude),
+  );
+}
 
 function collectServiceCards(message: ChatMessage): ServiceCardItem[] {
   const cards: ServiceCardItem[] = [];
@@ -544,6 +626,9 @@ function collectServiceCards(message: ChatMessage): ServiceCardItem[] {
           url: item.url,
           image: item.image || "/image-notfound.png",
           province: item.province,
+          address: item.address,
+          latitude: item.latitude,
+          longitude: item.longitude,
           meta: item.rooms?.length ? `${item.rooms.length} hạng phòng` : null,
           highlight: item.amenities?.slice(0, 3).join(" • "),
           priceLabel: item.priceFrom ? `Từ ${formatVnd(item.priceFrom)}/đêm` : "Liên hệ",
@@ -568,6 +653,9 @@ function collectServiceCards(message: ChatMessage): ServiceCardItem[] {
           url: item.url,
           image: item.image || "/image-notfound.png",
           province: item.province,
+          address: item.address,
+          latitude: item.latitude,
+          longitude: item.longitude,
           meta: item.hours,
           highlight: topDishes ? `Món nổi bật: ${topDishes}` : null,
           priceLabel: item.avgPrice ? `~${formatVnd(item.avgPrice)}/món` : "Xem menu",
@@ -588,6 +676,9 @@ function collectServiceCards(message: ChatMessage): ServiceCardItem[] {
           url: item.url,
           image: item.image || "/image-notfound.png",
           province: item.province,
+          address: item.address,
+          latitude: item.latitude,
+          longitude: item.longitude,
           meta: item.hours,
           highlight: item.tags?.slice(0, 2).join(" • "),
           priceLabel: item.ticketPrice ? `Vé ${formatVnd(item.ticketPrice)}` : "Miễn phí",
@@ -637,70 +728,110 @@ function hasVisibleContent(message: ChatMessage) {
   );
 }
 
-function ChatServiceCards({ items }: { items: ServiceCardItem[] }) {
+function ChatServiceCards({
+  items,
+  activeUrl,
+  mapIndexByUrl,
+  onHoverItem,
+}: {
+  items: ServiceCardItem[];
+  activeUrl?: string | null;
+  mapIndexByUrl?: Map<string, number>;
+  onHoverItem?: (url: string | null) => void;
+}) {
   return (
     <div className="mt-3 border-t border-new-chip pt-3">
       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-new-title">
         Dịch vụ gợi ý trên Roamly ({items.length})
       </p>
       <div className="flex flex-col gap-2">
-        {items.map((item) => (
-          <Link
-            className="group flex items-center gap-3 rounded border border-new-chip bg-white p-2.5 transition-all hover:border-new-teal-cta hover:shadow-xs"
-            href={item.url}
-            key={item.url}
-            target="_blank"
-          >
-            <div className="relative size-16 shrink-0 overflow-hidden rounded">
-              <Image
-                alt={item.title}
-                className="object-cover"
-                fill
-                sizes="64px"
-                src={item.image}
-              />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 text-[11px] font-medium">
-                <span className="rounded bg-new-section-bg px-1.5 py-0.5 text-new-teal-cta">
-                  {item.kind}
-                </span>
-                <span className="truncate text-new-paragraph">
-                  {item.province}
-                  {item.meta ? ` • ${item.meta}` : ""}
-                </span>
+        {items.map((item) => {
+          const hasCoords = item.latitude != null && item.longitude != null;
+          const pinNumber = mapIndexByUrl?.get(item.url);
+          const isActive = activeUrl === item.url;
+
+          return (
+            <Link
+              className={`group flex items-center gap-3 rounded border bg-white p-2.5 transition-all hover:border-new-teal-cta hover:shadow-xs ${
+                isActive
+                  ? "border-new-teal-cta ring-1 ring-new-teal-cta/30"
+                  : "border-new-chip"
+              }`}
+              href={item.url}
+              key={item.url}
+              onFocus={() => {
+                if (hasCoords) onHoverItem?.(item.url);
+              }}
+              onMouseEnter={() => {
+                if (hasCoords) onHoverItem?.(item.url);
+              }}
+              target="_blank"
+            >
+              <div className="relative size-16 shrink-0 overflow-hidden rounded">
+                <Image
+                  alt={item.title}
+                  className="object-cover"
+                  fill
+                  sizes="64px"
+                  src={item.image}
+                />
+                {pinNumber != null && (
+                  <span
+                    className="absolute top-1 left-1 inline-flex size-5 items-center justify-center rounded-full bg-new-teal-cta text-[10px] font-bold text-white shadow-xs"
+                    title="Vị trí trên bản đồ"
+                  >
+                    {pinNumber}
+                  </span>
+                )}
               </div>
-              <p className="mt-0.5 truncate text-sm font-semibold text-new-title group-hover:text-new-teal-cta">
-                {item.title}
-              </p>
-              {item.highlight && (
-                <p className="truncate text-xs text-new-paragraph">
-                  {item.highlight}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 text-[11px] font-medium">
+                  <span className="rounded bg-new-section-bg px-1.5 py-0.5 text-new-teal-cta">
+                    {item.kind}
+                  </span>
+                  <span className="truncate text-new-paragraph">
+                    {item.province}
+                    {item.meta ? ` • ${item.meta}` : ""}
+                  </span>
+                  {hasCoords && (
+                    <MapPinIcon
+                      aria-label="Có vị trí trên bản đồ"
+                      className="ml-auto size-3.5 shrink-0 text-new-teal-cta"
+                    />
+                  )}
+                </div>
+                <p className="mt-0.5 truncate text-sm font-semibold text-new-title group-hover:text-new-teal-cta">
+                  {item.title}
                 </p>
-              )}
-              <div className="mt-1 flex items-center justify-between gap-2">
-                <span className="text-xs font-bold text-new-teal-cta">
-                  {item.priceLabel}
-                </span>
-                <div className="flex items-center gap-2">
-                  {item.rating != null && item.reviewCount ? (
-                    <span className="flex items-center gap-0.5 text-xs font-medium text-new-title">
-                      <span
-                        aria-hidden
-                        className="material-symbols-outlined text-xs! text-[#ffb400]"
-                        style={{ fontVariationSettings: "'FILL' 1" }}
-                      >
-                        star
+                {item.highlight && (
+                  <p className="truncate text-xs text-new-paragraph">
+                    {item.highlight}
+                  </p>
+                )}
+                <div className="mt-1 flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-new-teal-cta">
+                    {item.priceLabel}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {item.rating != null && item.reviewCount ? (
+                      <span className="flex items-center gap-0.5 text-xs font-medium text-new-title">
+                        <span
+                          aria-hidden
+                          className="material-symbols-outlined text-xs! text-[#ffb400]"
+                          style={{ fontVariationSettings: "'FILL' 1" }}
+                        >
+                          star
+                        </span>
+                        {item.rating.toFixed(1)} ({item.reviewCount})
                       </span>
-                      {item.rating.toFixed(1)} ({item.reviewCount})
-                    </span>
-                  ) : null}
-                  <ExternalLinkIcon className="size-3.5 text-new-placeholder group-hover:text-new-teal-cta" />
+                    ) : null}
+                    <ExternalLinkIcon className="size-3.5 text-new-placeholder group-hover:text-new-teal-cta" />
+                  </div>
                 </div>
               </div>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
