@@ -14,6 +14,7 @@ const VN_BOUNDS = { minLat: 8, maxLat: 24, minLng: 102, maxLng: 110 };
 const KIND_FILTER: Record<ExternalPlaceKind, Record<string, string[] | "*">> = {
   hotel: {
     tourism: ["hotel", "guest_house", "hostel", "motel", "apartment", "resort", "chalet"],
+    leisure: ["resort"],
   },
   restaurant: {
     amenity: ["restaurant", "cafe", "fast_food", "food_court", "bar", "pub", "ice_cream"],
@@ -37,6 +38,8 @@ const KIND_PHRASES: Record<ExternalPlaceKind, string[]> = {
 };
 
 export type ExternalPlaceResult = {
+  // id bản ghi ExternalPlace trong DB (dùng cho confirmPlaces)
+  id: string;
   source: "external";
   kind: ExternalPlaceKind;
   name: string;
@@ -51,17 +54,26 @@ export type ExternalPlaceResult = {
   openingHours: string | null;
   cuisine: string | null;
   stars: string | null;
+  image: string | null;
+  rating: number | null;
+  reviewCount: number | null;
 };
 
-type Extra = {
+export type Extra = {
   phone?: string;
   website?: string;
   openingHours?: string;
   cuisine?: string;
   stars?: string;
+  // Chỉ có ở địa điểm lấy từ Google Maps (SerpApi)
+  source?: "serpapi";
+  placeId?: string;
+  rating?: number;
+  reviews?: number;
+  thumbnail?: string;
 };
 
-const normalize = (value: string) =>
+export const normalize = (value: string) =>
   value.normalize("NFC").toLowerCase().replace(/\s+/g, " ").trim();
 
 function matchesKind(kind: ExternalPlaceKind, place: NominatimPlace): boolean {
@@ -130,15 +142,22 @@ function pickExtra(place: NominatimPlace): Extra {
 const googleMapsUrl = (latitude: number, longitude: number) =>
   `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
 
-type StoredPlace =Awaited<ReturnType<typeof prisma.externalPlace.findMany>>[number];
+// Có place_id thì mở đúng trang địa điểm trên Google Maps
+const googlePlaceUrl = (name: string, placeId: string) =>
+  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}&query_place_id=${encodeURIComponent(placeId)}`;
 
-function toResult(p: StoredPlace, fallbackProvince: string): ExternalPlaceResult {
+export type StoredPlace = Awaited<ReturnType<typeof prisma.externalPlace.findMany>>[number];
+
+export function toResult(p: StoredPlace, fallbackProvince: string): ExternalPlaceResult {
   const extra = (p.extra ?? {}) as Extra;
   return {
+    id: p.id,
     source: "external",
     kind: p.kind,
     name: p.name,
-    url: googleMapsUrl(num(p.latitude)!, num(p.longitude)!),
+    url: extra.placeId
+      ? googlePlaceUrl(p.name, extra.placeId)
+      : googleMapsUrl(num(p.latitude)!, num(p.longitude)!),
     province: p.province ?? fallbackProvince,
     address: p.address,
     latitude: num(p.latitude)!,
@@ -146,9 +165,13 @@ function toResult(p: StoredPlace, fallbackProvince: string): ExternalPlaceResult
     type: p.type,
     phone: extra.phone ?? null,
     website: extra.website ?? null,
-    openingHours: truncate(extra.openingHours, 120),
+    openingHours:
+      typeof extra.openingHours === "string" ? truncate(extra.openingHours, 120) : null,
     cuisine: extra.cuisine ?? null,
     stars: extra.stars ?? null,
+    image: extra.thumbnail ?? null,
+    rating: extra.rating ?? null,
+    reviewCount: extra.reviews ?? null,
   };
 }
 
@@ -156,9 +179,12 @@ async function fetchFromNominatim(
   kind: ExternalPlaceKind,
   province: string,
   name?: string,
+  strict = false,
 ): Promise<NominatimPlace[]> {
   const queries = name
-    ? [`${name}, ${province}`, name]
+    ? strict
+      ? [`${name}, ${province}`]
+      : [`${name}, ${province}`, name]
     : KIND_PHRASES[kind].map((phrase) => `${phrase} ${province}`);
 
   const seen = new Set<string>();
@@ -190,14 +216,22 @@ export async function searchExternalPlaces({
   province,
   name,
   limit,
+  strict = false,
 }: {
   kind: ExternalPlaceKind;
   province: string;
   name?: string;
   limit: number;
+  /** Chỉ tìm "tên, tỉnh" — không thử tên trần (tránh khớp nhầm địa điểm trùng tên ở tỉnh khác) */
+  strict?: boolean;
 }): Promise<ExternalPlaceResult[]> {
   const trimmedName = name?.trim() || undefined;
-  const queryKey = [kind, normalize(province), normalize(trimmedName ?? "")].join("|");
+  const queryKey = [
+    kind,
+    normalize(province),
+    normalize(trimmedName ?? ""),
+    ...(strict ? ["strict"] : []),
+  ].join("|");
 
   const cached = await prisma.externalPlaceSearch.findUnique({ where: { queryKey } });
   let placeIds: string[];
@@ -205,7 +239,7 @@ export async function searchExternalPlaces({
   if (cached && cached.expiresAt > new Date()) {
     placeIds = cached.placeIds;
   } else {
-    const places = await fetchFromNominatim(kind, province, trimmedName);
+    const places = await fetchFromNominatim(kind, province, trimmedName, strict);
     const stored = await prisma.$transaction(
       places.map((place) => {
         const placeLabel = placeName(place)!;

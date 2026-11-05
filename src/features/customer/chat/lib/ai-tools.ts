@@ -16,7 +16,8 @@ import {
   queryTourEmbeddings,
 } from "@/lib/pinecone";
 import { prisma } from "@/lib/prisma";
-import { searchExternalPlaces } from "./external-places";
+import { vertex } from "@/lib/vertex";
+import { confirmPlaces, locatePlaces } from "./locate-places";
 import { num, truncate } from "./format";
 
 const MAX_RESULTS = 5;
@@ -761,9 +762,12 @@ export const chatTools = {
     },
   }),
 
-  searchExternalPlaces: tool({
+  // Google Search grounding (do server Google thực thi): tìm địa điểm/thông tin thực tế trên web
+  google_search: vertex.tools.googleSearch({}),
+
+  locatePlaces: tool({
     description:
-      "Tìm kiếm khách sạn, nhà hàng, quán ăn, điểm tham quan thực tế ngoài hệ thống (qua OpenStreetMap) tại một tỉnh/thành phố hoặc khu vực, trả về tên, địa chỉ, loại hình và tọa độ thật. Dùng để mở rộng lựa chọn, đề xuất công bằng giữa các địa điểm nổi tiếng ngoài đời thực và dịch vụ nội bộ, giúp lịch trình và tư vấn toàn diện, phong phú hơn.",
+      "Định vị trên bản đồ (tra Google Maps) các khách sạn, nhà hàng/quán ăn, điểm tham quan NGOÀI hệ thống Roamly mà bạn vừa tìm được bằng google_search. Gọi MỘT lần cho mỗi kind, truyền đúng tên riêng của từng địa điểm. Trả về `places` (đã có tọa độ, ảnh, rating, link Google Maps — chỉ những địa điểm này mới được giới thiệu), `ambiguous` (có vài địa điểm gần giống: chọn đúng cái rồi gọi confirmPlaces) và `unlocated` (không định vị được — không thử lại).",
     inputSchema: z.object({
       kind: z
         .enum(["hotel", "restaurant", "destination"])
@@ -771,24 +775,53 @@ export const chatTools = {
       province: z
         .string()
         .min(1)
-        .describe("Tỉnh/thành phố hoặc khu vực, ví dụ: Đà Nẵng, Hội An, Đà Lạt."),
-      name: z
-        .string()
-        .optional()
-        .describe(
-          "Tên riêng của địa điểm nếu người dùng hỏi đích danh, ví dụ: 'Cầu Rồng', 'Bánh xèo Bà Dưỡng'. Bỏ trống khi chỉ tìm theo loại.",
-        ),
-      limit: limitField,
+        .describe("Tỉnh/thành phố hoặc khu vực của các địa điểm, ví dụ: Hội An, Đà Lạt, Quy Nhơn."),
+      places: z
+        .array(
+          z.object({
+            name: z
+              .string()
+              .min(1)
+              .describe("Tên riêng chính xác (tiếng Việt có dấu) như trên bảng hiệu, ví dụ: 'Cao Lầu Thanh', 'Eo Gió'."),
+            address: z.string().optional().describe("Địa chỉ ngắn tìm được trên web, nếu có."),
+            summary: z
+              .string()
+              .optional()
+              .describe("1-2 câu tóm tắt từ web: vì sao nổi bật, món/đặc điểm, giá tham khảo."),
+          }),
+        )
+        .min(1)
+        .max(MAX_RESULTS + 2),
     }),
-    execute: async ({ kind, province, name, limit }) => {
+    execute: async ({ kind, province, places }) => {
       try {
-        return await searchExternalPlaces({ kind, province, name, limit });
+        return await locatePlaces({ kind, province, places });
       } catch (error) {
         // Ném lại để model nhận lỗi (output-error) thay vì hiểu nhầm là "không có kết quả"
-        console.warn("Tìm địa điểm ngoài (Nominatim) thất bại:", error);
-        throw new Error("Dịch vụ bản đồ OpenStreetMap tạm thời không phản hồi.");
+        console.warn("Định vị địa điểm thất bại:", error);
+        throw new Error("Dịch vụ bản đồ tạm thời không phản hồi.");
       }
     },
+  }),
+
+  confirmPlaces: tool({
+    description:
+      "Xác nhận địa điểm đúng trong danh sách `ambiguous.candidates` của locatePlaces (so tên + địa chỉ + loại với thông tin đã tìm trên web). Gọi MỘT lần cho tất cả lựa chọn; ứng viên nào không chắc là cùng địa điểm thì bỏ qua. Trả về `places` giống locatePlaces.",
+    inputSchema: z.object({
+      choices: z
+        .array(
+          z.object({
+            id: z.string().min(1).describe("`id` của ứng viên được chọn trong ambiguous.candidates."),
+            summary: z
+              .string()
+              .optional()
+              .describe("1-2 câu tóm tắt từ web: vì sao nổi bật, món/đặc điểm, giá tham khảo."),
+          }),
+        )
+        .min(1)
+        .max(MAX_RESULTS * 3),
+    }),
+    execute: async ({ choices }) => confirmPlaces(choices),
   }),
 } satisfies ToolSet;
 

@@ -560,7 +560,7 @@ type AskUserPart = Extract<
 
 type ServiceCardItem = {
   kind: "Tour" | "Khách sạn" | "Nhà hàng" | "Điểm đến";
-  // internal: dịch vụ trên Roamly; external: địa điểm từ OpenStreetMap
+  // internal: dịch vụ trên Roamly; external: địa điểm ngoài (Google Maps / OpenStreetMap)
   source: "internal" | "external";
   title: string;
   url: string;
@@ -691,10 +691,10 @@ function collectServiceCards(message: ChatMessage): ServiceCardItem[] {
         });
       }
     } else if (
-      part.type === "tool-searchExternalPlaces" &&
+      (part.type === "tool-locatePlaces" || part.type === "tool-confirmPlaces") &&
       part.state === "output-available"
     ) {
-      for (const item of part.output) {
+      for (const item of part.output.places) {
         if (!item?.url || seenUrls.has(item.url)) continue;
         seenUrls.add(item.url);
         cards.push({
@@ -702,16 +702,18 @@ function collectServiceCards(message: ChatMessage): ServiceCardItem[] {
           source: "external",
           title: item.name,
           url: item.url,
-          image: "/image-notfound.png",
+          image: item.image || "/image-notfound.png",
           province: item.province,
           address: item.address,
           latitude: item.latitude,
           longitude: item.longitude,
-          meta: item.openingHours ?? OSM_TYPE_LABEL[item.type] ?? null,
-          highlight: item.cuisine
-            ? `Ẩm thực: ${item.cuisine}`
-            : (item.address ?? null),
+          meta: item.openingHours ?? OSM_TYPE_LABEL[item.type] ?? (item.type || null),
+          highlight:
+            item.summary ??
+            (item.cuisine ? `Ẩm thực: ${item.cuisine}` : (item.address ?? null)),
           priceLabel: EXTERNAL_PRICE_LABEL[item.kind] ?? "Xem trên bản đồ",
+          rating: item.rating,
+          reviewCount: item.reviewCount ?? undefined,
         });
       }
     }
@@ -796,9 +798,13 @@ function getActiveToolLabel(message?: ChatMessage): string | null {
         if (part.state !== "output-available" && part.state !== "output-error")
           return "Đang kiểm tra dự báo thời tiết...";
         break;
-      case "tool-searchExternalPlaces":
+      case "tool-locatePlaces":
         if (part.state !== "output-available" && part.state !== "output-error")
-          return "Đang tìm địa điểm bên ngoài (OpenStreetMap)...";
+          return "Đang định vị địa điểm trên bản đồ...";
+        break;
+      case "tool-confirmPlaces":
+        if (part.state !== "output-available" && part.state !== "output-error")
+          return "Đang xác nhận địa điểm...";
         break;
     }
   }
