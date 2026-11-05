@@ -711,7 +711,7 @@ function collectServiceCards(message: ChatMessage): ServiceCardItem[] {
           highlight: item.cuisine
             ? `Ẩm thực: ${item.cuisine}`
             : (item.address ?? null),
-          priceLabel: "Chưa có trên Roamly",
+          priceLabel: EXTERNAL_PRICE_LABEL[item.kind] ?? "Xem trên bản đồ",
         });
       }
     }
@@ -739,6 +739,12 @@ const EXTERNAL_KIND_LABEL = {
   restaurant: "Nhà hàng",
   destination: "Điểm đến",
 } as const;
+
+const EXTERNAL_PRICE_LABEL: Record<string, string> = {
+  destination: "Tham quan tự do",
+  restaurant: "Quán ăn địa phương",
+  hotel: "Lưu trú tham khảo",
+};
 
 // Nhãn tiếng Việt cho một số loại đối tượng OpenStreetMap thường gặp
 const OSM_TYPE_LABEL: Record<string, string> = {

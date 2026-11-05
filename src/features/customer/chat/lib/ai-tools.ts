@@ -763,7 +763,7 @@ export const chatTools = {
 
   searchExternalPlaces: tool({
     description:
-      "Tìm khách sạn / nhà hàng / điểm tham quan NGOÀI hệ thống Roamly qua OpenStreetMap, trả về tên, địa chỉ và tọa độ thật. CHỈ gọi SAU KHI tool nội bộ tương ứng (searchHotels / searchRestaurants / searchDestinations) trả về rỗng, không có địa điểm người dùng hỏi đích danh, hoặc toàn kết quả matchedBy='popular' không đúng nhu cầu. Kết quả không đặt được trên Roamly và không có giá.",
+      "Tìm kiếm khách sạn, nhà hàng, quán ăn, điểm tham quan thực tế ngoài hệ thống (qua OpenStreetMap) tại một tỉnh/thành phố hoặc khu vực, trả về tên, địa chỉ, loại hình và tọa độ thật. Dùng để mở rộng lựa chọn, đề xuất công bằng giữa các địa điểm nổi tiếng ngoài đời thực và dịch vụ nội bộ, giúp lịch trình và tư vấn toàn diện, phong phú hơn.",
     inputSchema: z.object({
       kind: z
         .enum(["hotel", "restaurant", "destination"])
