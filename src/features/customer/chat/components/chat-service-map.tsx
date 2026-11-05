@@ -8,6 +8,8 @@ export type ServiceMapKind = "Khách sạn" | "Nhà hàng" | "Điểm đến";
 
 export type ServiceMapItem = {
   kind: ServiceMapKind;
+  // internal: dịch vụ trên Roamly; external: địa điểm từ OpenStreetMap
+  source: "internal" | "external";
   title: string;
   url: string;
   image: string;
@@ -67,10 +69,18 @@ function escapeHtml(value: string): string {
 function createPinIcon(
   L: LeafletModule,
   kind: ServiceMapKind,
+  source: ServiceMapItem["source"],
   index: number,
   active: boolean,
 ) {
   const { color } = KIND_STYLE[kind];
+  // Marker dịch vụ Roamly: nền đặc; địa điểm ngoài: nền trắng, viền nét đứt
+  const external = source === "external";
+  const pinFill = external ? "#ffffff" : color;
+  const pinStroke = external ? color : "#ffffff";
+  const pinDash = external ? ' stroke-dasharray="4 3"' : "";
+  const innerFill = external ? color : "#ffffff";
+  const textFill = external ? "#ffffff" : color;
   const scale = active ? "scale(1.18)" : "scale(1)";
   const ring = active
     ? "filter: drop-shadow(0 4px 8px rgba(15, 23, 42, 0.35));"
@@ -80,9 +90,9 @@ function createPinIcon(
     className: "",
     html: `<div style="transform:${scale};transform-origin:bottom center;transition:transform 150ms ease;${ring}">
       <svg width="32" height="42" viewBox="0 0 32 42" xmlns="http://www.w3.org/2000/svg">
-        <path d="M16 0C7.163 0 0 7.163 0 16c0 11.2 16 26 16 26s16-14.8 16-26C32 7.163 24.837 0 16 0z" fill="${color}" stroke="#ffffff" stroke-width="2"/>
-        <circle cx="16" cy="15" r="9.5" fill="#ffffff"/>
-        <text x="16" y="19" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="700" fill="${color}">${index + 1}</text>
+        <path d="M16 0C7.163 0 0 7.163 0 16c0 11.2 16 26 16 26s16-14.8 16-26C32 7.163 24.837 0 16 0z" fill="${pinFill}" stroke="${pinStroke}" stroke-width="2"${pinDash}/>
+        <circle cx="16" cy="15" r="9.5" fill="${innerFill}"/>
+        <text x="16" y="19" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="700" fill="${textFill}">${index + 1}</text>
       </svg>
     </div>`,
     iconSize: [32, 42],
@@ -114,12 +124,16 @@ function buildPopupHtml(item: ServiceMapItem): string {
        </div>`
     : "";
 
+  const external = item.source === "external";
   const reviewCount = item.reviewCount ?? 0;
   const hasRating = item.rating != null && reviewCount > 0;
-  const ratingHtml = `<div class="roamly-popup-rating">
+  const ratingHtml = external
+    ? `<div class="roamly-popup-rating"><p>Xem trên Google Maps</p></div>`
+    : `<div class="roamly-popup-rating">
       <span aria-hidden class="material-symbols-outlined roamly-popup-star-icon${hasRating ? " is-filled" : ""}">star</span>
       <p>${hasRating ? `${item.rating!.toFixed(1)} (${reviewCount})` : "Chưa có đánh giá"}</p>
     </div>`;
+  const kindLabel = external ? `${item.kind} · Ngoài Roamly` : item.kind;
 
   return `
     <a href="${url}" target="_blank" rel="noreferrer" class="roamly-popup-card">
@@ -135,7 +149,7 @@ function buildPopupHtml(item: ServiceMapItem): string {
         <div class="roamly-popup-chip">
           <div class="roamly-popup-chip-item">
             <span aria-hidden class="material-symbols-outlined">${icons.kind}</span>
-            <p>${escapeHtml(item.kind)}</p>
+            <p>${escapeHtml(kindLabel)}</p>
           </div>
           ${metaHtml}
         </div>
@@ -238,7 +252,13 @@ export function ChatServiceMap({
 
     items.forEach((item, index) => {
       const marker = L.marker([item.latitude, item.longitude], {
-        icon: createPinIcon(L, item.kind, index, item.url === activeUrl),
+        icon: createPinIcon(
+          L,
+          item.kind,
+          item.source,
+          index,
+          item.url === activeUrl,
+        ),
         zIndexOffset: item.url === activeUrl ? 1000 : 0,
       }).addTo(map);
 
@@ -271,7 +291,13 @@ export function ChatServiceMap({
     for (const [url, entry] of markersRef.current.entries()) {
       const isActive = url === activeUrl;
       entry.marker.setIcon(
-        createPinIcon(L, entry.item.kind, entry.index, isActive),
+        createPinIcon(
+          L,
+          entry.item.kind,
+          entry.item.source,
+          entry.index,
+          isActive,
+        ),
       );
       entry.marker.setZIndexOffset(isActive ? 1000 : 0);
     }
@@ -292,12 +318,21 @@ export function ChatServiceMap({
         <div className="flex items-center gap-2">
           <MapPinIcon className="size-5 text-new-teal-cta" />
           <h2 className="text-lg font-semibold text-new-title">
-            Bản đồ dịch vụ gợi ý ({items.length})
+            Bản đồ địa điểm gợi ý ({items.length})
           </h2>
         </div>
-        <span className="hidden text-xs text-new-paragraph sm:inline">
-          Chạm vào marker hoặc thẻ dịch vụ để xem vị trí
-        </span>
+        <div className="flex items-center gap-3 text-xs text-new-paragraph">
+          <span className="flex items-center gap-1">
+            <span className="inline-block size-3 rounded-full bg-new-teal-cta" />
+            Trên Roamly
+          </span>
+          {items.some((item) => item.source === "external") && (
+            <span className="flex items-center gap-1">
+              <span className="inline-block size-3 rounded-full border-2 border-dashed border-new-teal-cta bg-white" />
+              Ngoài Roamly (OSM)
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="relative isolate min-h-0 flex-1 overflow-hidden rounded border border-new-chip bg-white">

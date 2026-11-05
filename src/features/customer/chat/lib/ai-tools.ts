@@ -16,6 +16,8 @@ import {
   queryTourEmbeddings,
 } from "@/lib/pinecone";
 import { prisma } from "@/lib/prisma";
+import { searchExternalPlaces } from "./external-places";
+import { num, truncate } from "./format";
 
 const MAX_RESULTS = 5;
 const PINECONE_TOP_K = 20;
@@ -36,18 +38,13 @@ const tagsField = z
   .array(z.string())
   .optional()
   .describe("Từ khóa chủ đề/loại hình, ví dụ: biển, ẩm thực, gia đình, cặp đôi.");
-const limitField = z.number().int().min(1).max(MAX_RESULTS).default(MAX_RESULTS);
+// Mặc định 3 để khi gọi kết hợp nhiều tool, model nhận ít dữ liệu và chọn lọc hơn
+const DEFAULT_RESULTS = 3;
+const limitField = z.number().int().min(1).max(MAX_RESULTS).default(DEFAULT_RESULTS);
 
-const num = (value: { toString(): string } | null | undefined) =>
-  value == null ? null : Number(value.toString());
-
-const truncate = (text: string | null | undefined, maxLength = 280) => {
-  if (!text) return null;
-  const cleaned = text.replace(/\s+/g, " ").trim();
-  return cleaned.length <= maxLength
-    ? cleaned
-    : `${cleaned.slice(0, maxLength - 1)}…`;
-};
+// semantic: khớp ngữ nghĩa với yêu cầu; popular: chỉ là dịch vụ nổi bật cùng khu vực (fallback)
+const matchedBy = (index: number, semanticCount: number) =>
+  index < semanticCount ? ("semantic" as const) : ("popular" as const);
 
 type ItineraryItem = { title: string; description: string };
 
@@ -535,6 +532,7 @@ export const chatTools = {
         results = sortBySemanticOrder(vectorMatches, semanticIds).slice(0, limit);
       }
 
+      const semanticCount = results.length;
       if (results.length < limit) {
         const excludeIds = results.map((r) => r.id);
         const fallback = await prisma.hotel.findMany({
@@ -549,7 +547,9 @@ export const chatTools = {
         results = [...results, ...fallback];
       }
 
-      return results.map((h) => ({
+      return results.map((h, i) => ({
+        source: "internal" as const,
+        matchedBy: matchedBy(i, semanticCount),
         name: h.name,
         url: `/hotels/${h.slug}`,
         image: firstImage(h.images),
@@ -629,6 +629,7 @@ export const chatTools = {
         results = sortBySemanticOrder(vectorMatches, semanticIds).slice(0, limit);
       }
 
+      const semanticCount = results.length;
       if (results.length < limit) {
         const excludeIds = results.map((r) => r.id);
         const fallback = await prisma.restaurant.findMany({
@@ -643,13 +644,15 @@ export const chatTools = {
         results = [...results, ...fallback];
       }
 
-      return results.map((r) => {
+      return results.map((r, i) => {
         const starts = r.timeSlots.map((s) => s.startTime).sort();
         const ends = r.timeSlots.map((s) => s.endTime).sort();
         const hours = starts.length
           ? `${starts[0]} - ${ends[ends.length - 1]}`
           : null;
         return {
+          source: "internal" as const,
+          matchedBy: matchedBy(i, semanticCount),
           name: r.name,
           url: `/restaurants/${r.slug}`,
           image: firstImage(r.images),
@@ -726,6 +729,7 @@ export const chatTools = {
         results = sortBySemanticOrder(vectorMatches, semanticIds).slice(0, limit);
       }
 
+      const semanticCount = results.length;
       if (results.length < limit) {
         const excludeIds = results.map((r) => r.id);
         const fallback = await prisma.destination.findMany({
@@ -739,7 +743,9 @@ export const chatTools = {
         results = [...results, ...fallback];
       }
 
-      return results.map((d) => ({
+      return results.map((d, i) => ({
+        source: "internal" as const,
+        matchedBy: matchedBy(i, semanticCount),
         name: d.name,
         url: `/destinations/${d.slug}`,
         image: firstImage(d.images),
@@ -752,6 +758,36 @@ export const chatTools = {
         tags: d.tags.map((x) => x.tag.name),
         description: truncate(d.description, 300),
       }));
+    },
+  }),
+
+  searchExternalPlaces: tool({
+    description:
+      "Tìm khách sạn / nhà hàng / điểm tham quan NGOÀI hệ thống Roamly qua OpenStreetMap, trả về tên, địa chỉ và tọa độ thật. CHỈ gọi SAU KHI tool nội bộ tương ứng (searchHotels / searchRestaurants / searchDestinations) trả về rỗng, không có địa điểm người dùng hỏi đích danh, hoặc toàn kết quả matchedBy='popular' không đúng nhu cầu. Kết quả không đặt được trên Roamly và không có giá.",
+    inputSchema: z.object({
+      kind: z
+        .enum(["hotel", "restaurant", "destination"])
+        .describe("Loại địa điểm: hotel (lưu trú), restaurant (ăn uống), destination (tham quan)."),
+      province: z
+        .string()
+        .min(1)
+        .describe("Tỉnh/thành phố hoặc khu vực, ví dụ: Đà Nẵng, Hội An, Đà Lạt."),
+      name: z
+        .string()
+        .optional()
+        .describe(
+          "Tên riêng của địa điểm nếu người dùng hỏi đích danh, ví dụ: 'Cầu Rồng', 'Bánh xèo Bà Dưỡng'. Bỏ trống khi chỉ tìm theo loại.",
+        ),
+      limit: limitField,
+    }),
+    execute: async ({ kind, province, name, limit }) => {
+      try {
+        return await searchExternalPlaces({ kind, province, name, limit });
+      } catch (error) {
+        // Ném lại để model nhận lỗi (output-error) thay vì hiểu nhầm là "không có kết quả"
+        console.warn("Tìm địa điểm ngoài (Nominatim) thất bại:", error);
+        throw new Error("Dịch vụ bản đồ OpenStreetMap tạm thời không phản hồi.");
+      }
     },
   }),
 } satisfies ToolSet;

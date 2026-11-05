@@ -560,6 +560,8 @@ type AskUserPart = Extract<
 
 type ServiceCardItem = {
   kind: "Tour" | "Khách sạn" | "Nhà hàng" | "Điểm đến";
+  // internal: dịch vụ trên Roamly; external: địa điểm từ OpenStreetMap
+  source: "internal" | "external";
   title: string;
   url: string;
   image: string;
@@ -602,6 +604,7 @@ function collectServiceCards(message: ChatMessage): ServiceCardItem[] {
         seenUrls.add(item.url);
         cards.push({
           kind: "Tour",
+          source: "internal",
           title: item.title,
           url: item.url,
           image: item.image || "/image-notfound.png",
@@ -622,6 +625,7 @@ function collectServiceCards(message: ChatMessage): ServiceCardItem[] {
         seenUrls.add(item.url);
         cards.push({
           kind: "Khách sạn",
+          source: "internal",
           title: item.name,
           url: item.url,
           image: item.image || "/image-notfound.png",
@@ -649,6 +653,7 @@ function collectServiceCards(message: ChatMessage): ServiceCardItem[] {
           .join(", ");
         cards.push({
           kind: "Nhà hàng",
+          source: "internal",
           title: item.name,
           url: item.url,
           image: item.image || "/image-notfound.png",
@@ -672,6 +677,7 @@ function collectServiceCards(message: ChatMessage): ServiceCardItem[] {
         seenUrls.add(item.url);
         cards.push({
           kind: "Điểm đến",
+          source: "internal",
           title: item.name,
           url: item.url,
           image: item.image || "/image-notfound.png",
@@ -684,11 +690,81 @@ function collectServiceCards(message: ChatMessage): ServiceCardItem[] {
           priceLabel: item.ticketPrice ? `Vé ${formatVnd(item.ticketPrice)}` : "Miễn phí",
         });
       }
+    } else if (
+      part.type === "tool-searchExternalPlaces" &&
+      part.state === "output-available"
+    ) {
+      for (const item of part.output) {
+        if (!item?.url || seenUrls.has(item.url)) continue;
+        seenUrls.add(item.url);
+        cards.push({
+          kind: EXTERNAL_KIND_LABEL[item.kind],
+          source: "external",
+          title: item.name,
+          url: item.url,
+          image: "/image-notfound.png",
+          province: item.province,
+          address: item.address,
+          latitude: item.latitude,
+          longitude: item.longitude,
+          meta: item.openingHours ?? OSM_TYPE_LABEL[item.type] ?? null,
+          highlight: item.cuisine
+            ? `Ẩm thực: ${item.cuisine}`
+            : (item.address ?? null),
+          priceLabel: "Chưa có trên Roamly",
+        });
+      }
     }
   }
 
-  return cards.slice(0, 8);
+  // Ưu tiên giữ các thẻ được AI nhắc tới trong câu trả lời (theo link hoặc tên), rồi mới tới phần còn lại
+  const answerText = message.parts
+    .map((part) => (part.type === "text" ? part.text : ""))
+    .join("\n")
+    .toLowerCase();
+  const isMentioned = (card: ServiceCardItem) =>
+    answerText.includes(card.url.toLowerCase()) ||
+    answerText.includes(card.title.toLowerCase());
+
+  return [
+    ...cards.filter(isMentioned),
+    ...cards.filter((card) => !isMentioned(card)),
+  ].slice(0, MAX_SUGGESTIONS);
 }
+
+const MAX_SUGGESTIONS = 5;
+
+const EXTERNAL_KIND_LABEL = {
+  hotel: "Khách sạn",
+  restaurant: "Nhà hàng",
+  destination: "Điểm đến",
+} as const;
+
+// Nhãn tiếng Việt cho một số loại đối tượng OpenStreetMap thường gặp
+const OSM_TYPE_LABEL: Record<string, string> = {
+  hotel: "Khách sạn",
+  guest_house: "Nhà nghỉ",
+  hostel: "Hostel",
+  motel: "Motel",
+  apartment: "Căn hộ",
+  resort: "Resort",
+  restaurant: "Nhà hàng",
+  cafe: "Quán cà phê",
+  fast_food: "Đồ ăn nhanh",
+  food_court: "Khu ẩm thực",
+  bar: "Bar",
+  pub: "Pub",
+  attraction: "Điểm tham quan",
+  viewpoint: "Điểm ngắm cảnh",
+  museum: "Bảo tàng",
+  theme_park: "Công viên giải trí",
+  zoo: "Sở thú",
+  beach: "Bãi biển",
+  peak: "Đỉnh núi",
+  park: "Công viên",
+  place_of_worship: "Chùa / đền / nhà thờ",
+  bridge: "Cầu",
+};
 
 function getActiveToolLabel(message?: ChatMessage): string | null {
   if (!message || message.role !== "assistant") return null;
@@ -713,6 +789,10 @@ function getActiveToolLabel(message?: ChatMessage): string | null {
       case "tool-getWeather":
         if (part.state !== "output-available" && part.state !== "output-error")
           return "Đang kiểm tra dự báo thời tiết...";
+        break;
+      case "tool-searchExternalPlaces":
+        if (part.state !== "output-available" && part.state !== "output-error")
+          return "Đang tìm địa điểm bên ngoài (OpenStreetMap)...";
         break;
     }
   }
@@ -742,7 +822,7 @@ function ChatServiceCards({
   return (
     <div className="mt-3 border-t border-new-chip pt-3">
       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-new-title">
-        Dịch vụ gợi ý trên Roamly ({items.length})
+        Gợi ý cho bạn ({items.length})
       </p>
       <div className="flex flex-col gap-2">
         {items.map((item) => {
@@ -786,9 +866,6 @@ function ChatServiceCards({
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 text-[11px] font-medium">
-                  <span className="rounded bg-new-section-bg px-1.5 py-0.5 text-new-teal-cta">
-                    {item.kind}
-                  </span>
                   <span className="truncate text-new-paragraph">
                     {item.province}
                     {item.meta ? ` • ${item.meta}` : ""}

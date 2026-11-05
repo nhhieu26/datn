@@ -10,7 +10,7 @@ import {
 import { chatTools } from "@/features/customer/chat/lib/ai-tools";
 import { CHAT_INSTRUCTIONS, CHAT_MODEL } from "@/features/customer/chat/lib/prompt";
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 // Vertex express mode: xác thực bằng API key, không cần project/location/ADC
 const vertex = createVertex({ apiKey: process.env.GOOGLE_VERTEX_API_KEY });
@@ -22,8 +22,8 @@ export async function POST(req: Request) {
     model: vertex(CHAT_MODEL),
     instructions: CHAT_INSTRUCTIONS,
     tools: chatTools,
-    // Cho phép gọi kết hợp nhiều tool (điểm đến + tour + khách sạn + nhà hàng + thời tiết) rồi tổng hợp câu trả lời
-    stopWhen: isStepCount(8),
+    // Cho phép gọi kết hợp nhiều tool (nội bộ, rồi OpenStreetMap nếu thiếu, + thời tiết) rồi tổng hợp câu trả lời
+    stopWhen: isStepCount(12),
     messages: await convertToModelMessages(messages),
   });
 

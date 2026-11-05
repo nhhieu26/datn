@@ -614,3 +614,39 @@ model Review {
   @@index([hotelId, createdAt])
   @@index([restaurantId, createdAt])
 }
+
+enum ExternalPlaceKind {
+  hotel
+  restaurant
+  destination
+}
+
+// Địa điểm ngoài hệ thống (OpenStreetMap/Nominatim) mà chatbot đã tra cứu — cache để tránh gọi lại API.
+model ExternalPlace {
+  id        String            @id @default(cuid())
+  osmType   String // node | way | relation
+  osmId     String
+  kind      ExternalPlaceKind
+  name      String
+  address   String
+  province  String?
+  latitude  Decimal           @db.Decimal(9, 6)
+  longitude Decimal           @db.Decimal(9, 6)
+  category  String // OSM class, vd: amenity, tourism
+  type      String // OSM type, vd: restaurant, hotel, attraction
+  extra     Json              @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([osmType, osmId])
+}
+
+// Cache kết quả một lượt tìm kiếm ngoài: queryKey -> danh sách ExternalPlace.id (có hạn dùng).
+model ExternalPlaceSearch {
+  id        String   @id @default(cuid())
+  queryKey  String   @unique
+  placeIds  String[]
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
