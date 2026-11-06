@@ -10,6 +10,7 @@ const crumbLabels: Record<string, string> = {
   "/provider/hotels": "Khách sạn & Lưu trú",
   "/provider/restaurants": "Nhà hàng & Ẩm thực",
   "/provider/profiles": "Hồ sơ doanh nghiệp",
+  "/provider/reports": "Báo cáo & Thống kê",
   "/provider/bookings/tours": "Đặt tour",
   "/provider/bookings/hotels": "Đặt phòng",
   "/provider/bookings/restaurants": "Đặt bàn",

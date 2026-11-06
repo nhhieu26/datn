@@ -17,13 +17,27 @@ const AXIS_LABEL_STYLE = {
   fontWeight: 400,
 };
 
-export function RevenueChart({ chart }: { chart: DashboardChart }) {
+const PREVIOUS_LABEL = "Kỳ trước";
+const PREVIOUS_COLOR = "#9ca3af";
+
+export function RevenueChart({
+  chart,
+  previousValues,
+}: {
+  chart: DashboardChart;
+  /** Số liệu kỳ trước, vẽ thành đường nét đứt để so sánh. */
+  previousValues?: number[];
+}) {
   const id = `provider-revenue-chart-${useId().replace(/[^\w-]/g, "")}`;
   // Server trả mảng mới mỗi lần render nên so sánh theo nội dung
-  const dataKey = JSON.stringify(chart);
+  const dataKey = JSON.stringify({ chart, previousValues });
 
   useEffect(() => {
-    const { title, labels, values, unit } = JSON.parse(dataKey) as DashboardChart;
+    const { chart: parsed, previousValues: previous } = JSON.parse(dataKey) as {
+      chart: DashboardChart;
+      previousValues?: number[];
+    };
+    const { title, labels, values, unit } = parsed;
     const formatValue = (v: number) =>
       unit === "currency" ? formatCurrency(v) : `${v.toLocaleString("vi-VN")} khách`;
 
@@ -52,14 +66,23 @@ export function RevenueChart({ chart }: { chart: DashboardChart }) {
             zoom: { enabled: false },
             fontFamily: "Inter, ui-sans-serif",
           },
-          series: [{ name: title, data: values }],
+          series: [
+            { name: title, data: values },
+            ...(previous ? [{ name: PREVIOUS_LABEL, data: previous }] : []),
+          ],
           legend: { show: false },
           dataLabels: { enabled: false },
-          stroke: { curve: "smooth", width: 2 },
+          stroke: { curve: "smooth", width: 2, dashArray: previous ? [0, 5] : 0 },
           grid: { strokeDashArray: 3 },
           fill: {
             type: "gradient",
-            gradient: { type: "vertical", shadeIntensity: 1, opacityFrom: 0.25, opacityTo: 0 },
+            gradient: {
+              type: "vertical",
+              shadeIntensity: 1,
+              // Đường kỳ trước không tô nền
+              opacityFrom: previous ? [0.25, 0] : 0.25,
+              opacityTo: 0,
+            },
           },
           xaxis: {
             type: "category",
@@ -93,13 +116,19 @@ export function RevenueChart({ chart }: { chart: DashboardChart }) {
                 <div class="flex items-center gap-x-2 px-3 py-1.5 text-xs">
                   <span class="size-2.5 shrink-0 rounded-xs" style="background:${primary}"></span>
                   <span class="text-gray-500 dark:text-neutral-400">${title}</span>
-                  <span class="ms-auto font-medium">${formatValue(series[0][dataPointIndex])}</span>
+                  <span class="ms-auto ps-3 font-medium">${formatValue(series[0][dataPointIndex])}</span>
                 </div>
+                ${previous ? `
+                <div class="flex items-center gap-x-2 px-3 pb-1.5 text-xs">
+                  <span class="size-2.5 shrink-0 rounded-xs" style="background:${PREVIOUS_COLOR}"></span>
+                  <span class="text-gray-500 dark:text-neutral-400">${PREVIOUS_LABEL}</span>
+                  <span class="ms-auto ps-3 font-medium">${formatValue(series[1][dataPointIndex])}</span>
+                </div>` : ""}
               </div>`,
           },
         }),
-        () => ({ colors: [primary], grid: { borderColor: "#e5e7eb" } }),
-        () => ({ colors: [primary], grid: { borderColor: "#404040" } }),
+        () => ({ colors: [primary, PREVIOUS_COLOR], grid: { borderColor: "#e5e7eb" } }),
+        () => ({ colors: [primary, PREVIOUS_COLOR], grid: { borderColor: "#404040" } }),
       );
     })();
 

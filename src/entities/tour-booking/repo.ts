@@ -617,6 +617,16 @@ type DateRange = { from?: Date; to?: Date };
 const createdIn = ({ from, to }: DateRange) =>
   from || to ? { createdAt: { gte: from, lt: to } } : {};
 
+/** Số đơn theo từng trạng thái, tạo trong khoảng thời gian (dùng cho trang báo cáo). */
+export async function countByStatus(providerProfileId: string, range: DateRange = {}) {
+  const rows = await prisma.tourBooking.groupBy({
+    by: ["status"],
+    where: { providerProfileId, ...createdIn(range) },
+    _count: { _all: true },
+  });
+  return rows.map((row) => ({ status: row.status, count: row._count._all }));
+}
+
 export function countForDashboard(providerProfileId: string, range: DateRange = {}) {
   return prisma.tourBooking.count({
     where: {

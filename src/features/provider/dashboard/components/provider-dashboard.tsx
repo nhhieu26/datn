@@ -19,7 +19,7 @@ const RANGE_TABS: { value: DashboardRange; label: string }[] = [
   { value: "day", label: "Ngày" },
 ];
 
-const moneyIcon = (
+export const moneyIcon = (
   <>
     <line x1="12" x2="12" y1="2" y2="22" />
     <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
@@ -37,7 +37,7 @@ const starIcon = (
   <path d="M11.5 2.3a.5.5 0 0 1 1 0l2.4 5 5.4.8a.5.5 0 0 1 .3.9l-3.9 3.9.9 5.5a.5.5 0 0 1-.7.5L12 16.3l-4.9 2.6a.5.5 0 0 1-.7-.5l.9-5.5-3.9-3.9a.5.5 0 0 1 .3-.9l5.4-.8Z" />
 );
 
-const usersIcon = (
+export const usersIcon = (
   <>
     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
     <circle cx="9" cy="7" r="4" />
@@ -78,13 +78,13 @@ const activityStyle: Record<ActivityType, { cls: string; icon: ReactNode }> = {
   payment: { cls: "bg-teal-100 text-teal-700", icon: moneyIcon },
 };
 
-function trendClass(up: boolean | null) {
+export function trendClass(up: boolean | null) {
   if (up === true) return "bg-teal-100 text-teal-800";
   if (up === false) return "bg-red-100 text-red-800";
   return "bg-gray-100 text-gray-800";
 }
 
-function StrokeIcon({ children }: { children: ReactNode }) {
+export function StrokeIcon({ children }: { children: ReactNode }) {
   return (
     <svg className="size-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       {children}
