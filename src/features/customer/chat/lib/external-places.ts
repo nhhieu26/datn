@@ -65,8 +65,8 @@ export type Extra = {
   openingHours?: string;
   cuisine?: string;
   stars?: string;
-  // Chỉ có ở địa điểm lấy từ Google Maps (SerpApi)
-  source?: "serpapi";
+  // Chỉ có ở địa điểm lấy từ Google Maps ("serpapi"/"gmaps-scraper"/"gmaps-extractor": bản ghi cũ trước khi chuyển sang Omkar)
+  source?: "serpapi" | "gmaps-scraper" | "gmaps-extractor" | "omkar";
   placeId?: string;
   rating?: number;
   reviews?: number;

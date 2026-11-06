@@ -2,20 +2,18 @@ import type { ExternalPlaceKind } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   type GooglePlace,
-  SerpApiUnavailableError,
-  searchGoogleMaps,
-} from "@/lib/serpapi";
+  searchGoogleMapsBatch,
+} from "@/lib/gmaps-omkar";
 import {
   type Extra,
   type ExternalPlaceResult,
   normalize,
-  searchExternalPlaces,
   type StoredPlace,
   toResult,
 } from "./external-places";
 import { truncate } from "./format";
 
-// SerpApi free chỉ 250 lượt/tháng → cache rất lâu; kết quả rỗng cũng cache (cache âm)
+// Omkar giới hạn 1.000 request/tháng (gói free) → cache rất lâu; kết quả rỗng cũng cache (cache âm)
 const SERP_CACHE_TTL_MS = 180 * 24 * 60 * 60 * 1000;
 const SERP_EMPTY_CACHE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 const GOOGLE_SOURCE = "google"; // giá trị osmType cho địa điểm lấy từ Google Maps
@@ -103,7 +101,7 @@ function nameScore(query: string, candidate: string, province: string): number {
   return matched / queryTokens.length;
 }
 
-// ───────────────────────── Cache + SerpApi ─────────────────────────
+// ───────────────────────── Cache + Omkar ─────────────────────────
 
 type Lookup = {
   // true: địa điểm đầu tiên là khớp chắc chắn (Google trả place_results)
@@ -129,7 +127,7 @@ async function storeGooglePlaces(
   const stored = await prisma.$transaction(
     places.map((place) => {
       const extra: Extra = {
-        source: "serpapi",
+        source: "omkar",
         placeId: place.placeId,
         ...(place.rating != null ? { rating: place.rating } : {}),
         ...(place.reviews != null ? { reviews: place.reviews } : {}),
@@ -180,18 +178,18 @@ async function findStoredGooglePlace(
   return sameSpot ? matches[0] : null;
 }
 
-// Dedupe trong process: nhiều tool call song song cùng tên chỉ tốn 1 lượt SerpApi
+// Dedupe trong process: nhiều tool call song song cùng tên chỉ tốn 1 lượt scrape
 const inFlight = new Map<string, Promise<Lookup>>();
 
-async function lookupGoogle(
+/** Tầng 1 + 2: cache theo truy vấn, rồi địa điểm đã lưu. null = cache miss, cần scrape */
+async function lookupCached(
   kind: ExternalPlaceKind,
   province: string,
   name: string,
-): Promise<Lookup> {
+): Promise<Lookup | null> {
   const key = serpKey(kind, province, name);
   const exactKey = `${key}|exact`;
 
-  // Tầng 1: cache theo truy vấn
   const cached = await prisma.externalPlaceSearch.findMany({
     where: { queryKey: { in: [key, exactKey] }, expiresAt: { gt: new Date() } },
   });
@@ -200,67 +198,114 @@ async function lookupGoogle(
     return { exact: hit.queryKey === exactKey, rows: await loadRows(hit.placeIds) };
   }
 
-  // Tầng 2: địa điểm đã lưu từ lần tìm khác
   const stored = await findStoredGooglePlace(kind, province, name);
-  if (stored) return { exact: true, rows: [stored] };
+  return stored ? { exact: true, rows: [stored] } : null;
+}
 
-  // Tầng 3: gọi SerpApi (dedupe in-flight)
-  const pending = inFlight.get(key);
-  if (pending) return pending;
+// Mọi truy vấn phát sinh trong một khoảng ngắn (kể cả từ nhiều lần gọi locatePlaces song song:
+// hotel/restaurant/destination) được dồn thành một lô: kiểm soát số request (Omkar giới hạn 5/giây).
+const BATCH_WINDOW_MS = 250;
 
-  const task = (async (): Promise<Lookup> => {
-    const q = `${stripTrailingProvince(name, province)} ${province}`;
-    console.info(`[serpapi] call q="${q}" (cache miss)`);
-    const result = await searchGoogleMaps(q);
-    const ids = await storeGooglePlaces(kind, province, result.places);
+type PendingScrape = {
+  kind: ExternalPlaceKind;
+  province: string;
+  name: string;
+  resolve: (lookup: Lookup) => void;
+  reject: (error: unknown) => void;
+};
 
-    const queryKey = result.exact ? exactKey : key;
-    const ttl = ids.length > 0 ? SERP_CACHE_TTL_MS : SERP_EMPTY_CACHE_TTL_MS;
-    const expiresAt = new Date(Date.now() + ttl);
-    await prisma.externalPlaceSearch.upsert({
-      where: { queryKey },
-      create: { queryKey, placeIds: ids, expiresAt },
-      update: { placeIds: ids, expiresAt },
-    });
-    return { exact: result.exact, rows: await loadRows(ids) };
-  })();
+let pendingScrapes: PendingScrape[] = [];
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
 
-  inFlight.set(key, task);
+async function storeLookup(
+  item: PendingScrape,
+  result: { exact: boolean; places: GooglePlace[] },
+): Promise<Lookup> {
+  const key = serpKey(item.kind, item.province, item.name);
+  const ids = await storeGooglePlaces(item.kind, item.province, result.places);
+  const queryKey = result.exact ? `${key}|exact` : key;
+  const ttl = ids.length > 0 ? SERP_CACHE_TTL_MS : SERP_EMPTY_CACHE_TTL_MS;
+  const expiresAt = new Date(Date.now() + ttl);
+  await prisma.externalPlaceSearch.upsert({
+    where: { queryKey },
+    create: { queryKey, placeIds: ids, expiresAt },
+    update: { placeIds: ids, expiresAt },
+  });
+  return { exact: result.exact, rows: await loadRows(ids) };
+}
+
+async function flushScrapes(): Promise<void> {
+  const batch = pendingScrapes;
+  pendingScrapes = [];
+  flushTimer = null;
+  if (batch.length === 0) return;
+
+  const queries = batch.map(
+    (item) => `${stripTrailingProvince(item.name, item.province)} ${item.province}`,
+  );
+  console.info(`[gmaps] ${queries.length} truy vấn (cache miss):`, queries);
   try {
-    return await task;
-  } finally {
-    inFlight.delete(key);
+    const results = await searchGoogleMapsBatch(queries);
+    await Promise.all(
+      batch.map((item, idx) =>
+        storeLookup(item, results[idx]).then(item.resolve, item.reject),
+      ),
+    );
+  } catch (error) {
+    batch.forEach((item) => item.reject(error));
   }
 }
 
-// ───────────────────────── Fallback Nominatim ─────────────────────────
+/** Xếp một truy vấn vào hàng đợi scrape; trả về khi job chứa nó hoàn tất */
+function enqueueScrape(kind: ExternalPlaceKind, province: string, name: string): Promise<Lookup> {
+  return new Promise<Lookup>((resolve, reject) => {
+    pendingScrapes.push({ kind, province, name, resolve, reject });
+    flushTimer ??= setTimeout(() => void flushScrapes(), BATCH_WINDOW_MS);
+  });
+}
 
-// Tiền tố chung mà tên trên OSM thường lược bỏ (vd: "Bãi Kỳ Co" → "Kỳ Co")
-const GENERIC_PREFIX =
-  /^(bãi biển|bãi tắm|bãi|quán ăn|quán|nhà hàng|khách sạn|homestay|resort|chùa|đền|bảo tàng|thác|đảo|hòn)\s+/i;
-
-async function geocodeWithNominatim(
+/** Tra cứu mọi tên: cache trước, phần còn thiếu gộp thành một job scrape. Kết quả theo thứ tự `names`. */
+async function lookupAll(
   kind: ExternalPlaceKind,
   province: string,
-  name: string,
-): Promise<ExternalPlaceResult | null> {
-  const variants = [name];
-  const stripped = name.replace(GENERIC_PREFIX, "").trim();
-  if (stripped && stripped !== name) variants.push(stripped);
+  names: string[],
+): Promise<Lookup[]> {
+  const cached = await Promise.all(names.map((name) => lookupCached(kind, province, name)));
+  const keys = names.map((name) => serpKey(kind, province, name));
+  const out: Promise<Lookup>[] = new Array(names.length);
 
-  for (const variant of variants) {
-    // strict: chỉ tìm "tên, tỉnh" để không khớp nhầm địa điểm trùng tên ở tỉnh khác
-    const [located] = await searchExternalPlaces({
-      kind,
-      province,
-      name: variant,
-      limit: 1,
-      strict: true,
-    });
-    // Nominatim hay khớp nhầm theo 1 từ chung ("Chùa Cầu" → "Cầu Sông Đò"): bắt buộc tên phải khớp đủ
-    if (located && nameScore(name, located.name, province) === 1) return located;
-  }
-  return null;
+  const firstIdxByKey = new Map<string, number>();
+  const toScrape: number[] = [];
+  names.forEach((_, idx) => {
+    const hit = cached[idx];
+    if (hit) {
+      out[idx] = Promise.resolve(hit);
+      return;
+    }
+    const pending = inFlight.get(keys[idx]);
+    if (pending) {
+      out[idx] = pending;
+    } else if (!firstIdxByKey.has(keys[idx])) {
+      firstIdxByKey.set(keys[idx], idx);
+      toScrape.push(idx);
+    }
+  });
+
+  toScrape.forEach((idx) => {
+    const task = enqueueScrape(kind, province, names[idx]);
+    inFlight.set(keys[idx], task);
+    const cleanup = () => {
+      inFlight.delete(keys[idx]);
+    };
+    task.then(cleanup, cleanup);
+    out[idx] = task;
+  });
+
+  // Tên trùng key với tên đã xếp hàng trong cùng lượt dùng chung kết quả
+  names.forEach((_, idx) => {
+    if (!out[idx]) out[idx] = out[firstIdxByKey.get(keys[idx])!];
+  });
+  return Promise.all(out);
 }
 
 // ───────────────────────── API cho tool ─────────────────────────
@@ -297,21 +342,7 @@ type Resolution =
   | { status: "ambiguous"; candidates: { row: StoredPlace; score: number }[] }
   | { status: "unlocated" };
 
-async function resolve(
-  kind: ExternalPlaceKind,
-  province: string,
-  name: string,
-): Promise<Resolution> {
-  let lookup: Lookup;
-  try {
-    lookup = await lookupGoogle(kind, province, name);
-  } catch (error) {
-    if (!(error instanceof SerpApiUnavailableError)) throw error;
-    console.warn(`[serpapi] không dùng được, fallback Nominatim: ${error.message}`);
-    const located = await geocodeWithNominatim(kind, province, name);
-    return located ? { status: "located", place: located } : { status: "unlocated" };
-  }
-
+function resolve(province: string, name: string, lookup: Lookup): Resolution {
   if (lookup.rows.length === 0) return { status: "unlocated" };
   if (lookup.exact) {
     return { status: "located", place: toResult(lookup.rows[0], province) };
@@ -336,7 +367,7 @@ async function resolve(
 
 /**
  * Định vị các địa điểm mà model đã tìm được bằng google_search.
- * Nguồn chính: Google Maps qua SerpApi (cache DB nhiều tầng); fallback: Nominatim.
+ * Nguồn duy nhất: Google Maps qua Omkar (cache DB nhiều tầng), không fallback.
  */
 export async function locatePlaces({
   kind,
@@ -347,14 +378,10 @@ export async function locatePlaces({
   province: string;
   places: PlaceCandidate[];
 }): Promise<LocatePlacesOutput> {
-  const resolutions = await Promise.all(
-    requested.map((candidate) =>
-      resolve(kind, province, candidate.name.trim()).catch((error) => {
-        console.warn(`Định vị thất bại cho "${candidate.name}":`, error);
-        return { status: "unlocated" } as const;
-      }),
-    ),
-  );
+  // Luôn tra Google Maps (sau cache); không fallback — dịch vụ lỗi/hết hạn mức thì lỗi nổi lên cho tool
+  const names = requested.map((candidate) => candidate.name.trim());
+  const lookups = await lookupAll(kind, province, names);
+  const resolutions = lookups.map((lookup, idx) => resolve(province, names[idx], lookup));
 
   const places: LocatedPlace[] = [];
   const ambiguous: AmbiguousPlace[] = [];
@@ -397,7 +424,7 @@ export async function locatePlaces({
   return { places, ambiguous, unlocated };
 }
 
-/** Lấy địa điểm AI đã chọn từ danh sách ứng viên (không tốn lượt SerpApi) */
+/** Lấy địa điểm AI đã chọn từ danh sách ứng viên (không tốn lượt scrape) */
 export async function confirmPlaces(
   choices: { id: string; summary?: string }[],
 ): Promise<{ places: LocatedPlace[] }> {

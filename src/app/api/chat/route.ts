@@ -10,7 +10,8 @@ import { chatTools } from "@/features/customer/chat/lib/ai-tools";
 import { CHAT_INSTRUCTIONS, CHAT_MODEL } from "@/features/customer/chat/lib/prompt";
 import { vertex } from "@/lib/vertex";
 
-export const maxDuration = 60;
+// locatePlaces gọi Omkar (vài giây/truy vấn, song song) trước khi tổng hợp câu trả lời
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
