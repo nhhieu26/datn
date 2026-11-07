@@ -14,6 +14,8 @@ import {
 
 const MAX_PLACES = 5;
 const INTERNAL_PER_KIND = 5;
+// Lộ trình dài: mỗi loại lấy thêm ứng viên nội bộ để đủ điểm dừng
+const MAX_INTERNAL_PER_KIND = 8;
 // Omkar cho phép 5 req/s và tính quota theo lượt → giới hạn số địa điểm web cần tra mỗi lượt
 const MAX_EXTERNAL_LOOKUPS = 5;
 
@@ -42,9 +44,15 @@ const hasCoords = (lat: number | null, lng: number | null) =>
 
 async function searchInternal(
   kind: PlaceKind,
-  input: { query?: string; province?: string; maxPrice?: number; amenities?: string[] },
+  input: {
+    query?: string;
+    province?: string;
+    maxPrice?: number;
+    amenities?: string[];
+    limit: number;
+  },
 ): Promise<InternalPlace[]> {
-  const base = { query: input.query, province: input.province, limit: INTERNAL_PER_KIND };
+  const base = { query: input.query, province: input.province, limit: input.limit };
   try {
     if (kind === "hotel") {
       return await searchInternalHotels({
@@ -109,7 +117,11 @@ async function lookupOnGoogleMaps(
 }
 
 // Chọn tối đa 5 điểm: luân phiên giữa các loại, có cả nguồn nội bộ lẫn bên ngoài nếu được
-function pickPlaces(places: FoundPlace[], kinds: PlaceKind[]): FoundPlace[] {
+function pickPlaces(
+  places: FoundPlace[],
+  kinds: PlaceKind[],
+  maxPlaces: number,
+): FoundPlace[] {
   const queues = kinds.map((kind) =>
     places
       .filter((p) => p.kind === kind)
@@ -117,15 +129,15 @@ function pickPlaces(places: FoundPlace[], kinds: PlaceKind[]): FoundPlace[] {
   );
 
   const picked: FoundPlace[] = [];
-  while (picked.length < MAX_PLACES && queues.some((q) => q.length > 0)) {
+  while (picked.length < maxPlaces && queues.some((q) => q.length > 0)) {
     for (const queue of queues) {
       const next = queue.shift();
-      if (next && picked.length < MAX_PLACES) picked.push(next);
+      if (next && picked.length < maxPlaces) picked.push(next);
     }
   }
 
   for (const source of ["internal", "external"] as const) {
-    if (picked.length < MAX_PLACES || picked.some((p) => p.source === source)) continue;
+    if (picked.length < maxPlaces || picked.some((p) => p.source === source)) continue;
     const best = places
       .filter((p) => p.source === source)
       .sort((a, b) => priority(a) - priority(b))[0];
@@ -148,6 +160,7 @@ export async function findPlaces({
   kinds,
   maxPrice,
   amenities,
+  maxPlaces = MAX_PLACES,
 }: {
   request: string;
   query?: string;
@@ -155,12 +168,23 @@ export async function findPlaces({
   kinds: PlaceKind[];
   maxPrice?: number;
   amenities?: string[];
+  // Số địa điểm tối đa trả về (lộ trình nhiều ngày cần nhiều hơn mặc định 5)
+  maxPlaces?: number;
 }): Promise<{ places: FoundPlace[]; webSources: WebSource[] }> {
   const uniqueKinds = [...new Set(kinds)];
   const [web, ...internalByKind] = await Promise.all([
     searchWebPlaces({ request, province, kinds: uniqueKinds }),
     ...uniqueKinds.map((kind) =>
-      searchInternal(kind, { query: query ?? request, province, maxPrice, amenities }),
+      searchInternal(kind, {
+        query: query ?? request,
+        province,
+        maxPrice,
+        amenities,
+        limit: Math.min(
+          MAX_INTERNAL_PER_KIND,
+          Math.max(INTERNAL_PER_KIND, Math.ceil(maxPlaces / uniqueKinds.length) + 1),
+        ),
+      }),
     ),
   ]);
 
@@ -191,7 +215,7 @@ export async function findPlaces({
   );
 
   return {
-    places: pickPlaces([...internalPlaces, ...externalPlaces], uniqueKinds),
+    places: pickPlaces([...internalPlaces, ...externalPlaces], uniqueKinds, maxPlaces),
     webSources: web.sources,
   };
 }

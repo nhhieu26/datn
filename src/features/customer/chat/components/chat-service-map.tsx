@@ -28,15 +28,15 @@ type LeafletModule = typeof import("leaflet");
 type LeafletMap = import("leaflet").Map;
 type LeafletMarker = import("leaflet").Marker;
 
-const DEFAULT_CENTER = { lat: 20.2506, lng: 105.9102 };
+export const DEFAULT_CENTER = { lat: 20.2506, lng: 105.9102 };
 const DEFAULT_ZOOM = 12;
 const SINGLE_MARKER_ZOOM = 14;
-const TILE_URL =
+export const TILE_URL =
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}";
-const TILE_ATTRIBUTION =
+export const TILE_ATTRIBUTION =
   "Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012";
 
-const KIND_STYLE: Record<
+export const KIND_STYLE: Record<
   ServiceMapKind,
   { color: string; badgeBg: string; badgeText: string }
 > = {
@@ -57,7 +57,7 @@ const KIND_STYLE: Record<
   },
 };
 
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
