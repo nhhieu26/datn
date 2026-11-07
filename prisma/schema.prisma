@@ -87,6 +87,7 @@ model User {
   hotelBookings      HotelBooking[]
   restaurantBookings RestaurantBooking[]
   reviews            Review[]
+  trips              Trip[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -649,4 +650,58 @@ model ExternalPlaceSearch {
   placeIds  String[]
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+enum TripStopSource {
+  internal
+  external
+}
+
+enum TripStopKind {
+  hotel
+  restaurant
+  destination
+}
+
+// Lộ trình tham quan do khách tạo (từ chat AI hoặc tự chọn điểm dừng); không bắt buộc đăng nhập.
+model Trip {
+  id       String  @id @default(cuid())
+  userId   String?
+  user     User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  title    String
+  province String?
+  dayCount Int     @default(1)
+  // Đường đi theo đường bộ (OSRM) của từng ngày: [{ day, distanceM, durationS, geometry, legs, error }]
+  routes   Json    @default("[]")
+
+  stops TripStop[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// Một điểm dừng trong lộ trình; lưu snapshot vị trí để vẽ bản đồ, tính đường mà không cần join nguồn.
+model TripStop {
+  id        String         @id @default(cuid())
+  tripId    String
+  trip      Trip           @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  day       Int
+  position  Int
+  source    TripStopSource
+  kind      TripStopKind
+  // id Hotel/Restaurant/Destination (internal) hoặc ExternalPlace (external)
+  refId     String
+  name      String
+  address   String?
+  image     String?
+  url       String
+  latitude  Decimal        @db.Decimal(9, 6)
+  longitude Decimal        @db.Decimal(9, 6)
+
+  createdAt DateTime @default(now())
+
+  @@unique([tripId, source, refId])
+  @@index([tripId, day])
 }

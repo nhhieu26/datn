@@ -3,17 +3,21 @@
 import { useChat } from "@ai-sdk/react";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import {
+  ArrowRightIcon,
   ArrowUpIcon,
   ExternalLinkIcon,
   MapPinIcon,
+  RouteIcon,
   SparklesIcon,
   SquareIcon,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import Markdown from "react-markdown";
+import { useRouter } from "next/navigation";
 import {
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
   type KeyboardEvent,
@@ -34,9 +38,12 @@ import {
   ChatServiceMap,
   type ServiceMapItem,
 } from "@/features/customer/chat/components/chat-service-map";
+import { ChatMarkdown } from "@/features/customer/chat/components/chat-markdown";
 import type { ChatMessage } from "@/features/customer/chat/lib/ai-tools";
 import type { FoundPlace } from "@/features/customer/chat/lib/find-places";
 import type { WebSource } from "@/features/customer/chat/lib/web-places";
+import { createTripAction } from "@/features/customer/trips/actions";
+import { saveTripChatHandoff } from "@/features/customer/trips/lib/chat-handoff";
 
 const ROBOT_IMAGE = "/AIbanner.png";
 
@@ -64,6 +71,18 @@ export function ChatPageContent() {
   const [activeServiceUrl, setActiveServiceUrl] = useState<string | null>(null);
 
   const isBusy = status === "submitted" || status === "streaming";
+  const router = useRouter();
+  const handledTripIds = useRef(new Set<string>());
+
+  // AI vừa tạo lộ trình → chờ trả lời xong rồi chuyển sang trang lộ trình, mang theo hội thoại
+  const createdTrip = findCreatedTrip(messages.at(-1));
+  useEffect(() => {
+    if (!createdTrip || status !== "ready") return;
+    if (handledTripIds.current.has(createdTrip.tripId)) return;
+    handledTripIds.current.add(createdTrip.tripId);
+    saveTripChatHandoff(createdTrip.tripId, messages);
+    router.push(createdTrip.url);
+  }, [createdTrip, status, messages, router]);
 
   // Lấy các dịch vụ có tọa độ từ câu trả lời gần nhất của AI để hiển thị lên bản đồ
   const latestMapKey = (() => {
@@ -200,6 +219,15 @@ export function ChatPageContent() {
               <h1 className="text-lg font-semibold text-new-title">
                 Trò chuyện với Roamly AI
               </h1>
+              <form action={createTripAction} className="ml-auto">
+                <button
+                  className="flex items-center gap-1.5 rounded border border-new-teal-cta px-3 py-1.5 text-sm font-medium text-new-teal-cta transition-colors hover:bg-new-teal-cta hover:text-white"
+                  type="submit"
+                >
+                  <RouteIcon className="size-4" />
+                  Tự lập lộ trình
+                </button>
+              </form>
             </div>
 
             <div className="relative min-h-0 flex-1 rounded bg-white p-4">
@@ -282,6 +310,21 @@ export function ChatPageContent() {
                                             >
                                               {part.text}
                                             </ChatMarkdown>
+                                          );
+                                        }
+                                        if (
+                                          part.type === "tool-createTrip" &&
+                                          part.state === "output-available" &&
+                                          part.output.ok
+                                        ) {
+                                          return (
+                                            <TripCreatedCard
+                                              key={`${message.id}-${i}`}
+                                              title={part.output.title}
+                                              url={part.output.url}
+                                              days={part.output.days}
+                                              stopCount={part.output.stops.length}
+                                            />
                                           );
                                         }
                                         if (part.type === "tool-askUser") {
@@ -518,50 +561,6 @@ function QuestionPanel({
   );
 }
 
-function ChatMarkdown({ children }: { children: string }) {
-  return (
-    <Markdown
-      components={{
-        p: (props) => <p className="my-2 first:mt-0 last:mb-0" {...props} />,
-        ul: (props) => (
-          <ul
-            className="my-2 list-disc space-y-1 pl-5 first:mt-0 last:mb-0"
-            {...props}
-          />
-        ),
-        ol: (props) => (
-          <ol
-            className="my-2 list-decimal space-y-1 pl-5 first:mt-0 last:mb-0"
-            {...props}
-          />
-        ),
-        strong: (props) => (
-          <strong className="font-semibold text-new-title" {...props} />
-        ),
-        a: (props) => (
-          <a
-            className="font-medium text-new-teal-cta hover:underline"
-            rel="noreferrer"
-            target="_blank"
-            {...props}
-          />
-        ),
-        h1: (props) => (
-          <p className="my-2 font-semibold text-new-title" {...props} />
-        ),
-        h2: (props) => (
-          <p className="my-2 font-semibold text-new-title" {...props} />
-        ),
-        h3: (props) => (
-          <p className="my-2 font-semibold text-new-title" {...props} />
-        ),
-      }}
-    >
-      {children}
-    </Markdown>
-  );
-}
-
 type AskUserPart = Extract<
   ChatMessage["parts"][number],
   { type: "tool-askUser" }
@@ -773,6 +772,10 @@ function getActiveToolLabel(message?: ChatMessage): string | null {
         if (part.state !== "output-available" && part.state !== "output-error")
           return "Đang tìm trên web & dữ liệu Roamly, xác định vị trí trên bản đồ...";
         break;
+      case "tool-createTrip":
+        if (part.state !== "output-available" && part.state !== "output-error")
+          return "Đang chọn địa điểm & tối ưu lộ trình theo đường bộ...";
+        break;
       case "tool-getWeather":
         if (part.state !== "output-available" && part.state !== "output-error")
           return "Đang kiểm tra dự báo thời tiết...";
@@ -787,7 +790,52 @@ function hasVisibleContent(message: ChatMessage) {
   return message.parts.some(
     (part) =>
       (part.type === "text" && part.text.length > 0) ||
-      (part.type === "tool-askUser" && part.state === "output-available"),
+      (part.type === "tool-askUser" && part.state === "output-available") ||
+      (part.type === "tool-createTrip" && part.state === "output-available"),
+  );
+}
+
+function findCreatedTrip(message?: ChatMessage): { tripId: string; url: string } | null {
+  if (!message || message.role !== "assistant") return null;
+  for (const part of message.parts) {
+    if (
+      part.type === "tool-createTrip" &&
+      part.state === "output-available" &&
+      part.output.ok
+    ) {
+      return { tripId: part.output.tripId, url: part.output.url };
+    }
+  }
+  return null;
+}
+
+function TripCreatedCard({
+  title,
+  url,
+  days,
+  stopCount,
+}: {
+  title: string;
+  url: string;
+  days: number;
+  stopCount: number;
+}) {
+  return (
+    <Link
+      className="my-2 flex items-center gap-3 rounded border border-new-chip bg-white p-3 transition-colors hover:border-new-teal-cta"
+      href={url}
+    >
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-new-teal-cta/10 text-new-teal-cta">
+        <RouteIcon className="size-5" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-semibold text-new-title">{title}</span>
+        <span className="block text-xs">
+          {days} ngày · {stopCount} điểm dừng · đã tối ưu theo đường bộ
+        </span>
+      </span>
+      <ArrowRightIcon className="size-4 shrink-0 text-new-teal-cta" />
+    </Link>
   );
 }
 

@@ -250,6 +250,7 @@ export async function searchInternalHotels({
   return results.map((h, i) => ({
     source: "internal" as const,
     kind: "hotel" as const,
+    id: h.id,
     matchedBy: matchedBy(i, semanticCount),
     name: h.name,
     url: `/hotels/${h.slug}`,
@@ -329,6 +330,7 @@ export async function searchInternalRestaurants({
     return {
       source: "internal" as const,
       kind: "restaurant" as const,
+      id: r.id,
       matchedBy: matchedBy(i, semanticCount),
       name: r.name,
       url: `/restaurants/${r.slug}`,
@@ -401,6 +403,7 @@ export async function searchInternalDestinations({
   return results.map((d, i) => ({
     source: "internal" as const,
     kind: "destination" as const,
+    id: d.id,
     matchedBy: matchedBy(i, semanticCount),
     name: d.name,
     url: `/destinations/${d.slug}`,

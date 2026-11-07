@@ -14,6 +14,8 @@ const VN_BOUNDS = { minLat: 8, maxLat: 24, minLng: 102, maxLng: 110 };
 
 export type ExternalPlaceResult = {
   source: "external";
+  // ExternalPlace.id — dùng để thêm địa điểm vào lộ trình
+  id: string;
   kind: ExternalPlaceKind;
   name: string;
   url: string;
@@ -66,6 +68,7 @@ function toResult(p: StoredPlace, fallbackProvince: string): ExternalPlaceResult
   const longitude = num(p.longitude)!;
   return {
     source: "external",
+    id: p.id,
     kind: p.kind,
     name: p.name,
     url: extra.link ?? googleMapsUrl(latitude, longitude),
@@ -173,4 +176,76 @@ export async function lookupExternalPlace({
   if (!placeId) return null;
   const row = await prisma.externalPlace.findUnique({ where: { id: placeId } });
   return row ? toResult(row, area) : null;
+}
+
+const LIST_SOURCE = "gmaps-list";
+const LIST_RESULTS = 5;
+
+// Loại địa điểm theo danh mục chính trên Google Maps
+const HOTEL_CATEGORY = /(khach san|nha nghi|homestay|resort|hotel|motel|hostel|villa|lodging|can ho|nha khach|guest)/;
+const RESTAURANT_CATEGORY = /(nha hang|quan|an uong|restaurant|cafe|ca phe|coffee|food|bar|pub|bistro|lau|nuong|bun|pho|com|banh)/;
+
+export function inferPlaceKind(category: string | null | undefined): ExternalPlaceKind {
+  const normalized = stripDiacritics(category ?? "").toLowerCase();
+  if (HOTEL_CATEGORY.test(normalized)) return "hotel";
+  if (RESTAURANT_CATEGORY.test(normalized)) return "restaurant";
+  return "destination";
+}
+
+/**
+ * Tìm nhiều địa điểm trên Google Maps theo từ khóa tự do (ô tìm kiếm của trang lộ trình), có cache trong CSDL.
+ * Mỗi lần cache trượt tốn 1 lượt quota Omkar → chỉ gọi khi người dùng chủ động yêu cầu.
+ */
+export async function searchExternalPlaces({
+  query,
+  province,
+}: {
+  query: string;
+  province?: string;
+}): Promise<ExternalPlaceResult[]> {
+  const area = province?.trim() || "";
+  const queryKey = [LIST_SOURCE, normalize(area), normalize(query)].join("|");
+
+  const cached = await prisma.externalPlaceSearch.findUnique({ where: { queryKey } });
+  let placeIds: string[];
+
+  if (cached && cached.expiresAt > new Date()) {
+    placeIds = cached.placeIds;
+  } else {
+    const results = await searchGoogleMaps({
+      query: stripDiacritics(area ? `${query}, ${area}` : query),
+      limit: LIST_RESULTS,
+    });
+    const valid = results.filter(
+      (r) =>
+        r.coordinates &&
+        inVietnam(r.coordinates.latitude, r.coordinates.longitude) &&
+        !r.is_permanently_closed &&
+        r.business_status !== "CLOSED",
+    );
+    placeIds = [];
+    for (const place of valid) {
+      placeIds.push((await storePlace(inferPlaceKind(place.main_category), place)).id);
+    }
+    const expiresAt = new Date(Date.now() + (placeIds.length ? CACHE_TTL_MS : EMPTY_CACHE_TTL_MS));
+    await prisma.externalPlaceSearch.upsert({
+      where: { queryKey },
+      create: { queryKey, placeIds, expiresAt },
+      update: { placeIds, expiresAt },
+    });
+  }
+
+  if (placeIds.length === 0) return [];
+  const rows = await prisma.externalPlace.findMany({ where: { id: { in: placeIds } } });
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  return placeIds
+    .map((id) => byId.get(id))
+    .filter((row): row is StoredPlace => Boolean(row))
+    .map((row) => toResult(row, area || "Việt Nam"));
+}
+
+/** Đọc một địa điểm Google Maps đã lưu trong CSDL. */
+export async function getExternalPlaceById(id: string): Promise<ExternalPlaceResult | null> {
+  const row = await prisma.externalPlace.findUnique({ where: { id } });
+  return row ? toResult(row, "Việt Nam") : null;
 }

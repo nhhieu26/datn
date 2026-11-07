@@ -9,6 +9,8 @@ import { z } from "zod";
 import { firstImage } from "@/features/customer/components/cards/card-parts";
 import { queryTourEmbeddings } from "@/lib/pinecone";
 import { prisma } from "@/lib/prisma";
+import { createTripFromPlaces } from "@/features/customer/trips/lib/trip-service";
+import { MAX_TRIP_DAYS } from "@/features/customer/trips/lib/types";
 import { findPlaces } from "./find-places";
 import {
   buildSemanticText,
@@ -92,7 +94,10 @@ const tourSelect = {
   tags: { select: { tag: { select: { name: true } } } },
 } as const;
 
-export const chatTools = {
+// Số địa điểm AI lấy để dựng lộ trình: luân phiên 3 loại → ~2/3 là điểm tham quan & ăn uống
+const tripPlaceCount = (days: number) => Math.min(3 + 3 * days, 15);
+
+export const buildChatTools = ({ userId }: { userId?: string | null } = {}) => ({
   // Tool không có execute: model gọi để hỏi lại người dùng,
   // câu trả lời do client gửi về qua addToolOutput
   askUser: tool({
@@ -325,8 +330,64 @@ export const chatTools = {
     }),
     execute: (input) => findPlaces(input),
   }),
-} satisfies ToolSet;
 
-export type ChatTools = InferUITools<typeof chatTools>;
+  createTrip: tool({
+    description:
+      "Tạo LỘ TRÌNH THAM QUAN TỐI ƯU trên bản đồ khi người dùng muốn lập lộ trình/lịch trình đi các điểm (vd: 'lên lộ trình 2 ngày ở Ninh Bình', 'lịch trình đi Cát Bà 3 ngày'). Tự tìm khách sạn, nhà hàng, điểm tham quan phù hợp, chia theo ngày và sắp xếp thứ tự di chuyển ngắn nhất theo đường bộ thực tế. Người dùng sẽ được chuyển sang trang lộ trình để xem bản đồ và chỉnh sửa.",
+    inputSchema: z.object({
+      request: z
+        .string()
+        .min(1)
+        .describe("Yêu cầu đầy đủ của khách (gộp thông tin đã biết: điểm đến, số người, sở thích, ngân sách)."),
+      province: z.string().min(1).describe("Điểm đến chính, ví dụ: Ninh Bình, Cát Bà, Hà Nội."),
+      days: z
+        .number()
+        .int()
+        .min(1)
+        .max(MAX_TRIP_DAYS)
+        .default(1)
+        .describe("Số ngày của chuyến đi (2 ngày 1 đêm → 2)."),
+      title: z.string().min(1).describe("Tên ngắn gọn cho lộ trình, ví dụ: 'Ninh Bình 2 ngày 1 đêm'."),
+      query: queryField,
+    }),
+    execute: async ({ request, province, days, title, query }) => {
+      const { places } = await findPlaces({
+        request,
+        query,
+        province,
+        kinds: ["hotel", "destination", "restaurant"],
+        maxPlaces: tripPlaceCount(days),
+      });
+      if (places.length === 0) {
+        return { ok: false as const, error: "Chưa tìm thấy địa điểm phù hợp để tạo lộ trình." };
+      }
+      let trip;
+      try {
+        trip = await createTripFromPlaces({
+          title,
+          province,
+          days,
+          userId,
+          places: places.map((p) => ({ source: p.source, kind: p.kind, refId: p.id })),
+        });
+      } catch (error) {
+        console.error("Tạo lộ trình thất bại:", error);
+        return { ok: false as const, error: "Hệ thống chưa tạo được lộ trình, vui lòng thử lại sau." };
+      }
+      return {
+        ok: true as const,
+        tripId: trip.id,
+        url: `/trips/${trip.id}`,
+        title: trip.title,
+        days: trip.dayCount,
+        stops: trip.days.flatMap((d) =>
+          d.stops.map((s) => ({ day: d.day, name: s.name, kind: s.kind })),
+        ),
+      };
+    },
+  }),
+}) satisfies ToolSet;
+
+export type ChatTools = InferUITools<ReturnType<typeof buildChatTools>>;
 
 export type ChatMessage = UIMessage<never, UIDataTypes, ChatTools>;

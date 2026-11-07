@@ -48,8 +48,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
+    // Extension trình duyệt (vd: chèn class "mdl-js") sửa <html> trước khi hydrate → bỏ qua khác biệt thuộc tính ở riêng thẻ này
     <html
       lang="vi"
+      suppressHydrationWarning
       className={`${plusJakarta.variable} ${inter.variable} ${caveat.variable} ${dmSans.variable} ${kaushan.variable} h-full antialiased`}
     >
       <link
