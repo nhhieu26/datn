@@ -1,40 +1,16 @@
 import type { ExternalPlaceKind } from "@/generated/prisma/client";
-import { type NominatimPlace, searchNominatim } from "@/lib/nominatim";
+import { type OmkarPlace, searchGoogleMaps } from "@/lib/omkar";
 import { prisma } from "@/lib/prisma";
-import { num, truncate } from "./format";
+import { num, sameName, stripDiacritics, truncate } from "./format";
 
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const EMPTY_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-const MAX_STORED_PER_QUERY = 10;
+const RESULTS_PER_LOOKUP = 3;
+// Cột osmType của bảng cache dùng để ghi nguồn dữ liệu
+const SOURCE = "gmaps";
 
 // Phạm vi hợp lệ của tọa độ: lãnh thổ Việt Nam (kể cả các đảo gần bờ)
 const VN_BOUNDS = { minLat: 8, maxLat: 24, minLng: 102, maxLng: 110 };
-
-// Loại đối tượng OSM được chấp nhận cho từng nhóm địa điểm. "*" = mọi type.
-const KIND_FILTER: Record<ExternalPlaceKind, Record<string, string[] | "*">> = {
-  hotel: {
-    tourism: ["hotel", "guest_house", "hostel", "motel", "apartment", "resort", "chalet"],
-  },
-  restaurant: {
-    amenity: ["restaurant", "cafe", "fast_food", "food_court", "bar", "pub", "ice_cream"],
-  },
-  destination: {
-    tourism: ["attraction", "viewpoint", "museum", "theme_park", "zoo", "gallery", "aquarium"],
-    historic: "*",
-    natural: ["beach", "peak", "cave_entrance", "bay", "waterfall", "volcano", "cape"],
-    leisure: ["park", "nature_reserve", "garden", "beach_resort"],
-    amenity: ["place_of_worship"],
-    man_made: ["bridge", "lighthouse", "tower"],
-    bridge: "*",
-  },
-};
-
-// Special phrase tiếng Anh mà Nominatim hiểu để tìm theo loại trong một khu vực
-const KIND_PHRASES: Record<ExternalPlaceKind, string[]> = {
-  hotel: ["hotels in", "guest houses in"],
-  restaurant: ["restaurants in", "cafes in"],
-  destination: ["tourist attractions in", "viewpoints in", "museums in"],
-};
 
 export type ExternalPlaceResult = {
   source: "external";
@@ -46,29 +22,26 @@ export type ExternalPlaceResult = {
   latitude: number;
   longitude: number;
   type: string;
+  description: string | null;
+  rating: number | null;
+  reviewCount: number | null;
   phone: string | null;
   website: string | null;
   openingHours: string | null;
-  cuisine: string | null;
-  stars: string | null;
 };
 
 type Extra = {
+  link?: string;
+  description?: string;
+  rating?: number;
+  reviews?: number;
   phone?: string;
   website?: string;
   openingHours?: string;
-  cuisine?: string;
-  stars?: string;
 };
 
 const normalize = (value: string) =>
   value.normalize("NFC").toLowerCase().replace(/\s+/g, " ").trim();
-
-function matchesKind(kind: ExternalPlaceKind, place: NominatimPlace): boolean {
-  const allowed = KIND_FILTER[kind][place.category];
-  if (!allowed) return false;
-  return allowed === "*" || allowed.includes(place.type);
-}
 
 function inVietnam(lat: number, lng: number): boolean {
   return (
@@ -81,160 +54,115 @@ function inVietnam(lat: number, lng: number): boolean {
   );
 }
 
-function placeName(place: NominatimPlace): string | null {
-  return (
-    place.namedetails?.["name:vi"] ??
-    place.name ??
-    place.namedetails?.name ??
-    null
-  )?.trim() || null;
-}
-
-function buildAddress(place: NominatimPlace, name: string): string {
-  const a = place.address ?? {};
-  const parts = [
-    [a.house_number, a.road].filter(Boolean).join(" "),
-    a.quarter ?? a.suburb ?? a.village,
-    a.city_district ?? a.county,
-  ].filter((p): p is string => !!p && p !== name);
-  if (parts.length > 0) return parts.join(", ");
-  // Không có địa chỉ chi tiết: bỏ tên và quốc gia khỏi display_name
-  return place.display_name
-    .split(",")
-    .map((s) => s.trim())
-    .filter((s) => s && s !== name && s !== "Việt Nam")
-    .slice(0, 3)
-    .join(", ");
-}
-
-function provinceOf(place: NominatimPlace): string | null {
-  const a = place.address ?? {};
-  return a.state ?? a.city ?? a.province ?? null;
-}
-
-function pickExtra(place: NominatimPlace): Extra {
-  const t = place.extratags ?? {};
-  const extra: Extra = {
-    phone: t.phone ?? t["contact:phone"],
-    website: t.website ?? t["contact:website"],
-    openingHours: t.opening_hours,
-    cuisine: t.cuisine?.replace(/;/g, ", ").replace(/_/g, " "),
-    stars: t.stars,
-  };
-  return Object.fromEntries(
-    Object.entries(extra).filter(([, v]) => typeof v === "string" && v.length > 0),
-  ) as Extra;
-}
-
-// Google Maps URLs API theo tọa độ: luôn ghim đúng vị trí marker (tìm theo tên dễ ra danh sách trùng tên)
+// Google Maps URLs API theo tọa độ — dùng khi kết quả không có link riêng
 const googleMapsUrl = (latitude: number, longitude: number) =>
   `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
 
-type StoredPlace =Awaited<ReturnType<typeof prisma.externalPlace.findMany>>[number];
+type StoredPlace = Awaited<ReturnType<typeof prisma.externalPlace.findMany>>[number];
 
 function toResult(p: StoredPlace, fallbackProvince: string): ExternalPlaceResult {
   const extra = (p.extra ?? {}) as Extra;
+  const latitude = num(p.latitude)!;
+  const longitude = num(p.longitude)!;
   return {
     source: "external",
     kind: p.kind,
     name: p.name,
-    url: googleMapsUrl(num(p.latitude)!, num(p.longitude)!),
+    url: extra.link ?? googleMapsUrl(latitude, longitude),
     province: p.province ?? fallbackProvince,
     address: p.address,
-    latitude: num(p.latitude)!,
-    longitude: num(p.longitude)!,
+    latitude,
+    longitude,
     type: p.type,
+    description: truncate(extra.description, 200),
+    rating: extra.rating ?? null,
+    reviewCount: extra.reviews ?? null,
     phone: extra.phone ?? null,
     website: extra.website ?? null,
     openingHours: truncate(extra.openingHours, 120),
-    cuisine: extra.cuisine ?? null,
-    stars: extra.stars ?? null,
   };
 }
 
-async function fetchFromNominatim(
-  kind: ExternalPlaceKind,
-  province: string,
-  name?: string,
-): Promise<NominatimPlace[]> {
-  const queries = name
-    ? [`${name}, ${province}`, name]
-    : KIND_PHRASES[kind].map((phrase) => `${phrase} ${province}`);
+// Chọn kết quả Google Maps đúng địa điểm: khớp tên, còn hoạt động, tọa độ nằm trong Việt Nam
+function pickMatch(results: OmkarPlace[], name: string): OmkarPlace | null {
+  return (
+    results.find(
+      (r) =>
+        r.coordinates &&
+        inVietnam(r.coordinates.latitude, r.coordinates.longitude) &&
+        !r.is_permanently_closed &&
+        r.business_status !== "CLOSED" &&
+        sameName(r.name, name),
+    ) ?? null
+  );
+}
 
-  const seen = new Set<string>();
-  const accepted: NominatimPlace[] = [];
-
-  for (const q of queries) {
-    const places = await searchNominatim({ q, limit: 10 });
-    for (const place of places) {
-      const key = `${place.osm_type}/${place.osm_id}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      if (!matchesKind(kind, place)) continue;
-      if (!placeName(place)) continue;
-      if (!inVietnam(Number(place.lat), Number(place.lon))) continue;
-      accepted.push(place);
-    }
-    if (accepted.length >= MAX_STORED_PER_QUERY / 2) break;
-  }
-
-  return accepted.slice(0, MAX_STORED_PER_QUERY);
+async function storePlace(kind: ExternalPlaceKind, place: OmkarPlace) {
+  const { latitude, longitude } = place.coordinates!;
+  const externalId = place.place_id ?? place.data_id ?? place.kgmid ?? `${latitude},${longitude}`;
+  const extra: Extra = Object.fromEntries(
+    Object.entries({
+      link: place.link,
+      description: place.description,
+      rating: place.rating,
+      reviews: place.reviews,
+      phone: place.phone,
+      website: place.website,
+      openingHours: place.workday_timing,
+    }).filter(([, v]) => v != null && v !== ""),
+  );
+  const data = {
+    kind,
+    name: place.name,
+    address: place.address ?? "",
+    province: place.detailed_address?.city ?? null,
+    latitude,
+    longitude,
+    category: place.main_category ?? kind,
+    type: place.main_category ?? kind,
+    extra,
+  };
+  return prisma.externalPlace.upsert({
+    where: { osmType_osmId: { osmType: SOURCE, osmId: externalId } },
+    create: { osmType: SOURCE, osmId: externalId, ...data },
+    update: data,
+    select: { id: true },
+  });
 }
 
 /**
- * Tìm địa điểm ngoài hệ thống Roamly qua OpenStreetMap (Nominatim), có cache trong CSDL.
- * Mọi kết quả trả về đều có tọa độ hợp lệ nằm trong lãnh thổ Việt Nam.
+ * Tra một địa điểm ngoài hệ thống Roamly theo tên trên Google Maps (Omkar API), có cache trong CSDL.
+ * Trả về null nếu không tìm thấy địa điểm khớp tên với tọa độ hợp lệ.
  */
-export async function searchExternalPlaces({
+export async function lookupExternalPlace({
   kind,
-  province,
   name,
-  limit,
+  province,
 }: {
   kind: ExternalPlaceKind;
-  province: string;
-  name?: string;
-  limit: number;
-}): Promise<ExternalPlaceResult[]> {
-  const trimmedName = name?.trim() || undefined;
-  const queryKey = [kind, normalize(province), normalize(trimmedName ?? "")].join("|");
+  name: string;
+  province?: string;
+}): Promise<ExternalPlaceResult | null> {
+  const area = province?.trim() || "Việt Nam";
+  const queryKey = [SOURCE, kind, normalize(area), normalize(name)].join("|");
 
   const cached = await prisma.externalPlaceSearch.findUnique({ where: { queryKey } });
-  let placeIds: string[];
+  let placeId: string | undefined;
 
   if (cached && cached.expiresAt > new Date()) {
-    placeIds = cached.placeIds;
+    placeId = cached.placeIds[0];
   } else {
-    const places = await fetchFromNominatim(kind, province, trimmedName);
-    const stored = await prisma.$transaction(
-      places.map((place) => {
-        const placeLabel = placeName(place)!;
-        const data = {
-          kind,
-          name: placeLabel,
-          address: buildAddress(place, placeLabel),
-          province: provinceOf(place),
-          latitude: Number(place.lat),
-          longitude: Number(place.lon),
-          category: place.category,
-          type: place.type,
-          extra: pickExtra(place),
-        };
-        return prisma.externalPlace.upsert({
-          where: {
-            osmType_osmId: { osmType: place.osm_type, osmId: String(place.osm_id) },
-          },
-          create: { osmType: place.osm_type, osmId: String(place.osm_id), ...data },
-          update: data,
-          select: { id: true },
-        });
-      }),
-    );
-    placeIds = stored.map((p) => p.id);
+    // Query không dấu cho kết quả khớp tên chính xác hơn trên Google Maps
+    const results = await searchGoogleMaps({
+      query: stripDiacritics(`${name}, ${area}`),
+      limit: RESULTS_PER_LOOKUP,
+    });
+    const match = pickMatch(results, name);
+    placeId = match ? (await storePlace(kind, match)).id : undefined;
 
-    // Kết quả rỗng chỉ cache ngắn hạn, để dữ liệu OSM mới bổ sung sớm được tìm thấy
-    const ttl = placeIds.length > 0 ? CACHE_TTL_MS : EMPTY_CACHE_TTL_MS;
-    const expiresAt = new Date(Date.now() + ttl);
+    // Không tìm thấy chỉ cache ngắn hạn
+    const expiresAt = new Date(Date.now() + (placeId ? CACHE_TTL_MS : EMPTY_CACHE_TTL_MS));
+    const placeIds = placeId ? [placeId] : [];
     await prisma.externalPlaceSearch.upsert({
       where: { queryKey },
       create: { queryKey, placeIds, expiresAt },
@@ -242,12 +170,7 @@ export async function searchExternalPlaces({
     });
   }
 
-  if (placeIds.length === 0) return [];
-
-  const rows = await prisma.externalPlace.findMany({ where: { id: { in: placeIds } } });
-  const rank = new Map(placeIds.map((id, idx) => [id, idx]));
-  return rows
-    .sort((a, b) => (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0))
-    .slice(0, limit)
-    .map((row) => toResult(row, province));
+  if (!placeId) return null;
+  const row = await prisma.externalPlace.findUnique({ where: { id: placeId } });
+  return row ? toResult(row, area) : null;
 }

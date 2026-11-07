@@ -35,6 +35,8 @@ import {
   type ServiceMapItem,
 } from "@/features/customer/chat/components/chat-service-map";
 import type { ChatMessage } from "@/features/customer/chat/lib/ai-tools";
+import type { FoundPlace } from "@/features/customer/chat/lib/find-places";
+import type { WebSource } from "@/features/customer/chat/lib/web-places";
 
 const ROBOT_IMAGE = "/AIbanner.png";
 
@@ -244,6 +246,10 @@ export function ChatPageContent() {
                             isUser || isStreamingMessage
                               ? []
                               : collectServiceCards(message);
+                          const webSources =
+                            isUser || isStreamingMessage
+                              ? []
+                              : collectWebSources(message);
 
                           return (
                             <MessageScrollerItem
@@ -299,6 +305,9 @@ export function ChatPageContent() {
                                           mapIndexByUrl={mapIndexByUrl}
                                           onHoverItem={setActiveServiceUrl}
                                         />
+                                      )}
+                                      {webSources.length > 0 && (
+                                        <WebSourceList sources={webSources} />
                                       )}
                                     </BubbleContent>
                                   </Bubble>
@@ -560,7 +569,7 @@ type AskUserPart = Extract<
 
 type ServiceCardItem = {
   kind: "Tour" | "Khách sạn" | "Nhà hàng" | "Điểm đến";
-  // internal: dịch vụ trên Roamly; external: địa điểm từ OpenStreetMap
+  // internal: dịch vụ trên Roamly; external: địa điểm từ Google Maps
   source: "internal" | "external";
   title: string;
   url: string;
@@ -617,102 +626,13 @@ function collectServiceCards(message: ChatMessage): ServiceCardItem[] {
         });
       }
     } else if (
-      part.type === "tool-searchHotels" &&
+      part.type === "tool-findPlaces" &&
       part.state === "output-available"
     ) {
-      for (const item of part.output) {
+      for (const item of part.output.places) {
         if (!item?.url || seenUrls.has(item.url)) continue;
         seenUrls.add(item.url);
-        cards.push({
-          kind: "Khách sạn",
-          source: "internal",
-          title: item.name,
-          url: item.url,
-          image: item.image || "/image-notfound.png",
-          province: item.province,
-          address: item.address,
-          latitude: item.latitude,
-          longitude: item.longitude,
-          meta: item.rooms?.length ? `${item.rooms.length} hạng phòng` : null,
-          highlight: item.amenities?.slice(0, 3).join(" • "),
-          priceLabel: item.priceFrom ? `Từ ${formatVnd(item.priceFrom)}/đêm` : "Liên hệ",
-          rating: item.rating,
-          reviewCount: item.reviewCount,
-        });
-      }
-    } else if (
-      part.type === "tool-searchRestaurants" &&
-      part.state === "output-available"
-    ) {
-      for (const item of part.output) {
-        if (!item?.url || seenUrls.has(item.url)) continue;
-        seenUrls.add(item.url);
-        const topDishes = item.dishes
-          ?.slice(0, 2)
-          .map((d) => d.name)
-          .join(", ");
-        cards.push({
-          kind: "Nhà hàng",
-          source: "internal",
-          title: item.name,
-          url: item.url,
-          image: item.image || "/image-notfound.png",
-          province: item.province,
-          address: item.address,
-          latitude: item.latitude,
-          longitude: item.longitude,
-          meta: item.hours,
-          highlight: topDishes ? `Món nổi bật: ${topDishes}` : null,
-          priceLabel: item.avgPrice ? `~${formatVnd(item.avgPrice)}/món` : "Xem menu",
-          rating: item.rating,
-          reviewCount: item.reviewCount,
-        });
-      }
-    } else if (
-      part.type === "tool-searchDestinations" &&
-      part.state === "output-available"
-    ) {
-      for (const item of part.output) {
-        if (!item?.url || seenUrls.has(item.url)) continue;
-        seenUrls.add(item.url);
-        cards.push({
-          kind: "Điểm đến",
-          source: "internal",
-          title: item.name,
-          url: item.url,
-          image: item.image || "/image-notfound.png",
-          province: item.province,
-          address: item.address,
-          latitude: item.latitude,
-          longitude: item.longitude,
-          meta: item.hours,
-          highlight: item.tags?.slice(0, 2).join(" • "),
-          priceLabel: item.ticketPrice ? `Vé ${formatVnd(item.ticketPrice)}` : "Miễn phí",
-        });
-      }
-    } else if (
-      part.type === "tool-searchExternalPlaces" &&
-      part.state === "output-available"
-    ) {
-      for (const item of part.output) {
-        if (!item?.url || seenUrls.has(item.url)) continue;
-        seenUrls.add(item.url);
-        cards.push({
-          kind: EXTERNAL_KIND_LABEL[item.kind],
-          source: "external",
-          title: item.name,
-          url: item.url,
-          image: "/image-notfound.png",
-          province: item.province,
-          address: item.address,
-          latitude: item.latitude,
-          longitude: item.longitude,
-          meta: item.openingHours ?? OSM_TYPE_LABEL[item.type] ?? null,
-          highlight: item.cuisine
-            ? `Ẩm thực: ${item.cuisine}`
-            : (item.address ?? null),
-          priceLabel: EXTERNAL_PRICE_LABEL[item.kind] ?? "Xem trên bản đồ",
-        });
+        cards.push(toPlaceCard(item));
       }
     }
   }
@@ -732,9 +652,104 @@ function collectServiceCards(message: ChatMessage): ServiceCardItem[] {
   ].slice(0, MAX_SUGGESTIONS);
 }
 
+function toPlaceCard(item: FoundPlace): ServiceCardItem {
+  const base = {
+    kind: PLACE_KIND_LABEL[item.kind],
+    source: item.source,
+    title: item.name,
+    url: item.url,
+    province: item.province,
+    address: item.address,
+    latitude: item.latitude,
+    longitude: item.longitude,
+  };
+
+  if (item.source === "external") {
+    return {
+      ...base,
+      image: "/image-notfound.png",
+      meta: item.openingHours ?? item.type,
+      highlight: item.reason ?? item.address ?? null,
+      priceLabel: EXTERNAL_PRICE_LABEL[item.kind] ?? "Xem trên bản đồ",
+      rating: item.rating,
+      reviewCount: item.reviewCount ?? undefined,
+    };
+  }
+
+  const image = item.image || "/image-notfound.png";
+  if (item.kind === "hotel") {
+    return {
+      ...base,
+      image,
+      meta: item.rooms.length ? `${item.rooms.length} hạng phòng` : null,
+      highlight: item.amenities.slice(0, 3).join(" • "),
+      priceLabel: item.priceFrom ? `Từ ${formatVnd(item.priceFrom)}/đêm` : "Liên hệ",
+      rating: item.rating,
+      reviewCount: item.reviewCount,
+    };
+  }
+  if (item.kind === "restaurant") {
+    const topDishes = item.dishes
+      .slice(0, 2)
+      .map((d) => d.name)
+      .join(", ");
+    return {
+      ...base,
+      image,
+      meta: item.hours,
+      highlight: topDishes ? `Món nổi bật: ${topDishes}` : null,
+      priceLabel: item.avgPrice ? `~${formatVnd(item.avgPrice)}/món` : "Xem menu",
+      rating: item.rating,
+      reviewCount: item.reviewCount,
+    };
+  }
+  return {
+    ...base,
+    image,
+    meta: item.hours,
+    highlight: item.tags.slice(0, 2).join(" • "),
+    priceLabel: item.ticketPrice ? `Vé ${formatVnd(item.ticketPrice)}` : "Miễn phí",
+  };
+}
+
+const MAX_WEB_SOURCES = 3;
+
+function collectWebSources(message: ChatMessage): WebSource[] {
+  const seen = new Set<string>();
+  const sources: WebSource[] = [];
+  for (const part of message.parts) {
+    if (part.type !== "tool-findPlaces" || part.state !== "output-available") continue;
+    for (const source of part.output.webSources) {
+      if (seen.has(source.url)) continue;
+      seen.add(source.url);
+      sources.push(source);
+    }
+  }
+  return sources.slice(0, MAX_WEB_SOURCES);
+}
+
+function WebSourceList({ sources }: { sources: WebSource[] }) {
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+      <span className="font-semibold text-new-title">Nguồn tham khảo:</span>
+      {sources.map((source) => (
+        <a
+          className="max-w-[160px] truncate text-new-teal-cta hover:underline"
+          href={source.url}
+          key={source.url}
+          rel="noreferrer"
+          target="_blank"
+        >
+          {source.title}
+        </a>
+      ))}
+    </div>
+  );
+}
+
 const MAX_SUGGESTIONS = 5;
 
-const EXTERNAL_KIND_LABEL = {
+const PLACE_KIND_LABEL = {
   hotel: "Khách sạn",
   restaurant: "Nhà hàng",
   destination: "Điểm đến",
@@ -746,32 +761,6 @@ const EXTERNAL_PRICE_LABEL: Record<string, string> = {
   hotel: "Lưu trú tham khảo",
 };
 
-// Nhãn tiếng Việt cho một số loại đối tượng OpenStreetMap thường gặp
-const OSM_TYPE_LABEL: Record<string, string> = {
-  hotel: "Khách sạn",
-  guest_house: "Nhà nghỉ",
-  hostel: "Hostel",
-  motel: "Motel",
-  apartment: "Căn hộ",
-  resort: "Resort",
-  restaurant: "Nhà hàng",
-  cafe: "Quán cà phê",
-  fast_food: "Đồ ăn nhanh",
-  food_court: "Khu ẩm thực",
-  bar: "Bar",
-  pub: "Pub",
-  attraction: "Điểm tham quan",
-  viewpoint: "Điểm ngắm cảnh",
-  museum: "Bảo tàng",
-  theme_park: "Công viên giải trí",
-  zoo: "Sở thú",
-  beach: "Bãi biển",
-  peak: "Đỉnh núi",
-  park: "Công viên",
-  place_of_worship: "Chùa / đền / nhà thờ",
-  bridge: "Cầu",
-};
-
 function getActiveToolLabel(message?: ChatMessage): string | null {
   if (!message || message.role !== "assistant") return null;
   for (const part of [...message.parts].reverse()) {
@@ -780,25 +769,13 @@ function getActiveToolLabel(message?: ChatMessage): string | null {
         if (part.state !== "output-available" && part.state !== "output-error")
           return "Đang tìm kiếm tour & lịch trình phù hợp...";
         break;
-      case "tool-searchHotels":
+      case "tool-findPlaces":
         if (part.state !== "output-available" && part.state !== "output-error")
-          return "Đang tìm khách sạn & hạng phòng...";
-        break;
-      case "tool-searchRestaurants":
-        if (part.state !== "output-available" && part.state !== "output-error")
-          return "Đang tra cứu nhà hàng & thực đơn món ăn...";
-        break;
-      case "tool-searchDestinations":
-        if (part.state !== "output-available" && part.state !== "output-error")
-          return "Đang tìm địa điểm tham quan...";
+          return "Đang tìm trên web & dữ liệu Roamly, xác định vị trí trên bản đồ...";
         break;
       case "tool-getWeather":
         if (part.state !== "output-available" && part.state !== "output-error")
           return "Đang kiểm tra dự báo thời tiết...";
-        break;
-      case "tool-searchExternalPlaces":
-        if (part.state !== "output-available" && part.state !== "output-error")
-          return "Đang tìm địa điểm bên ngoài (OpenStreetMap)...";
         break;
     }
   }

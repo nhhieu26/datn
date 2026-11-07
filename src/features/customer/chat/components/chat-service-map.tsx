@@ -8,7 +8,7 @@ export type ServiceMapKind = "Khách sạn" | "Nhà hàng" | "Điểm đến";
 
 export type ServiceMapItem = {
   kind: ServiceMapKind;
-  // internal: dịch vụ trên Roamly; external: địa điểm từ OpenStreetMap
+  // internal: dịch vụ trên Roamly; external: địa điểm từ Google Maps
   source: "internal" | "external";
   title: string;
   url: string;
@@ -329,7 +329,7 @@ export function ChatServiceMap({
           {items.some((item) => item.source === "external") && (
             <span className="flex items-center gap-1">
               <span className="inline-block size-3 rounded-full border-2 border-dashed border-new-teal-cta bg-white" />
-              Ngoài Roamly (OSM)
+              Ngoài Roamly (Google Maps)
             </span>
           )}
         </div>

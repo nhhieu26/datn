@@ -1,4 +1,3 @@
-import { createVertex } from "@ai-sdk/google-vertex";
 import {
   convertToModelMessages,
   createUIMessageStreamResponse,
@@ -9,11 +8,9 @@ import {
 } from "ai";
 import { chatTools } from "@/features/customer/chat/lib/ai-tools";
 import { CHAT_INSTRUCTIONS, CHAT_MODEL } from "@/features/customer/chat/lib/prompt";
+import { vertex } from "@/lib/vertex";
 
 export const maxDuration = 60;
-
-// Vertex express mode: xác thực bằng API key, không cần project/location/ADC
-const vertex = createVertex({ apiKey: process.env.GOOGLE_VERTEX_API_KEY });
 
 export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
@@ -22,8 +19,8 @@ export async function POST(req: Request) {
     model: vertex(CHAT_MODEL),
     instructions: CHAT_INSTRUCTIONS,
     tools: chatTools,
-    // Cho phép gọi kết hợp nhiều tool (nội bộ, rồi OpenStreetMap nếu thiếu, + thời tiết) rồi tổng hợp câu trả lời
-    stopWhen: isStepCount(12),
+    // findPlaces đã gom web + nội bộ + Google Maps; vẫn chừa bước cho tour, thời tiết rồi tổng hợp câu trả lời
+    stopWhen: isStepCount(6),
     messages: await convertToModelMessages(messages),
   });
 
