@@ -15,6 +15,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  Fragment,
   useEffect,
   useMemo,
   useRef,
@@ -312,30 +313,32 @@ export function ChatPageContent() {
                                             </ChatMarkdown>
                                           );
                                         }
-                                        if (
-                                          part.type === "tool-createTrip" &&
-                                          part.state === "output-available" &&
-                                          part.output.ok
-                                        ) {
+                                        if (part.type === "tool-createTrip") {
+                                          // Một thẻ cho cả lộ trình
+                                          const trip = findCreatedTrip(message);
+                                          if (!trip) return null;
                                           return (
                                             <TripCreatedCard
                                               key={`${message.id}-${i}`}
-                                              title={part.output.title}
-                                              url={part.output.url}
-                                              days={part.output.days}
-                                              stopCount={part.output.stops.length}
+                                              title={trip.title}
+                                              url={trip.url}
+                                              days={trip.days}
+                                              stopCount={trip.stopCount}
                                             />
                                           );
                                         }
                                         if (part.type === "tool-askUser") {
-                                          // Câu hỏi đang stream/đang chờ → hiển thị ở ô input, chỉ render thẻ khi đã trả lời
-                                          if (part.state !== "output-available")
-                                            return null;
+                                          // Lời dẫn của AI hiện trước (stream dần); các lựa chọn hiển thị ở ô input, thẻ chỉ render khi đã trả lời
+                                          const intro = askUserMessage(part);
                                           return (
-                                            <AskUserCard
-                                              key={`${message.id}-${i}`}
-                                              part={part}
-                                            />
+                                            <Fragment key={`${message.id}-${i}`}>
+                                              {intro && (
+                                                <ChatMarkdown>{intro}</ChatMarkdown>
+                                              )}
+                                              {part.state === "output-available" && (
+                                                <AskUserCard part={part} />
+                                              )}
+                                            </Fragment>
                                           );
                                         }
                                         return null;
@@ -772,9 +775,21 @@ function getActiveToolLabel(message?: ChatMessage): string | null {
         if (part.state !== "output-available" && part.state !== "output-error")
           return "Đang tìm trên web & dữ liệu Roamly, xác định vị trí trên bản đồ...";
         break;
+      case "tool-findTripDestinations":
+        if (part.state !== "output-available" && part.state !== "output-error")
+          return "Đang tìm điểm tham quan trên web & Google Maps...";
+        break;
+      case "tool-findTripHotels":
+        if (part.state !== "output-available" && part.state !== "output-error")
+          return "Đang tìm khách sạn trên web & Google Maps...";
+        break;
+      case "tool-findTripRestaurants":
+        if (part.state !== "output-available" && part.state !== "output-error")
+          return "Đang tìm quán ăn trên web & Google Maps...";
+        break;
       case "tool-createTrip":
         if (part.state !== "output-available" && part.state !== "output-error")
-          return "Đang chọn địa điểm & tối ưu lộ trình theo đường bộ...";
+          return "Đang xếp lịch & tối ưu lộ trình theo đường bộ...";
         break;
       case "tool-getWeather":
         if (part.state !== "output-available" && part.state !== "output-error")
@@ -790,23 +805,29 @@ function hasVisibleContent(message: ChatMessage) {
   return message.parts.some(
     (part) =>
       (part.type === "text" && part.text.length > 0) ||
-      (part.type === "tool-askUser" && part.state === "output-available") ||
+      (part.type === "tool-askUser" &&
+        (part.state === "output-available" || askUserMessage(part).length > 0)) ||
       (part.type === "tool-createTrip" && part.state === "output-available"),
   );
 }
 
-function findCreatedTrip(message?: ChatMessage): { tripId: string; url: string } | null {
+type CreatedTrip = { tripId: string; url: string; title: string; days: number; stopCount: number };
+
+// Lộ trình AI vừa tạo: lấy kết quả createTrip thành công mới nhất
+function findCreatedTrip(message?: ChatMessage): CreatedTrip | null {
   if (!message || message.role !== "assistant") return null;
+  let trip: CreatedTrip | null = null;
   for (const part of message.parts) {
     if (
       part.type === "tool-createTrip" &&
       part.state === "output-available" &&
       part.output.ok
     ) {
-      return { tripId: part.output.tripId, url: part.output.url };
+      const { tripId, url, title, days, stops } = part.output;
+      trip = { tripId, url, title, days, stopCount: stops.length };
     }
   }
-  return null;
+  return trip;
 }
 
 function TripCreatedCard({
@@ -943,6 +964,12 @@ function ChatServiceCards({
       </div>
     </div>
   );
+}
+
+// Tin nhắn cũ có thể chưa có `message`
+function askUserMessage(part: AskUserPart): string {
+  const message = part.input?.message;
+  return typeof message === "string" ? message.trim() : "";
 }
 
 function AskUserCard({ part }: { part: AskUserPart }) {

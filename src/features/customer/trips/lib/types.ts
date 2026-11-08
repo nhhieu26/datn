@@ -27,10 +27,14 @@ export type TripDayRoute = {
   error?: boolean;
 };
 
+export type TripMeal = "breakfast" | "lunch" | "dinner";
+
 export type TripStopView = TripPlaceRef & {
   id: string;
   day: number;
   position: number;
+  // Bữa ăn của quán (sáng đầu ngày, trưa giữa tuyến, tối cuối ngày); null = đặt theo khoảng cách
+  meal: TripMeal | null;
   name: string;
   address: string | null;
   image: string | null;

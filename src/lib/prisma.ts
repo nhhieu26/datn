@@ -5,7 +5,13 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+// Có thời gian chờ để một kết nối/truy vấn bị kẹt báo lỗi thay vì treo vô hạn
+// (đã gặp 08/11/2026: 1 trong 18 lệnh ghi song song qua Neon pooler không bao giờ trả về)
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL,
+  connectionTimeoutMillis: 10_000,
+  query_timeout: 30_000,
+});
 
 // Dev: client cache trong globalThis có thể được tạo trước lần `prisma generate` mới nhất
 // → thiếu model mới (vd: prisma.trip undefined). Kiểm tra đủ delegate cho mọi model hiện tại.

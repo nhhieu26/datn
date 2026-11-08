@@ -65,6 +65,7 @@ import {
 import { TripChat } from "./trip-chat";
 import {
   KIND_LABEL,
+  MEAL_LABEL,
   dayColor,
   daySequence,
   formatDistance,
@@ -713,7 +714,7 @@ function StopRow({
         : `Xuất phát · nghỉ đêm từ ngày ${stop.day}`
       : role === "end"
         ? "Quay về khách sạn"
-        : `${KIND_LABEL[stop.kind]}${external ? " · Ngoài Roamly" : ""}`;
+        : `${KIND_LABEL[stop.kind]}${stop.meal ? ` · ${MEAL_LABEL[stop.meal]}` : ""}${external ? " · Ngoài Roamly" : ""}`;
 
   return (
     <li className={dragging ? "relative z-10 opacity-40" : undefined} ref={rowRef} style={style}>

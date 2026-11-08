@@ -5,12 +5,15 @@ import { num } from "@/features/customer/chat/lib/format";
 import { liveService } from "@/features/customer/chat/lib/internal-places";
 import { getRoadRoute, getRouteMatrix } from "@/lib/osrm";
 import { prisma } from "@/lib/prisma";
+import { logTiming, timed } from "@/lib/timing";
 import { ConflictError, ForbiddenError, NotFoundError } from "@/shared/lib/errors";
-import { optimizeOrder } from "./optimize";
+import { assignRestaurants } from "./meal-stops";
+import { optimizeOrder, optimizeWithInsertions } from "./optimize";
 import {
   MAX_STOPS_PER_DAY,
   MAX_TRIP_DAYS,
   type TripDayRoute,
+  type TripMeal,
   type TripPlaceRef,
   type TripStopView,
   type TripView,
@@ -108,6 +111,7 @@ function toStopView(row: TripRow["stops"][number]): TripStopView {
     url: row.url,
     latitude: num(row.latitude)!,
     longitude: num(row.longitude)!,
+    meal: row.meal,
   };
 }
 
@@ -196,13 +200,17 @@ async function planDay(
   try {
     let sequence = points;
     if (optimize) {
-      const matrix = await getRouteMatrix(points);
+      const matrix = await timed(`   ngày ${day}: OSRM ma trận`, () => getRouteMatrix(points), () => `${points.length} điểm`);
       // Có khách sạn: xuất phát và quay về khách sạn; không có: đường mở, tự chọn điểm đầu
-      const order = optimizeOrder(matrix.durations, base ? { start: 0, roundTrip: true } : {});
+      const options = base ? { start: 0, roundTrip: true } : {};
+      // Quán ăn được chèn sau khi tối ưu các điểm tham quan: đúng bữa nếu có, không thì dọc đường
+      const restaurants = points.flatMap((p, i) => (p.kind === "restaurant" ? [i] : []));
+      const meals = new Map(points.flatMap((p, i) => (p.kind === "restaurant" && p.meal ? [[i, p.meal] as const] : [])));
+      const order = optimizeWithInsertions(matrix.durations, restaurants, options, meals);
       sequence = order.map((i) => points[i]);
     }
     const path = base ? [...sequence, base] : sequence;
-    const road = await getRoadRoute(path);
+    const road = await timed(`   ngày ${day}: OSRM đường đi`, () => getRoadRoute(path), () => `${path.length} điểm`);
     return {
       positions: sequence.filter((s) => s.day === day).map((s, i) => [s.id, i]),
       route: { day, stopIds: path.map((s) => s.id), ...road },
@@ -232,6 +240,7 @@ async function recomputeDays(tripId: string, days: number[], { optimize = false 
     if (plan.route) routes.push(plan.route);
   }
 
+  const saveStart = performance.now();
   await prisma.$transaction([
     ...positions.map(([id, position]) =>
       prisma.tripStop.update({ where: { id }, data: { position } }),
@@ -241,10 +250,11 @@ async function recomputeDays(tripId: string, days: number[], { optimize = false 
       data: { routes: routes.sort((a, b) => a.day - b.day) as unknown as Prisma.InputJsonValue },
     }),
   ]);
+  logTiming("   lưu thứ tự + đường đi (CSDL)", performance.now() - saveStart, `${positions.length} điểm`);
 }
 
 // Đổi khách sạn ảnh hưởng điểm xuất phát của các ngày sau
-const affectedDays = (day: number, kind: string, dayCount: number) =>
+export const affectedDays = (day: number, kind: string, dayCount: number) =>
   kind === "hotel" ? Array.from({ length: dayCount - day + 1 }, (_, i) => day + i) : [day];
 
 /** Tính lại đường đi toàn bộ lộ trình, giữ nguyên thứ tự (nút "Thử lại" khi chưa tính được đường đi). */
@@ -265,23 +275,29 @@ export async function optimizeDays(tripId: string, days: number[]): Promise<Trip
 /**
  * Tạo lộ trình từ danh sách địa điểm (AI gợi ý): 1 khách sạn làm gốc, các điểm còn lại
  * được sắp theo vòng tối ưu rồi cắt thành từng ngày liên tiếp (điểm gần nhau cùng ngày), sau đó tối ưu từng ngày.
+ * Quán ăn (`restaurants`) không tham gia chia ngày: được xếp vào từng (ngày, bữa) theo tuyến đã tối ưu
+ * rồi chèn đúng bữa (xem `assignRestaurants`).
  */
 export async function createTripFromPlaces({
   title,
   province,
   days,
   places,
+  restaurants = [],
+  meals = [],
   userId,
 }: {
   title: string;
   province?: string | null;
   days: number;
   places: TripPlaceRef[];
+  restaurants?: { ref: TripPlaceRef; meal?: TripMeal | null }[];
+  meals?: readonly TripMeal[];
   userId?: string | null;
-}): Promise<TripView> {
+}): Promise<{ view: TripView; skippedRestaurants: string[] }> {
   const dayCount = clampDays(days);
   const seen = new Set<string>();
-  const resolved = (await Promise.all(places.map(resolvePlace))).filter(
+  const resolved = (await timed("  resolve địa điểm (CSDL)", () => Promise.all(places.map(resolvePlace)))).filter(
     (p): p is PlaceSnapshot => {
       if (!p || seen.has(`${p.source}:${p.refId}`)) return false;
       seen.add(`${p.source}:${p.refId}`);
@@ -296,7 +312,7 @@ export async function createTripFromPlaces({
   if (dayCount > 1 && others.length > 1) {
     const points = hotel ? [hotel, ...others] : others;
     try {
-      const matrix = await getRouteMatrix(points);
+      const matrix = await timed("  chia ngày: OSRM ma trận", () => getRouteMatrix(points), () => `${points.length} điểm`);
       const order = optimizeOrder(matrix.durations, hotel ? { start: 0, roundTrip: true } : {});
       ordered = order.map((i) => points[i]).filter((p) => p !== hotel);
     } catch (error) {
@@ -318,6 +334,7 @@ export async function createTripFromPlaces({
     longitude: p.longitude,
   });
 
+  const createStart = performance.now();
   const trip = await prisma.trip.create({
     data: {
       title: title.trim().slice(0, 120) || "Lộ trình của tôi",
@@ -333,9 +350,29 @@ export async function createTripFromPlaces({
     },
     select: { id: true },
   });
+  logTiming("  tạo lộ trình (CSDL)", performance.now() - createStart);
 
-  await recomputeDays(trip.id, Array.from({ length: dayCount }, (_, i) => i + 1), { optimize: true });
-  return getTripView(trip.id);
+  await timed("  tối ưu từng ngày", () =>
+    recomputeDays(trip.id, Array.from({ length: dayCount }, (_, i) => i + 1), { optimize: true }),
+  );
+  const view = await getTripView(trip.id);
+  if (restaurants.length === 0 || meals.length === 0) return { view, skippedRestaurants: [] };
+
+  const resolvedRestaurants = await Promise.all(
+    restaurants.map(async ({ ref, meal }) => {
+      const place = await resolvePlace(ref);
+      return place?.kind === "restaurant"
+        ? { ref, name: place.name, latitude: place.latitude, longitude: place.longitude, meal }
+        : null;
+    }),
+  );
+  const { picks, skipped } = assignRestaurants(
+    view.days,
+    resolvedRestaurants.filter((r): r is NonNullable<typeof r> => r != null),
+    meals,
+  );
+  if (picks.length === 0) return { view, skippedRestaurants: skipped };
+  return { view: await addRestaurantsToTrip(trip.id, picks), skippedRestaurants: skipped };
 }
 
 /** Tạo lộ trình trống (người dùng tự chọn điểm dừng). */
@@ -358,6 +395,7 @@ export async function insertStop(
   tripId: string,
   ref: TripPlaceRef,
   day: number,
+  meal?: TripMeal | null,
 ): Promise<{ name: string; day: number }> {
   const trip = await loadTrip(tripId);
   const targetDay = Math.min(Math.max(1, Math.round(day)), trip.dayCount);
@@ -385,9 +423,33 @@ export async function insertStop(
       url: place.url,
       latitude: place.latitude,
       longitude: place.longitude,
+      // Bữa chỉ có nghĩa với quán ăn
+      meal: place.kind === "restaurant" ? (meal ?? null) : null,
     },
   });
   return { name: place.name, day: targetDay };
+}
+
+/**
+ * Thêm quán ăn dọc đường vào các ngày (khi tạo lộ trình) rồi tối ưu lại các ngày đó;
+ * quán đã có hoặc ngày đã đủ điểm thì bỏ qua.
+ */
+export async function addRestaurantsToTrip(
+  tripId: string,
+  picks: { day: number; ref: TripPlaceRef; meal?: TripMeal | null }[],
+): Promise<TripView> {
+  const days = new Set<number>();
+  const insertStart = performance.now();
+  for (const { day, ref, meal } of picks) {
+    try {
+      days.add((await insertStop(tripId, ref, day, meal)).day);
+    } catch (error) {
+      console.warn("Bỏ qua quán ăn không thêm được vào lộ trình:", error);
+    }
+  }
+  logTiming("  chèn quán (CSDL)", performance.now() - insertStart, `${picks.length} quán`);
+  if (days.size === 0) return getTripView(tripId);
+  return timed("  tối ưu lại các ngày có quán", () => optimizeDays(tripId, [...days]));
 }
 
 /** Xóa điểm dừng; các điểm còn lại giữ nguyên thứ tự. */

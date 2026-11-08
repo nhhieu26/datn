@@ -19,9 +19,11 @@ import { loadTripChatHandoff, saveTripChatHandoff } from "../lib/chat-handoff";
 import type { TripChatMessage } from "../lib/trip-ai";
 import {
   type AskUserPart,
+  type PlaceDetail,
   StopPicker,
   collectPlaceDetails,
   describePick,
+  mapLinksMarkdown,
 } from "./trip-stop-picker";
 
 const MUTATION_TOOLS = new Set([
@@ -47,6 +49,7 @@ function activeToolLabel(message?: TripChatMessage): string | null {
     )
       continue;
     if (part.type === "tool-findPlaces") return "Đang tìm địa điểm phù hợp...";
+    if (part.type === "tool-findRestaurantsAlongDay") return "Đang tìm quán ăn dọc tuyến...";
     if (part.type === "tool-getWeather") return "Đang xem dự báo thời tiết...";
     if (MUTATION_TOOLS.has(part.type))
       return "Đang cập nhật & tối ưu lộ trình...";
@@ -56,8 +59,17 @@ function activeToolLabel(message?: TripChatMessage): string | null {
 
 type Segment = { key: string; role: "user" | "assistant"; text: string };
 
+// Tin nhắn cũ (handoff localStorage) có thể chưa có `message`
+function askUserMessage(part: AskUserPart): string {
+  const message = part.input?.message;
+  return typeof message === "string" ? message.trim() : "";
+}
+
 // Chia tin nhắn thành các bubble: chữ của AI, và lựa chọn của người dùng trong askUser (hiện như tin nhắn người dùng)
-function toSegments(message: TripChatMessage): Segment[] {
+function toSegments(
+  message: TripChatMessage,
+  details: Map<string, PlaceDetail>,
+): Segment[] {
   if (message.role === "user") {
     const text = message.parts
       .map((p) => (p.type === "text" ? p.text : ""))
@@ -78,16 +90,23 @@ function toSegments(message: TripChatMessage): Segment[] {
   };
   message.parts.forEach((part, i) => {
     if (part.type === "text") buffer += part.text;
-    else if (
-      part.type === "tool-askUser" &&
-      part.state === "output-available"
-    ) {
-      flush(i);
-      segments.push({
-        key: `${message.id}-${i}-pick`,
-        role: "user",
-        text: describePick(part.output),
-      });
+    else if (part.type === "tool-askUser") {
+      // Lời dẫn của AI (stream dần trong lúc sinh tool call) hiện trước bảng chọn
+      const intro = askUserMessage(part);
+      if (intro) buffer += (buffer.trim() ? "\n\n" : "") + intro;
+      // Danh sách đã đủ → kèm link Google Maps cho từng điểm gợi ý
+      if (part.state !== "input-streaming") {
+        const links = mapLinksMarkdown(part.input?.options ?? [], details);
+        if (links) buffer += (buffer.trim() ? "\n\n" : "") + links;
+      }
+      if (part.state === "output-available") {
+        flush(i);
+        segments.push({
+          key: `${message.id}-${i}-pick`,
+          role: "user",
+          text: describePick(part.output),
+        });
+      }
     }
   });
   flush(message.parts.length);
@@ -210,7 +229,11 @@ export function TripChat({
   const toolLabel = isBusy ? activeToolLabel(lastMessage) : null;
   const lastHasText =
     lastMessage?.role === "assistant" &&
-    lastMessage.parts.some((p) => p.type === "text" && p.text);
+    lastMessage.parts.some(
+      (p) =>
+        (p.type === "text" && p.text) ||
+        (p.type === "tool-askUser" && askUserMessage(p)),
+    );
   const showTyping = isBusy && (!lastHasText || Boolean(toolLabel));
 
   return (
@@ -234,7 +257,7 @@ export function TripChat({
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {messages.flatMap(toSegments).map(({ key, role, text }) => {
+            {messages.flatMap((m) => toSegments(m, placeDetails)).map(({ key, role, text }) => {
               const isUser = role === "user";
               return (
                 <div

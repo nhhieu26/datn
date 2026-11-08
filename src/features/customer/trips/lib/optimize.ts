@@ -1,4 +1,5 @@
 // Tối ưu thứ tự ghé thăm (bài toán người du lịch — TSP) trên ma trận thời gian di chuyển theo đường bộ.
+import type { Meal } from "./meal-stops";
 
 // Cặp điểm không có đường bộ → coi như rất xa để thuật toán tránh
 const UNREACHABLE = 1e9;
@@ -37,6 +38,92 @@ export function optimizeOrder(matrix: Matrix, options: OptimizeOptions = {}): nu
   return n <= EXACT_LIMIT
     ? heldKarp(matrix, start, roundTrip)
     : twoOpt(matrix, nearestNeighbor(matrix, start), start !== undefined, roundTrip);
+}
+
+/**
+ * Tối ưu thứ tự các điểm chính (không thuộc `insertIndices`), sau đó chèn từng điểm phụ (quán ăn) vào lộ trình:
+ * - quán có bữa (`meals`): sáng → ngay sau điểm xuất phát; tối → cuối ngày (trước khi về khách sạn);
+ *   trưa → chỗ làm tăng ít thời gian nhất trong khoảng giữa tuyến;
+ * - quán không có bữa: chỗ làm tăng ít thời gian nhất — nằm dọc đường thay vì bị TSP đẩy về cuối ngày.
+ */
+export function optimizeWithInsertions(
+  matrix: Matrix,
+  insertIndices: number[],
+  options: OptimizeOptions = {},
+  meals: ReadonlyMap<number, Meal> = new Map(),
+): number[] {
+  const inserts = new Set(insertIndices);
+  const main = matrix.map((_, i) => i).filter((i) => !inserts.has(i));
+  if (main.length === 0 || inserts.size === 0) return optimizeOrder(matrix, options);
+
+  const sub = main.map((i) => main.map((j) => matrix[i]?.[j] ?? null));
+  const subStart = options.start !== undefined ? main.indexOf(options.start) : -1;
+  const order = optimizeOrder(sub, {
+    start: subStart >= 0 ? subStart : undefined,
+    roundTrip: options.roundTrip,
+  }).map((k) => main[k]);
+
+  const roundTrip = Boolean(options.roundTrip);
+  // Điểm đầu cố định (khách sạn/điểm xuất phát) không bị chèn lên trước
+  const fixedStart = subStart >= 0 || roundTrip;
+  const first = fixedStart ? 1 : 0;
+  // Số điểm chính đứng trước vị trí chèn `pos` (không tính điểm xuất phát)
+  const mainBefore = (pos: number) => order.slice(first, pos).filter((i) => !inserts.has(i)).length;
+  const visits = main.length - first;
+  const lunchMin = Math.min(visits, Math.max(1, Math.floor(visits / 3)));
+  const lunchMax = Math.min(visits, Math.max(1, Math.ceil((2 * visits) / 3)));
+
+  const addedCost = (pos: number, extra: number) => {
+    const prev = pos > 0 ? order[pos - 1] : undefined;
+    const next = pos < order.length ? order[pos] : roundTrip ? order[0] : undefined;
+    return (
+      (prev !== undefined ? cost(matrix, prev, extra) : 0) +
+      (next !== undefined ? cost(matrix, extra, next) : 0) -
+      (prev !== undefined && next !== undefined ? cost(matrix, prev, next) : 0)
+    );
+  };
+  // Quán trưa/không bữa chỉ nằm sau các quán sáng và trước các quán tối đã chèn
+  const cheapest = (extra: number, allowed: (pos: number) => boolean) => {
+    let lo = first;
+    while (lo < order.length && meals.get(order[lo]) === "breakfast") lo++;
+    const firstDinner = order.findIndex((i, k) => k >= lo && meals.get(i) === "dinner");
+    const hi = firstDinner < 0 ? order.length : firstDinner;
+    let bestPos = -1;
+    let bestAdded = Infinity;
+    for (let pos = lo; pos <= hi; pos++) {
+      if (!allowed(pos)) continue;
+      const added = addedCost(pos, extra);
+      if (added < bestAdded) {
+        bestAdded = added;
+        bestPos = pos;
+      }
+    }
+    return bestPos;
+  };
+
+  // Sáng, tối trước (vị trí cố định), rồi trưa (giữa tuyến), cuối cùng quán không có bữa
+  const rank = (i: number) => ({ breakfast: 0, dinner: 1, lunch: 2 })[meals.get(i) ?? "lunch"] + (meals.has(i) ? 0 : 3);
+  for (const extra of [...insertIndices].sort((a, b) => rank(a) - rank(b))) {
+    const meal = meals.get(extra);
+    let pos: number;
+    if (meal === "breakfast") {
+      // Sau các quán sáng đã chèn (nếu có nhiều)
+      pos = first;
+      while (pos < order.length && meals.get(order[pos]) === "breakfast") pos++;
+    } else if (meal === "dinner") {
+      pos = order.length;
+    } else if (meal === "lunch") {
+      pos = cheapest(extra, (p) => {
+        const before = mainBefore(p);
+        return before >= lunchMin && before <= lunchMax;
+      });
+      if (pos < 0) pos = cheapest(extra, () => true);
+    } else {
+      pos = cheapest(extra, () => true);
+    }
+    order.splice(pos < 0 ? order.length : pos, 0, extra);
+  }
+  return order;
 }
 
 function heldKarp(matrix: Matrix, start: number | undefined, roundTrip: boolean): number[] {

@@ -10,7 +10,8 @@
     "db:seed": "bun scripts/seed.ts",
     "db:clear": "bun scripts/clear.ts",
     "db:happen": "bun scripts/mark-bookings-happened.ts",
-    "cloud:clear": "bun scripts/clear-cloud.ts"
+    "cloud:clear": "bun scripts/clear-cloud.ts",
+    "cache:clear": "bun scripts/clear-place-cache.ts"
   },
   "prisma": {
     "seed": "bun scripts/seed.ts"
