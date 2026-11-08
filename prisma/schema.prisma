@@ -663,6 +663,13 @@ enum TripStopKind {
   destination
 }
 
+// Bữa ăn của quán trong lộ trình: quyết định vị trí trong ngày (sáng đầu ngày, trưa giữa tuyến, tối cuối ngày)
+enum TripMeal {
+  breakfast
+  lunch
+  dinner
+}
+
 // Lộ trình tham quan do khách tạo (từ chat AI hoặc tự chọn điểm dừng); không bắt buộc đăng nhập.
 model Trip {
   id       String  @id @default(cuid())
@@ -699,6 +706,8 @@ model TripStop {
   url       String
   latitude  Decimal        @db.Decimal(9, 6)
   longitude Decimal        @db.Decimal(9, 6)
+  // Chỉ dùng cho quán ăn; null = không gắn bữa (đặt theo khoảng cách)
+  meal      TripMeal?
 
   createdAt DateTime @default(now())
 

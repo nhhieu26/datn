@@ -1,10 +1,16 @@
 import type { RouteLeg } from "@/lib/osrm";
-import type { TripDayView, TripStopKind, TripStopView } from "../lib/types";
+import type { TripDayView, TripMeal, TripStopKind, TripStopView } from "../lib/types";
 
 export const KIND_LABEL: Record<TripStopKind, string> = {
   hotel: "Khách sạn",
   restaurant: "Nhà hàng",
   destination: "Điểm tham quan",
+};
+
+export const MEAL_LABEL: Record<TripMeal, string> = {
+  breakfast: "Bữa sáng",
+  lunch: "Bữa trưa",
+  dinner: "Bữa tối",
 };
 
 // Màu đường đi của từng ngày trên bản đồ (ngày 1 giữ màu teal chủ đạo)

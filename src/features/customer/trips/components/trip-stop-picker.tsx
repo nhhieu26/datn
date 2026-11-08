@@ -2,8 +2,10 @@
 
 import { CheckIcon, StarIcon } from "lucide-react";
 import { useState } from "react";
+import { googleMapsUrl } from "@/features/customer/chat/lib/format";
 import type { StopPick, TripChatMessage } from "../lib/trip-ai";
-import { KIND_LABEL } from "./trip-format";
+import type { TripMeal } from "../lib/types";
+import { KIND_LABEL, MEAL_LABEL } from "./trip-format";
 
 type ChatPart = TripChatMessage["parts"][number];
 export type AskUserPart = Extract<ChatPart, { type: "tool-askUser" }>;
@@ -16,6 +18,7 @@ export type PlaceDetail = {
   address: string | null;
   rating: number | null;
   reviewCount: number | null;
+  mapUrl: string | null;
 };
 
 export const placeKey = (p: { source: string; refId: string }) => `${p.source}:${p.refId}`;
@@ -24,6 +27,19 @@ export function collectPlaceDetails(messages: TripChatMessage[]): Map<string, Pl
   const details = new Map<string, PlaceDetail>();
   for (const message of messages) {
     for (const part of message.parts) {
+      // Quán dọc tuyến: luôn là địa điểm Google Maps, url đã là link Google Maps
+      if (part.type === "tool-findRestaurantsAlongDay" && part.state === "output-available") {
+        for (const place of part.output.places) {
+          details.set(placeKey({ source: place.source, refId: place.id }), {
+            image: null,
+            address: place.address || null,
+            rating: place.rating,
+            reviewCount: place.reviewCount,
+            mapUrl: place.url,
+          });
+        }
+        continue;
+      }
       if (part.type !== "tool-findPlaces" || part.state !== "output-available") continue;
       for (const place of part.output.places) {
         details.set(placeKey({ source: place.source, refId: place.id }), {
@@ -31,11 +47,34 @@ export function collectPlaceDetails(messages: TripChatMessage[]): Map<string, Pl
           address: place.address || null,
           rating: "rating" in place ? (place.rating ?? null) : null,
           reviewCount: "reviewCount" in place ? (place.reviewCount ?? null) : null,
+          // Ngoài Roamly: url đã là link Google Maps; Roamly: url là trang nội bộ → dựng link theo tọa độ
+          mapUrl:
+            place.source === "external"
+              ? place.url
+              : place.latitude != null && place.longitude != null
+                ? googleMapsUrl(place.latitude, place.longitude)
+                : null,
         });
       }
     }
   }
   return details;
+}
+
+/** Danh sách markdown tên điểm gợi ý kèm link Google Maps, gắn vào lời dẫn của AI. */
+export function mapLinksMarkdown(
+  options: ReadonlyArray<Partial<PickOption> | undefined>,
+  details: Map<string, PlaceDetail>,
+): string {
+  return options
+    .flatMap((option) => {
+      if (!option?.source || !option.refId || !option.name) return [];
+      const url = details.get(placeKey({ source: option.source, refId: option.refId }))?.mapUrl;
+      if (!url) return [];
+      const name = option.name.replace(/[[\]]/g, "");
+      return [`- [${name}](${url})${option.reason ? ` — ${option.reason}` : ""}`];
+    })
+    .join("\n");
 }
 
 /** Bảng chọn điểm dừng thay cho ô nhập khi AI hỏi người dùng muốn thêm địa điểm nào. */
@@ -54,6 +93,9 @@ export function StopPicker({
 }) {
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [day, setDay] = useState(() => Math.min(Math.max(1, input.day), dayCount));
+  // Bữa ăn của quán: quyết định vị trí trong ngày (sáng đầu ngày, trưa giữa tuyến, tối cuối ngày)
+  const [meal, setMeal] = useState<TripMeal | "">(() => input.meal ?? "");
+  const hasRestaurant = input.options.some((o) => o.kind === "restaurant");
 
   const toggle = (key: string) =>
     setSelected((cur) => {
@@ -67,7 +109,9 @@ export function StopPicker({
     const places = input.options
       .filter((o) => selected.has(placeKey(o)))
       .map(({ source, kind, refId, name }) => ({ source, kind, refId, name }));
-    if (places.length > 0) onAnswer({ action: "add", day, places });
+    if (places.length > 0) {
+      onAnswer({ action: "add", day, places, ...(hasRestaurant && meal ? { meal } : {}) });
+    }
   }
 
   return (
@@ -100,6 +144,23 @@ export function StopPicker({
             ))}
           </select>
         </label>
+        {hasRestaurant && (
+          <label className="flex shrink-0 items-center gap-1.5 text-xs text-new-paragraph">
+            Bữa
+            <select
+              className="rounded border border-new-input-border bg-white px-1.5 py-1 text-xs text-new-title focus:border-new-teal focus:outline-none"
+              onChange={(e) => setMeal(e.target.value as TripMeal | "")}
+              value={meal}
+            >
+              <option value="">Không chọn</option>
+              {(Object.keys(MEAL_LABEL) as TripMeal[]).map((m) => (
+                <option key={m} value={m}>
+                  {MEAL_LABEL[m].replace("Bữa ", "")}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <button
           className="flex-1 rounded bg-new-teal-cta px-3 py-2 text-sm font-semibold text-white hover:bg-new-teal-hover disabled:opacity-50"
           disabled={selected.size === 0}
@@ -201,5 +262,6 @@ function PickRow({
 export function describePick(pick: StopPick): string {
   if (pick.action === "more") return "Gợi ý cho tôi địa điểm khác";
   if (pick.action === "cancel") return "Thôi, không thêm";
-  return `Thêm vào Ngày ${pick.day}: ${pick.places.map((p) => p.name).join(", ")}`;
+  const meal = pick.meal ? ` (${MEAL_LABEL[pick.meal].toLowerCase()})` : "";
+  return `Thêm vào Ngày ${pick.day}${meal}: ${pick.places.map((p) => p.name).join(", ")}`;
 }
