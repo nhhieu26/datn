@@ -4,17 +4,39 @@ import { prisma } from "@/lib/prisma";
 
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const SOURCE = "gplaces";
+const PAGE_SIZE = 8;
 // Khung tìm kiếm tối thiểu: Google trả viewport rất nhỏ cho phường (~vài km) và gần như 0 cho đảo/thắng cảnh.
 // Không nới quá rộng vì ở thành phố lớn 10km đã lan sang nhiều quận khác.
 const MIN_SPAN_DEG = 0.04; // ~4.5km
 const MIN_SPAN_NATURAL_DEG = 0.1; // ~11km cho đảo, vịnh, núi
 const NATURAL_TYPES = ["natural_feature", "island", "archipelago"];
+// Tỉnh cũ đã sáp nhập (07/2025): Google hiểu tên này là phường/xã trung tâm tỉnh cũ (vd "Hải Dương" →
+// phường Hải Dương, Hải Phòng, khung ~4km), trong khi người dùng nói cả tỉnh. Điểm tham quan của tỉnh cũ
+// nằm rải rác ở các huyện (chùa Côn Sơn, đền Kiếp Bạc cách ~20km) nên phải mở rộng khung tìm.
+const FORMER_PROVINCES = new Set(
+  [
+    "Hà Giang", "Yên Bái", "Bắc Kạn", "Vĩnh Phúc", "Hòa Bình", "Bắc Giang", "Thái Bình", "Hải Dương",
+    "Hà Nam", "Nam Định", "Quảng Bình", "Quảng Nam", "Kon Tum", "Bình Định", "Ninh Thuận", "Đắk Nông",
+    "Bình Thuận", "Phú Yên", "Bình Dương", "Bà Rịa - Vũng Tàu", "Bình Phước", "Long An", "Sóc Trăng",
+    "Hậu Giang", "Bến Tre", "Trà Vinh", "Tiền Giang", "Bạc Liêu", "Kiên Giang",
+  ].map((s) => s.normalize("NFC").toLowerCase()),
+);
+const MIN_SPAN_FORMER_PROVINCE_DEG = 0.45; // ~50km
+const isFormerProvince = (location: string) =>
+  FORMER_PROVINCES.has(location.split(",")[0].normalize("NFC").toLowerCase().replace(/^tỉnh\s+/, "").trim());
 
 const GOOGLE_TYPE: Record<ExternalPlaceKind, string> = {
   hotel: "lodging",
   restaurant: "restaurant",
   destination: "tourist_attraction",
 };
+
+// Điểm tham quan không lọc theo loại vì nhiều chùa/đền trên Google chỉ là "place_of_worship";
+// thay vào đó loại quán ăn/chỗ ở và xếp theo số đánh giá để nơi nổi tiếng lên đầu.
+const DESTINATION_POOL_SIZE = 20;
+const NOT_DESTINATION_TYPES = ["restaurant", "cafe", "bar", "food", "lodging", "store"];
+const isDestination = (p: GooglePlace) =>
+  p.types?.includes("tourist_attraction") || !p.types?.some((t) => NOT_DESTINATION_TYPES.includes(t));
 
 export type Place = {
   id: string;
@@ -278,7 +300,7 @@ export async function searchPlaces(
   keyword: string,
   location: string,
 ): Promise<PlaceSearchResult> {
-  const queryKey = `${SOURCE}:v8|${kind}|${norm(location)}|${norm(keyword)}`;
+  const queryKey = `${SOURCE}:v10|${kind}|${norm(location)}|${norm(keyword)}`;
 
   const cached = await prisma.externalPlaceSearch.findUnique({ where: { queryKey } });
   if (cached && cached.expiresAt > new Date()) {
@@ -295,23 +317,33 @@ export async function searchPlaces(
   if (!resolved) return { status: "not_found" };
   if ("ambiguous" in resolved) return { status: "ambiguous", options: resolved.ambiguous };
 
+  const isDest = kind === "destination";
+  const viewport =
+    isDest && isFormerProvince(location) ? expand(resolved.viewport, MIN_SPAN_FORMER_PROVINCE_DEG) : resolved.viewport;
   const results = await searchPlacesText({
     textQuery: keyword,
-    includedType: GOOGLE_TYPE[kind],
-    pageSize: 8,
-    restrictTo: resolved.viewport,
+    ...(isDest ? {} : { includedType: GOOGLE_TYPE[kind] }),
+    pageSize: isDest ? DESTINATION_POOL_SIZE : PAGE_SIZE,
+    restrictTo: viewport,
   });
-  const usable = results.filter(
+  let usable = results.filter(
     (p) =>
       p.displayName?.text &&
       p.location &&
-      inside(p.location, resolved.viewport) &&
+      inside(p.location, viewport) &&
       p.businessStatus !== "CLOSED_PERMANENTLY",
   );
+  if (isDest) {
+    usable = usable
+      .filter(isDestination)
+      .sort((a, b) => (b.userRatingCount ?? 0) - (a.userRatingCount ?? 0))
+      .slice(0, PAGE_SIZE);
+  }
   const rows = await Promise.all(usable.map((p) => saveGooglePlace(kind, p)));
 
   const placeIds = rows.map((r) => r.id);
-  const expiresAt = new Date(Date.now() + CACHE_TTL_MS);
+  // Không có kết quả chỉ cache ngắn để sớm tìm lại khi logic/dữ liệu Google thay đổi
+  const expiresAt = new Date(Date.now() + (rows.length > 0 ? CACHE_TTL_MS : AREA_MISS_TTL_MS));
   await prisma.externalPlaceSearch.upsert({
     where: { queryKey },
     create: { queryKey, placeIds, expiresAt },

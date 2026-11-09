@@ -110,7 +110,8 @@ function buildProvinceFilter(provinceIds?: string[]) {
 export async function queryTourEmbeddings(
   vector: number[],
   topK: number,
-  provinceIds?: string[]
+  provinceIds?: string[],
+  minScore = 0
 ): Promise<string[]> {
   const res = await getTourIndex().query({
     vector,
@@ -120,7 +121,7 @@ export async function queryTourEmbeddings(
       ...buildProvinceFilter(provinceIds),
     },
   });
-  return res.matches.map((m) => m.id);
+  return res.matches.filter((m) => (m.score ?? 0) >= minScore).map((m) => m.id);
 }
 
 export async function queryHotelEmbeddings(
