@@ -1,165 +1,48 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
+import type { Map as LeafletMap, Marker } from "leaflet";
 import { MapPinIcon } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { CardKind, MapCard } from "@/features/customer/chat/lib/cards";
 
-export type ServiceMapKind = "Khách sạn" | "Nhà hàng" | "Điểm đến";
+type Leaflet = typeof import("leaflet");
 
-export type ServiceMapItem = {
-  kind: ServiceMapKind;
-  // internal: dịch vụ trên Roamly; external: địa điểm từ Google Maps
-  source: "internal" | "external";
-  title: string;
-  url: string;
-  image: string;
-  province: string;
-  address?: string | null;
-  meta?: string | null;
-  highlight?: string | null;
-  priceLabel: string;
-  rating?: number | null;
-  reviewCount?: number;
-  latitude: number;
-  longitude: number;
+const TILE_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}";
+const TILE_ATTRIBUTION = "Tiles &copy; Esri";
+
+const KIND_COLOR: Record<CardKind, string> = {
+  Tour: "#017b6e",
+  "Khách sạn": "#017b6e",
+  "Nhà hàng": "#f06449",
+  "Điểm đến": "#0d9488",
 };
 
-type LeafletModule = typeof import("leaflet");
-type LeafletMap = import("leaflet").Map;
-type LeafletMarker = import("leaflet").Marker;
+const escapeHtml = (value: string) =>
+  value.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
-export const DEFAULT_CENTER = { lat: 20.2506, lng: 105.9102 };
-const DEFAULT_ZOOM = 12;
-const SINGLE_MARKER_ZOOM = 14;
-export const TILE_URL =
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}";
-export const TILE_ATTRIBUTION =
-  "Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012";
-
-export const KIND_STYLE: Record<
-  ServiceMapKind,
-  { color: string; badgeBg: string; badgeText: string }
-> = {
-  "Khách sạn": {
-    color: "#017b6e",
-    badgeBg: "#e6f2f0",
-    badgeText: "#017b6e",
-  },
-  "Nhà hàng": {
-    color: "#f06449",
-    badgeBg: "#fef0ed",
-    badgeText: "#e05338",
-  },
-  "Điểm đến": {
-    color: "#0d9488",
-    badgeBg: "#ccfbf1",
-    badgeText: "#0f766e",
-  },
-};
-
-export function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function createPinIcon(
-  L: LeafletModule,
-  kind: ServiceMapKind,
-  source: ServiceMapItem["source"],
-  index: number,
-  active: boolean,
-) {
-  const { color } = KIND_STYLE[kind];
-  // Marker dịch vụ Roamly: nền đặc; địa điểm ngoài: nền trắng, viền nét đứt
-  const external = source === "external";
-  const pinFill = external ? "#ffffff" : color;
-  const pinStroke = external ? color : "#ffffff";
-  const pinDash = external ? ' stroke-dasharray="4 3"' : "";
-  const innerFill = external ? color : "#ffffff";
-  const textFill = external ? "#ffffff" : color;
-  const scale = active ? "scale(1.18)" : "scale(1)";
-  const ring = active
-    ? "filter: drop-shadow(0 4px 8px rgba(15, 23, 42, 0.35));"
-    : "filter: drop-shadow(0 2px 4px rgba(15, 23, 42, 0.22));";
-
+function pinIcon(L: Leaflet, card: MapCard, index: number, active: boolean) {
+  const color = KIND_COLOR[card.kind];
   return L.divIcon({
     className: "",
-    html: `<div style="transform:${scale};transform-origin:bottom center;transition:transform 150ms ease;${ring}">
-      <svg width="32" height="42" viewBox="0 0 32 42" xmlns="http://www.w3.org/2000/svg">
-        <path d="M16 0C7.163 0 0 7.163 0 16c0 11.2 16 26 16 26s16-14.8 16-26C32 7.163 24.837 0 16 0z" fill="${pinFill}" stroke="${pinStroke}" stroke-width="2"${pinDash}/>
-        <circle cx="16" cy="15" r="9.5" fill="${innerFill}"/>
-        <text x="16" y="19" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="700" fill="${textFill}">${index + 1}</text>
-      </svg>
-    </div>`,
+    html: `<div style="transform:scale(${active ? 1.18 : 1});transform-origin:bottom center;transition:transform 150ms;filter:drop-shadow(0 2px 4px rgba(15,23,42,.3))">
+      <svg width="32" height="42" viewBox="0 0 32 42"><path d="M16 0C7.163 0 0 7.163 0 16c0 11.2 16 26 16 26s16-14.8 16-26C32 7.163 24.837 0 16 0z" fill="${color}" stroke="#fff" stroke-width="2"/>
+      <circle cx="16" cy="15" r="9.5" fill="#fff"/><text x="16" y="19" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="700" fill="${color}">${index + 1}</text></svg></div>`,
     iconSize: [32, 42],
     iconAnchor: [16, 42],
     popupAnchor: [0, -42],
   });
 }
 
-const KIND_ICON: Record<ServiceMapKind, { kind: string; meta: string }> = {
-  "Khách sạn": { kind: "hotel", meta: "bed" },
-  "Nhà hàng": { kind: "restaurant", meta: "schedule" },
-  "Điểm đến": { kind: "landscape", meta: "schedule" },
-};
-
-function buildPopupHtml(item: ServiceMapItem): string {
-  const title = escapeHtml(item.title);
-  const url = escapeHtml(item.url);
-  const image = escapeHtml(item.image || "/image-notfound.png");
-  const locationText = escapeHtml(
-    item.address ? `${item.address}, ${item.province}` : item.province,
-  );
-  const priceLabel = escapeHtml(item.priceLabel);
-  const icons = KIND_ICON[item.kind];
-
-  const metaHtml = item.meta
-    ? `<div class="roamly-popup-chip-item">
-         <span aria-hidden class="material-symbols-outlined">${icons.meta}</span>
-         <p>${escapeHtml(item.meta)}</p>
-       </div>`
-    : "";
-
-  const external = item.source === "external";
-  const reviewCount = item.reviewCount ?? 0;
-  const hasRating = item.rating != null && reviewCount > 0;
-  const ratingHtml = external
-    ? `<div class="roamly-popup-rating"><p>Xem trên Google Maps</p></div>`
-    : `<div class="roamly-popup-rating">
-      <span aria-hidden class="material-symbols-outlined roamly-popup-star-icon${hasRating ? " is-filled" : ""}">star</span>
-      <p>${hasRating ? `${item.rating!.toFixed(1)} (${reviewCount})` : "Chưa có đánh giá"}</p>
-    </div>`;
-  const kindLabel = external ? `${item.kind} · Ngoài Roamly` : item.kind;
-
-  return `
-    <a href="${url}" target="_blank" rel="noreferrer" class="roamly-popup-card">
-      <div class="roamly-popup-image-wrap">
-        <img src="${image}" alt="${title}" class="roamly-popup-img" />
-      </div>
-      <div class="roamly-popup-body">
-        <h4 class="roamly-popup-title">${title}</h4>
-        <div class="roamly-popup-location">
-          <span aria-hidden class="material-symbols-outlined">location_on</span>
-          <div class="roamly-popup-loc-text">${locationText}</div>
-        </div>
-        <div class="roamly-popup-chip">
-          <div class="roamly-popup-chip-item">
-            <span aria-hidden class="material-symbols-outlined">${icons.kind}</span>
-            <p>${escapeHtml(kindLabel)}</p>
-          </div>
-          ${metaHtml}
-        </div>
-        <div class="roamly-popup-footer">
-          <p class="roamly-popup-price">${priceLabel}</p>
-          ${ratingHtml}
-        </div>
-      </div>
-    </a>
-  `;
+function popupHtml(card: MapCard) {
+  const rating = card.rating != null && card.reviewCount ? `★ ${card.rating.toFixed(1)} (${card.reviewCount})` : "";
+  return `<a href="${escapeHtml(card.url)}" target="_blank" rel="noreferrer" class="roamly-popup-card">
+    <div class="roamly-popup-image-wrap"><img src="${escapeHtml(card.image)}" alt="" class="roamly-popup-img" /></div>
+    <div class="roamly-popup-body">
+      <h4 class="roamly-popup-title">${escapeHtml(card.title)}</h4>
+      <div class="roamly-popup-location"><div class="roamly-popup-loc-text">${escapeHtml(card.highlight ?? "")}</div></div>
+      <div class="roamly-popup-footer"><p class="roamly-popup-price">${escapeHtml(card.kind)}</p><div class="roamly-popup-rating"><p>${rating}</p></div></div>
+    </div></a>`;
 }
 
 export function ChatServiceMap({
@@ -167,174 +50,77 @@ export function ChatServiceMap({
   activeUrl,
   onSelectUrl,
 }: {
-  items: ServiceMapItem[];
-  activeUrl?: string | null;
-  onSelectUrl?: (url: string | null) => void;
+  items: MapCard[];
+  activeUrl: string | null;
+  onSelectUrl: (url: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<LeafletMap | null>(null);
-  const leafletRef = useRef<LeafletModule | null>(null);
-  const markersRef = useRef<
-    Map<string, { marker: LeafletMarker; item: ServiceMapItem; index: number }>
-  >(new Map());
-  const onSelectUrlRef = useRef(onSelectUrl);
-  const [mapReady, setMapReady] = useState(false);
+  const [leaflet, setLeaflet] = useState<{ L: Leaflet; map: LeafletMap } | null>(null);
+  const markersRef = useRef(new Map<string, { marker: Marker; card: MapCard; index: number }>());
+  const drawnKeyRef = useRef("");
 
+  // Khởi tạo bản đồ một lần
   useEffect(() => {
-    onSelectUrlRef.current = onSelectUrl;
-  }, [onSelectUrl]);
-
-  const fitAllMarkers = useCallback(() => {
-    const L = leafletRef.current;
-    const map = mapRef.current;
-    if (!L || !map || items.length === 0) return;
-
-    if (items.length === 1) {
-      map.setView(
-        [items[0].latitude, items[0].longitude],
-        SINGLE_MARKER_ZOOM,
-        { animate: true },
-      );
-      return;
-    }
-
-    const bounds = L.latLngBounds(
-      items.map((item) => [item.latitude, item.longitude] as [number, number]),
-    );
-    map.fitBounds(bounds, { padding: [44, 44], maxZoom: 15, animate: true });
-  }, [items]);
-
-  // Khởi tạo bản đồ Leaflet
-  useEffect(() => {
+    let map: LeafletMap | undefined;
     let disposed = false;
-    const markers = markersRef.current;
-
     import("leaflet").then((L) => {
-      if (disposed || !containerRef.current || mapRef.current) return;
-      leafletRef.current = L;
-
-      const map = L.map(containerRef.current, {
-        center: [DEFAULT_CENTER.lat, DEFAULT_CENTER.lng],
-        zoom: DEFAULT_ZOOM,
-        scrollWheelZoom: true,
-        zoomControl: true,
-        attributionControl: true,
-      });
-
-      L.tileLayer(TILE_URL, {
-        attribution: TILE_ATTRIBUTION,
-        maxZoom: 19,
-      }).addTo(map);
-
-      mapRef.current = map;
-      setMapReady(true);
+      if (disposed || !containerRef.current) return;
+      map = L.map(containerRef.current, { center: [20.25, 105.91], zoom: 12 });
+      L.tileLayer(TILE_URL, { attribution: TILE_ATTRIBUTION, maxZoom: 19 }).addTo(map);
+      setLeaflet({ L, map });
     });
-
     return () => {
       disposed = true;
-      markers.clear();
-      mapRef.current?.remove();
-      mapRef.current = null;
-      leafletRef.current = null;
+      map?.remove();
     };
   }, []);
 
-  // Vẽ lại các marker và căn chỉnh khung nhìn khi danh sách dịch vụ thay đổi
+  // Vẽ lại marker khi danh sách địa điểm đổi (so theo URL để không vẽ lại mỗi lần render)
+  const itemsKey = items.map((c) => c.url).join("|");
+
   useEffect(() => {
-    const L = leafletRef.current;
-    const map = mapRef.current;
-    if (!mapReady || !L || !map) return;
+    if (!leaflet || drawnKeyRef.current === itemsKey) return;
+    drawnKeyRef.current = itemsKey;
+    const { L, map } = leaflet;
+    const cards = items;
+    const markers = markersRef.current;
 
-    for (const entry of markersRef.current.values()) {
-      entry.marker.remove();
-    }
-    markersRef.current.clear();
+    markers.forEach(({ marker }) => marker.remove());
+    markers.clear();
 
-    items.forEach((item, index) => {
-      const marker = L.marker([item.latitude, item.longitude], {
-        icon: createPinIcon(
-          L,
-          item.kind,
-          item.source,
-          index,
-          item.url === activeUrl,
-        ),
-        zIndexOffset: item.url === activeUrl ? 1000 : 0,
-      }).addTo(map);
-
-      marker.bindPopup(buildPopupHtml(item), {
-        className: "roamly-map-popup",
-        maxWidth: 230,
-        minWidth: 230,
-        closeButton: true,
-        autoPanPadding: [20, 20],
-      });
-
-      marker.on("click", () => {
-        onSelectUrlRef.current?.(item.url);
-      });
-
-      markersRef.current.set(item.url, { marker, item, index });
+    cards.forEach((card, index) => {
+      const marker = L.marker([card.lat, card.lng], { icon: pinIcon(L, card, index, false) })
+        .addTo(map)
+        .bindPopup(popupHtml(card), { className: "roamly-map-popup", maxWidth: 230, minWidth: 230 })
+        .on("click", () => onSelectUrl(card.url));
+      markers.set(card.url, { marker, card, index });
     });
 
-    fitAllMarkers();
-    // Chỉ chạy lại khi danh sách địa điểm thực sự thay đổi hoặc khi bản đồ sẵn sàng
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapReady, items, fitAllMarkers]);
-
-  // Đồng bộ trạng thái active và di chuyển tới marker khi hover/chọn dịch vụ
-  useEffect(() => {
-    const L = leafletRef.current;
-    const map = mapRef.current;
-    if (!mapReady || !L || !map) return;
-
-    for (const [url, entry] of markersRef.current.entries()) {
-      const isActive = url === activeUrl;
-      entry.marker.setIcon(
-        createPinIcon(
-          L,
-          entry.item.kind,
-          entry.item.source,
-          entry.index,
-          isActive,
-        ),
-      );
-      entry.marker.setZIndexOffset(isActive ? 1000 : 0);
+    if (cards.length === 1) map.setView([cards[0].lat, cards[0].lng], 14);
+    else if (cards.length > 1) {
+      map.fitBounds(L.latLngBounds(cards.map((c) => [c.lat, c.lng])), { padding: [44, 44], maxZoom: 15 });
     }
+  }, [leaflet, items, itemsKey, onSelectUrl]);
 
-    if (!activeUrl) return;
-    const target = markersRef.current.get(activeUrl);
-    if (!target) return;
-
-    map.panTo([target.item.latitude, target.item.longitude], {
-      animate: true,
-    });
-    target.marker.openPopup();
-  }, [mapReady, activeUrl]);
+  // Làm nổi marker đang được hover/chọn
+  useEffect(() => {
+    if (!leaflet) return;
+    for (const [url, { marker, card, index }] of markersRef.current) {
+      const active = url === activeUrl;
+      marker.setIcon(pinIcon(leaflet.L, card, index, active)).setZIndexOffset(active ? 1000 : 0);
+      if (active) {
+        leaflet.map.panTo([card.lat, card.lng]);
+        marker.openPopup();
+      }
+    }
+  }, [leaflet, activeUrl, itemsKey]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <MapPinIcon className="size-5 text-new-teal-cta" />
-          <h2 className="text-lg font-semibold text-new-title">
-            Bản đồ địa điểm gợi ý ({items.length})
-          </h2>
-        </div>
-        <div className="flex items-center gap-3 text-xs text-new-paragraph">
-          <span className="flex items-center gap-1">
-            <span className="inline-block size-3 rounded-full bg-new-teal-cta" />
-            Trên Roamly
-          </span>
-          {items.some((item) => item.source === "external") && (
-            <span className="flex items-center gap-1">
-              <span className="inline-block size-3 rounded-full border-2 border-dashed border-new-teal-cta bg-white" />
-              Ngoài Roamly (Google Maps)
-            </span>
-          )}
-        </div>
+      <div className="mb-3 flex items-center gap-2">
+        <MapPinIcon className="size-5 text-new-teal-cta" />
+        <h2 className="text-lg font-semibold text-new-title">Bản đồ địa điểm gợi ý ({items.length})</h2>
       </div>
-
       <div className="relative isolate min-h-0 flex-1 overflow-hidden rounded border border-new-chip bg-white">
         <div className="h-full w-full" ref={containerRef} />
       </div>

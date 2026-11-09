@@ -6,47 +6,34 @@ import {
   toUIMessageStream,
   type UIMessage,
 } from "ai";
-import { buildChatTools } from "@/features/customer/chat/lib/ai-tools";
+import { after } from "next/server";
 import { CHAT_INSTRUCTIONS, CHAT_MODEL } from "@/features/customer/chat/lib/prompt";
+import { chatTools } from "@/features/customer/chat/lib/tools";
 import { auth } from "@/lib/auth";
-import { logTiming } from "@/lib/timing";
+import { flushTelemetry, withTrace } from "@/lib/telemetry";
 import { vertex } from "@/lib/vertex";
 
-// Lập lộ trình: 3 tool tìm (web → Google Maps) chạy song song, rồi createTrip (chia ngày, xếp quán, tối ưu đường bộ)
-export const maxDuration = 120;
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  const requestStart = performance.now();
-  let llmCall = 0;
-  const { messages }: { messages: UIMessage[] } = await req.json();
-  const session = await auth();
+  const { id, messages }: { id?: string; messages: UIMessage[] } = await req.json();
+  const session = await auth().catch(() => null);
+  const modelMessages = await convertToModelMessages(messages);
 
-  const result = streamText({
-    model: vertex(CHAT_MODEL),
-    instructions: CHAT_INSTRUCTIONS,
-    tools: buildChatTools({ userId: session?.user?.id }),
-    // Lập lộ trình cần 2 lượt tool + câu trả lời; chừa thêm bước cho chọn lại khi lựa chọn không hợp lệ
-    stopWhen: isStepCount(10),
-    messages: await convertToModelMessages(messages),
-    // Đo thời gian: mỗi lượt AI suy nghĩ (kèm số token suy luận) và mỗi lần chạy tool
-    onLanguageModelCallEnd: ({ performance: perf, usage, content }) => {
-      llmCall += 1;
-      const tools = content.flatMap((part) => (part.type === "tool-call" ? [part.toolName] : []));
-      logTiming(
-        `chat: AI lượt ${llmCall}`,
-        perf.responseTimeMs,
-        `vào ${usage.inputTokens ?? "?"} tok, ra ${usage.outputTokens ?? "?"} tok, suy luận ${usage.outputTokenDetails.reasoningTokens ?? 0} tok → ${tools.length ? tools.join(", ") : "trả lời"}`,
-      );
-    },
-    onToolExecutionEnd: ({ toolCall, toolExecutionMs }) => {
-      logTiming(`chat: tool ${toolCall.toolName}`, toolExecutionMs);
-    },
-    onEnd: () => {
-      logTiming("chat: TỔNG lượt chat", performance.now() - requestStart, `${llmCall} lượt AI`);
-    },
-  });
+  const result = withTrace({ name: "chat", sessionId: id, userId: session?.user?.id, tags: ["chat"] }, () =>
+    streamText({
+      model: vertex(CHAT_MODEL),
+      instructions: CHAT_INSTRUCTIONS,
+      tools: chatTools,
+      // Gọi tool → (tên trùng → askUser) → trả lời, chừa 1 bước dự phòng
+      stopWhen: isStepCount(4),
+      messages: modelMessages,
+      telemetry: { functionId: "chat" },
+    }),
+  );
 
-  return createUIMessageStreamResponse({
-    stream: toUIMessageStream({ stream: result.stream }),
-  });
+  // Chạy sau khi stream kết thúc: gửi span lên Langfuse trước khi function tắt
+  after(flushTelemetry);
+
+  return createUIMessageStreamResponse({ stream: toUIMessageStream({ stream: result.stream }) });
 }
