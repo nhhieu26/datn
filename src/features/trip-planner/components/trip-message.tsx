@@ -33,21 +33,10 @@ function ToolStatus({ part }: { part: Part }) {
     const out = part.output;
     if (out.status !== "ok") return null;
     return (
-      <>
-        <Status icon={web ? "web" : "done"}>
-          Tìm thấy {out.places.length} {kind} ở {out.area}
-          {web ? " (từ web)" : ""}
-        </Status>
-        {"sources" in out && out.sources.length > 0 && (
-          <p className="mb-1.5 ml-5 flex flex-wrap gap-x-2 text-[11px]">
-            {out.sources.map((s) => (
-              <a className="text-new-teal-cta hover:underline" href={s.url} key={s.url} rel="noreferrer" target="_blank">
-                {s.title}
-              </a>
-            ))}
-          </p>
-        )}
-      </>
+      <Status icon={web ? "web" : "done"}>
+        Tìm thấy {out.places.length} {kind} ở {out.area}
+        {web ? " (từ web)" : ""}
+      </Status>
     );
   }
 
