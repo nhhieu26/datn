@@ -1,4 +1,4 @@
-import type { ExternalPlace, ExternalPlaceKind } from "@/generated/prisma/client";
+import { type ExternalPlace, type ExternalPlaceKind, Prisma } from "@/generated/prisma/client";
 import { type GooglePlace, type LatLng, searchPlacesText, type Viewport } from "@/lib/google-maps";
 import { prisma } from "@/lib/prisma";
 
@@ -126,13 +126,37 @@ async function findAreas(query: string, name: string) {
 }
 
 type Area = { label: string; viewport: Viewport };
+type AreaResult = Area | { ambiguous: string[] } | null;
+
+const AREA_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+// Tên trùng/không tìm thấy chỉ cache ngắn để sớm tìm lại khi dữ liệu Google thay đổi
+const AREA_MISS_TTL_MS = 24 * 60 * 60 * 1000;
+const areaKey = (location: string) => `v1|${norm(location)}`;
+
+/** Khu vực đã cache còn hạn; null nếu chưa có hoặc đã hết hạn. */
+async function cachedArea(location: string): Promise<{ result: AreaResult } | null> {
+  const row = await prisma.externalArea.findUnique({ where: { queryKey: areaKey(location) } });
+  return row && row.expiresAt > new Date() ? { result: row.result as AreaResult } : null;
+}
+
+async function resolveArea(location: string): Promise<AreaResult> {
+  const cached = await cachedArea(location);
+  if (cached) return cached.result;
+
+  const result = await fetchArea(location);
+  const queryKey = areaKey(location);
+  const expiresAt = new Date(Date.now() + (result && "label" in result ? AREA_TTL_MS : AREA_MISS_TTL_MS));
+  const data = { result: result ?? Prisma.DbNull, expiresAt };
+  await prisma.externalArea.upsert({ where: { queryKey }, create: { queryKey, ...data }, update: data });
+  return result;
+}
 
 /**
  * "Chí Linh" → khu vực trên bản đồ. Tên trùng ở nhiều tỉnh → trả danh sách để hỏi lại.
  * Không so tên tỉnh dạng chữ vì tỉnh đã sáp nhập (Hải Dương cũ nay là Hải Phòng): tỉnh hợp lệ
  * là tỉnh mà Google trả về khi tìm cả cụm người dùng nhập.
  */
-async function resolveArea(location: string): Promise<Area | { ambiguous: string[] } | null> {
+async function fetchArea(location: string): Promise<AreaResult> {
   const name = location.split(",")[0].trim();
   const hasHint = location.includes(",");
 
@@ -175,10 +199,12 @@ export async function searchPlaces(
     const rows = await prisma.externalPlace.findMany({ where: { id: { in: cached.placeIds } } });
     const byId = new Map(rows.map((r) => [r.id, r]));
     const places = cached.placeIds.flatMap((id) => (byId.has(id) ? [toPlace(byId.get(id)!)] : []));
-    return { status: "ok", area: location, places };
+    // Lấy tên khu vực đầy đủ (vd "Chí Linh, Hải Phòng") thay cho chuỗi người dùng nhập
+    const area = (await cachedArea(location).catch(() => null))?.result;
+    return { status: "ok", area: area && "label" in area ? area.label : location, places };
   }
 
-  // Tên trùng/không tìm thấy thì không ghi cache, để lần sau vẫn phải xác định lại khu vực
+  // Tên trùng/không tìm thấy thì không ghi cache kết quả, để lần sau vẫn hỏi lại người dùng
   const resolved = await resolveArea(location);
   if (!resolved) return { status: "not_found" };
   if ("ambiguous" in resolved) return { status: "ambiguous", options: resolved.ambiguous };

@@ -650,3 +650,13 @@ model ExternalPlaceSearch {
   expiresAt DateTime
   createdAt DateTime @default(now())
 }
+
+// Cache xác định khu vực cho chat AI: địa danh người dùng nhập -> khung tọa độ hoặc danh sách tên trùng.
+model ExternalArea {
+  id        String   @id @default(cuid())
+  queryKey  String   @unique
+  // { label, viewport } | { ambiguous: string[] } | null (không tìm thấy)
+  result    Json?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
