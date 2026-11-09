@@ -10,7 +10,7 @@ import type { ChatMessage as ChatMessageType } from "@/features/customer/chat/li
 
 const heading = (props: object) => <p className="my-2 font-semibold text-new-title" {...props} />;
 
-const MARKDOWN_COMPONENTS = {
+export const MARKDOWN_COMPONENTS = {
   p: (props: object) => <p className="my-2 first:mt-0 last:mb-0" {...props} />,
   ul: (props: object) => <ul className="my-2 list-disc space-y-1 pl-5" {...props} />,
   ol: (props: object) => <ol className="my-2 list-decimal space-y-1 pl-5" {...props} />,

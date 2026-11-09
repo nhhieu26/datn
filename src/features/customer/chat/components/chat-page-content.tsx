@@ -4,6 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { ArrowUpIcon, SparklesIcon, SquareIcon } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { type FormEvent, useMemo, useState } from "react";
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
 import { Message, MessageContent } from "@/components/ui/message";
@@ -21,6 +22,7 @@ import { QuestionPanel } from "@/features/customer/chat/components/question-pane
 import { getCards, isMapCard } from "@/features/customer/chat/lib/cards";
 import type { ChatMessage as ChatMessageType } from "@/features/customer/chat/lib/tools";
 import { PageBanner } from "@/features/customer/components/page-banner";
+import { createTrip, setPendingPrompt } from "@/features/trip-planner/lib/storage";
 
 const SUGGESTIONS = [
   "Lịch trình 2 ngày 1 đêm khám phá Ninh Bình trọn gói",
@@ -36,8 +38,16 @@ const hasContent = (m: ChatMessageType) =>
   );
 
 export function ChatPageContent() {
+  const router = useRouter();
   const { messages, sendMessage, status, stop, error, regenerate, addToolOutput } = useChat<ChatMessageType>({
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+    // Yêu cầu lập/sửa lộ trình → chuyển sang trang lộ trình, AI ở đó tiếp tục với cùng yêu cầu
+    onToolCall({ toolCall }) {
+      if (toolCall.dynamic || toolCall.toolName !== "openTripPlanner") return;
+      const trip = createTrip();
+      setPendingPrompt(trip.id, (toolCall.input as { request: string }).request);
+      router.push(`/trip-planner/${trip.id}`);
+    },
   });
   const [input, setInput] = useState("");
   const [activeUrl, setActiveUrl] = useState<string | null>(null);

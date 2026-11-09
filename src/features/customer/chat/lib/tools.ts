@@ -14,6 +14,18 @@ export const chatTools = {
     outputSchema: z.string(),
   }),
 
+  // Không có execute: client chuyển người dùng sang trang lập lộ trình
+  openTripPlanner: tool({
+    description: "Chuyển người dùng sang trang lập lộ trình khi họ muốn lập, xem hoặc sửa lịch trình/lộ trình.",
+    inputSchema: z.object({
+      request: z
+        .string()
+        .min(1)
+        .describe("Yêu cầu lộ trình đầy đủ, gộp cả thông tin đã nói trước đó (nơi đến, số ngày, sở thích)."),
+    }),
+    outputSchema: z.string(),
+  }),
+
   searchTours: tool({
     description: "Tìm tour du lịch đang bán trên Roamly.",
     inputSchema: z.object({

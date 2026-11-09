@@ -17,6 +17,7 @@ const GOOGLE_TYPE: Record<ExternalPlaceKind, string> = {
 };
 
 export type Place = {
+  id: string;
   kind: ExternalPlaceKind;
   name: string;
   url: string;
@@ -52,6 +53,7 @@ function toPlace(row: ExternalPlace): Place {
   // places/{placeId}/photos/{photoId} -> /api/place-photo/{placeId}/{photoId}
   const photo = extra.photo?.match(/^places\/([^/]+)\/photos\/([^/]+)$/);
   return {
+    id: row.id,
     kind: row.kind,
     name: row.name,
     url: extra.url ?? `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
@@ -88,6 +90,12 @@ function saveGooglePlace(kind: ExternalPlaceKind, p: GooglePlace) {
     create: { osmType: SOURCE, osmId: p.id, ...data },
     update: data,
   });
+}
+
+/** Đọc các địa điểm đã lưu theo id; id không tồn tại sẽ không có trong Map. */
+export async function getPlacesByIds(ids: string[]): Promise<Map<string, Place>> {
+  const rows = await prisma.externalPlace.findMany({ where: { id: { in: [...new Set(ids)] } } });
+  return new Map(rows.map((r) => [r.id, toPlace(r)]));
 }
 
 // ---------- Xác định khu vực ----------
