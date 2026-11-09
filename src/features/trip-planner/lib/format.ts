@@ -1,4 +1,4 @@
-import type { Leg, Slot, TravelMode } from "./itinerary";
+import type { Leg, Slot, Stop, TravelMode } from "./itinerary";
 
 /** Giải mã Encoded Polyline của Google thành danh sách [lat, lng]. */
 export function decodePolyline(encoded: string): [number, number][] {
@@ -41,6 +41,56 @@ export const totals = (legs: (Leg | null)[]) => ({
 });
 
 export const MODE_LABEL: Record<TravelMode, string> = { car: "Ô tô", motorbike: "Xe máy", walk: "Đi bộ" };
+
+// Google Maps URLs không có chế độ xe máy → dùng ô tô, người dùng tự đổi trong Google Maps
+const GOOGLE_TRAVEL_MODE: Record<TravelMode, string> = { car: "driving", motorbike: "driving", walk: "walking" };
+// Giới hạn của Google Maps URLs: tối đa 9 điểm dừng giữa đường trong một link
+const MAX_WAYPOINTS = 9;
+
+type MapPoint = { lat: number; lng: number; googlePlaceId?: string | null };
+
+/**
+ * Link chỉ đường trên Google Maps (https://developers.google.com/maps/documentation/urls/get-started#directions-action)
+ * đi lần lượt qua `points`. Có Place ID thì Google Maps hiện đúng tên địa điểm thay vì tọa độ.
+ */
+export function googleDirectionsUrl(points: MapPoint[], mode: TravelMode): string {
+  const coord = (p: MapPoint) => `${p.lat},${p.lng}`;
+  const origin = points[0];
+  const destination = points[points.length - 1];
+  const waypoints = points.slice(1, -1);
+
+  const params = new URLSearchParams({ api: "1", origin: coord(origin), destination: coord(destination) });
+  if (origin.googlePlaceId) params.set("origin_place_id", origin.googlePlaceId);
+  if (destination.googlePlaceId) params.set("destination_place_id", destination.googlePlaceId);
+  if (waypoints.length > 0) {
+    params.set("waypoints", waypoints.map(coord).join("|"));
+    // Chỉ gửi danh sách Place ID khi đủ cho mọi điểm, nếu không thứ tự sẽ lệch
+    if (waypoints.every((p) => p.googlePlaceId)) {
+      params.set("waypoint_place_ids", waypoints.map((p) => p.googlePlaceId).join("|"));
+    }
+  }
+  params.set("travelmode", GOOGLE_TRAVEL_MODE[mode]);
+  return `https://www.google.com/maps/dir/?${params}`;
+}
+
+/**
+ * Các link chỉ đường cho cả ngày. Ngày quá nhiều điểm thì chia thành nhiều đoạn nối tiếp
+ * (điểm cuối đoạn trước là điểm đầu đoạn sau). Bỏ các điểm trùng liền kề (vd ăn sáng tại khách sạn).
+ */
+export function googleDirectionsUrlsForDay(stops: Stop[], mode: TravelMode): string[] {
+  const points: MapPoint[] = [];
+  stops.forEach((s, i) => {
+    if (i === 0 || stops[i - 1].placeId !== s.placeId) points.push(s.place);
+  });
+  if (points.length < 2) return [];
+
+  const perLink = MAX_WAYPOINTS + 2;
+  const urls: string[] = [];
+  for (let start = 0; start < points.length - 1; start += perLink - 1) {
+    urls.push(googleDirectionsUrl(points.slice(start, start + perLink), mode));
+  }
+  return urls;
+}
 
 export const SLOT_LABEL: Record<Slot, string> = {
   hotel: "Khách sạn",

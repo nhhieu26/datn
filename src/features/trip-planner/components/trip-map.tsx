@@ -68,14 +68,18 @@ export function TripMap({
   useEffect(() => {
     let map: LeafletMap | undefined;
     let disposed = false;
+    // Khung bản đồ đổi kích thước (vd thu gọn danh sách lộ trình) → Leaflet phải tính lại kích thước
+    const resizeObserver = new ResizeObserver(() => map?.invalidateSize());
     import("leaflet").then((L) => {
       if (disposed || !containerRef.current) return;
       map = L.map(containerRef.current, { center: [16.05, 106.5], zoom: 5 });
       L.tileLayer(TILE_URL, { attribution: TILE_ATTRIBUTION, maxZoom: 19 }).addTo(map);
       setLeaflet({ L, map, layer: L.layerGroup().addTo(map) });
+      resizeObserver.observe(containerRef.current);
     });
     return () => {
       disposed = true;
+      resizeObserver.disconnect();
       map?.remove();
     };
   }, []);

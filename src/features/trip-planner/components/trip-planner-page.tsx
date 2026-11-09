@@ -2,7 +2,7 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
-import { ArrowUpIcon, ListIcon, RouteIcon, SparklesIcon, SquareIcon } from "lucide-react";
+import { ArrowUpIcon, ChevronDownIcon, GlobeIcon, ListIcon, RouteIcon, SparklesIcon, SquareIcon } from "lucide-react";
 import Link from "next/link";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/message-scroller";
 import { QuestionPanel } from "@/features/customer/chat/components/question-panel";
 import { PageBanner } from "@/features/customer/components/page-banner";
+import { formatKm, totals } from "@/features/trip-planner/lib/format";
 import type { Itinerary, TravelMode } from "@/features/trip-planner/lib/itinerary";
 import { saveTrip, takePendingPrompt, type Trip } from "@/features/trip-planner/lib/storage";
 import type { TripChatMessage } from "@/features/trip-planner/lib/tools";
@@ -92,6 +93,8 @@ function TripWorkspace({ initialTrip }: { initialTrip: Trip }) {
   const [selectedDay, setSelectedDay] = useState(0);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [routing, setRouting] = useState(false);
+  // Thu gọn danh sách lộ trình để bản đồ chiếm toàn bộ cột trái
+  const [listOpen, setListOpen] = useState(true);
 
   // Transport đọc lộ trình + phương tiện mới nhất lúc gửi, kèm theo mỗi lượt chat (kể cả lượt tự gửi sau askUser)
   const [context] = useState(() => createBox({ itinerary: initialTrip.itinerary, mode: initialTrip.mode }));
@@ -228,11 +231,28 @@ function TripWorkspace({ initialTrip }: { initialTrip: Trip }) {
             <ListIcon className="size-4" /> Lộ trình đã lưu
           </Link>
         </div>
-        <div className="h-[300px] shrink-0 lg:h-[46%]">
+        <div className={listOpen ? "h-[300px] shrink-0 lg:h-[46%]" : "h-[480px] lg:h-auto lg:min-h-0 lg:flex-1"}>
           <TripMap activeIndex={activeIndex} day={day} onSelect={setActiveIndex} />
         </div>
-        {itinerary ? (
-          <div className="min-h-[320px] flex-1 lg:min-h-0">
+        <button
+          aria-controls="trip-itinerary-panel"
+          aria-expanded={listOpen}
+          className="-my-1 flex shrink-0 items-center gap-2 rounded bg-white px-3 py-2 text-left text-sm font-semibold text-new-title transition-colors hover:text-new-teal-cta"
+          onClick={() => setListOpen((open) => !open)}
+          type="button"
+        >
+          <span className="min-w-0 flex-1 truncate">
+            {listOpen ? "Thu gọn lộ trình" : "Xem lộ trình chi tiết"}
+            {!listOpen && day && (
+              <span className="ml-2 font-normal text-new-paragraph">
+                Ngày {dayIndex + 1} · {day.stops.length} điểm dừng · {formatKm(totals(day.legs).distanceM)}
+              </span>
+            )}
+          </span>
+          <ChevronDownIcon className={`size-4 shrink-0 transition-transform ${listOpen ? "" : "rotate-180"}`} />
+        </button>
+        {!listOpen ? null : itinerary ? (
+          <div className="min-h-[320px] flex-1 lg:min-h-0" id="trip-itinerary-panel">
             <ItineraryList
               activeIndex={activeIndex}
               busy={routing || isBusy}
@@ -250,7 +270,7 @@ function TripWorkspace({ initialTrip }: { initialTrip: Trip }) {
             />
           </div>
         ) : (
-          <div className="flex flex-1 flex-col justify-center rounded bg-white p-6 text-sm">
+          <div className="flex flex-1 flex-col justify-center rounded bg-white p-6 text-sm" id="trip-itinerary-panel">
             <p className="font-semibold text-new-title">Chưa có lộ trình</p>
             <p className="mt-1">
               Hãy cho Roamly AI biết bạn muốn đi đâu, bao nhiêu ngày và sở thích. AI sẽ tìm khách sạn, nhà hàng, điểm
@@ -337,38 +357,49 @@ function TripWorkspace({ initialTrip }: { initialTrip: Trip }) {
               question={pendingQuestion.input?.question}
             />
           ) : (
-            <form className="flex items-end gap-2.5" onSubmit={handleSubmit}>
-              <textarea
-                aria-label="Nhập yêu cầu lộ trình"
-                className="max-h-40 min-h-[49px] w-full resize-none rounded border border-new-input-border bg-white px-3.5 py-3 text-base text-new-title placeholder:text-new-placeholder focus:border-new-teal focus:outline-none focus:ring-1 focus:ring-new-teal"
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) handleSubmit(e);
-                }}
-                placeholder={itinerary ? "Ví dụ: Đổi bữa trưa sang quán hải sản..." : "Ví dụ: 2 ngày ở Ninh Bình, thích leo núi..."}
-                rows={1}
-                value={input}
-              />
-              {isBusy ? (
-                <button
-                  aria-label="Dừng trả lời"
-                  className="flex size-[49px] shrink-0 items-center justify-center rounded bg-red-500 text-white hover:bg-red-600"
-                  onClick={() => stop()}
-                  type="button"
-                >
-                  <SquareIcon className="size-4 fill-current" />
-                </button>
-              ) : (
-                <button
-                  aria-label="Gửi tin nhắn"
-                  className="flex size-[49px] shrink-0 items-center justify-center rounded bg-new-teal-cta text-white hover:bg-new-teal-hover disabled:opacity-50"
-                  disabled={!input.trim()}
-                  type="submit"
-                >
-                  <ArrowUpIcon className="size-5" />
-                </button>
-              )}
-            </form>
+            <>
+              <form className="flex items-end gap-2.5" onSubmit={handleSubmit}>
+                <textarea
+                  aria-label="Nhập yêu cầu lộ trình"
+                  className="max-h-40 min-h-[49px] w-full resize-none rounded border border-new-input-border bg-white px-3.5 py-3 text-base text-new-title placeholder:text-new-placeholder focus:border-new-teal focus:outline-none focus:ring-1 focus:ring-new-teal"
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) handleSubmit(e);
+                  }}
+                  placeholder={itinerary ? "Ví dụ: Đổi bữa trưa sang quán hải sản..." : "Ví dụ: 2 ngày ở Ninh Bình, thích leo núi..."}
+                  rows={1}
+                  value={input}
+                />
+                {isBusy ? (
+                  <button
+                    aria-label="Dừng trả lời"
+                    className="flex size-[49px] shrink-0 items-center justify-center rounded bg-red-500 text-white hover:bg-red-600"
+                    onClick={() => stop()}
+                    type="button"
+                  >
+                    <SquareIcon className="size-4 fill-current" />
+                  </button>
+                ) : (
+                  <button
+                    aria-label="Gửi tin nhắn"
+                    className="flex size-[49px] shrink-0 items-center justify-center rounded bg-new-teal-cta text-white hover:bg-new-teal-hover disabled:opacity-50"
+                    disabled={!input.trim()}
+                    type="submit"
+                  >
+                    <ArrowUpIcon className="size-5" />
+                  </button>
+                )}
+              </form>
+              <p className="mt-2 flex items-start gap-1.5 text-xs text-new-paragraph">
+                <GlobeIcon className="mt-0.5 size-3.5 shrink-0 text-new-teal-cta" />
+                <span>
+                  <span className="font-semibold text-new-title">Mẹo:</span> thêm{" "}
+                  <span className="font-medium text-new-title">“tìm trên mạng”</span> hoặc{" "}
+                  <span className="font-medium text-new-title">“theo review”</span> vào yêu cầu để Roamly AI tìm trên web
+                  trước, rồi tra các địa điểm đó trên Google Maps.
+                </span>
+              </p>
+            </>
           )}
         </div>
       </div>

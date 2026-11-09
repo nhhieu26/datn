@@ -8,6 +8,7 @@ import {
   ExternalLinkIcon,
   FootprintsIcon,
   LandmarkIcon,
+  MapIcon,
   RouteIcon,
   TrashIcon,
   TriangleAlertIcon,
@@ -17,6 +18,8 @@ import { Fragment, useEffect, useRef } from "react";
 import {
   formatDuration,
   formatKm,
+  googleDirectionsUrl,
+  googleDirectionsUrlsForDay,
   MODE_LABEL,
   SLOT_COLOR,
   SLOT_LABEL,
@@ -64,6 +67,7 @@ export function ItineraryList({
   }, [activeIndex]);
 
   const sum = day ? totals(day.legs) : null;
+  const mapsUrls = day ? googleDirectionsUrlsForDay(day.stops, mode) : [];
   const ModeIcon = MODE_ICON[mode];
 
   return (
@@ -113,6 +117,22 @@ export function ItineraryList({
           </span>
           <span>{day.stops.length} điểm dừng</span>
           {busy && <span className="text-new-teal-cta">Đang tính lại quãng đường...</span>}
+          {mapsUrls.length > 0 && (
+            <span className="ml-auto flex flex-wrap items-center gap-1.5">
+              {mapsUrls.map((url, i) => (
+                <a
+                  className="flex items-center gap-1 rounded border border-new-teal-cta px-2 py-1 font-semibold text-new-teal-cta transition-colors hover:bg-new-teal-cta hover:text-white"
+                  href={url}
+                  key={url}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  <MapIcon className="size-3.5" />
+                  {mapsUrls.length === 1 ? "Mở trên Google Maps" : `Google Maps (phần ${i + 1})`}
+                </a>
+              ))}
+            </span>
+          )}
         </p>
       )}
 
@@ -137,7 +157,9 @@ export function ItineraryList({
               onRemove={busy || day.stops.length <= 1 ? undefined : () => onRemove(i)}
               stop={stop}
             />
-            {i < day.stops.length - 1 && <LegRow leg={day.legs[i]} mode={mode} />}
+            {i < day.stops.length - 1 && (
+              <LegRow from={stop} leg={day.legs[i]} mode={mode} to={day.stops[i + 1]} />
+            )}
           </Fragment>
         ))}
       </ol>
@@ -221,8 +243,9 @@ function StopItem({
   );
 }
 
-function LegRow({ leg, mode }: { leg?: Leg | null; mode: TravelMode }) {
+function LegRow({ from, to, leg, mode }: { from: Stop; to: Stop; leg?: Leg | null; mode: TravelMode }) {
   const Icon = MODE_ICON[mode];
+  const samePlace = from.placeId === to.placeId;
   return (
     <li className="flex gap-3">
       <div className="flex w-12 shrink-0 justify-center">
@@ -230,11 +253,23 @@ function LegRow({ leg, mode }: { leg?: Leg | null; mode: TravelMode }) {
       </div>
       <p className="flex items-center gap-1.5 py-2 text-xs font-medium text-new-paragraph">
         <Icon className="size-3.5 text-new-teal-cta" />
-        {!leg
-          ? "Chưa tính được quãng đường"
-          : leg.distanceM === 0
-            ? "Cùng địa điểm"
+        {samePlace
+          ? "Cùng địa điểm"
+          : !leg
+            ? "Chưa tính được quãng đường"
             : `${formatKm(leg.distanceM)} · ${formatDuration(leg.durationS / 60)}`}
+        {!samePlace && (
+          <a
+            aria-label={`Chỉ đường từ ${from.place.name} đến ${to.place.name} trên Google Maps`}
+            className="ml-1 flex items-center gap-0.5 font-semibold text-new-teal-cta hover:underline"
+            href={googleDirectionsUrl([from.place, to.place], mode)}
+            rel="noreferrer"
+            target="_blank"
+          >
+            Chỉ đường
+            <ExternalLinkIcon className="size-3" />
+          </a>
+        )}
       </p>
     </li>
   );

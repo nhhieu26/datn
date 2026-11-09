@@ -18,6 +18,8 @@ const GOOGLE_TYPE: Record<ExternalPlaceKind, string> = {
 
 export type Place = {
   id: string;
+  /** Place ID của Google (null với dữ liệu cũ không lấy từ Google Places). */
+  googlePlaceId: string | null;
   kind: ExternalPlaceKind;
   name: string;
   url: string;
@@ -54,6 +56,7 @@ function toPlace(row: ExternalPlace): Place {
   const photo = extra.photo?.match(/^places\/([^/]+)\/photos\/([^/]+)$/);
   return {
     id: row.id,
+    googlePlaceId: row.osmType === SOURCE ? row.osmId : null,
     kind: row.kind,
     name: row.name,
     url: extra.url ?? `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
