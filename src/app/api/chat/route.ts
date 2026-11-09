@@ -19,8 +19,8 @@ export async function POST(req: Request) {
     model: vertex(CHAT_MODEL),
     instructions: CHAT_INSTRUCTIONS,
     tools: chatTools,
-    // Bước 1: gọi tool, bước 2: trả lời, bước 3: dự phòng
-    stopWhen: isStepCount(3),
+    // Gọi tool → (tên trùng → askUser) → trả lời, chừa 1 bước dự phòng
+    stopWhen: isStepCount(4),
     messages: await convertToModelMessages(messages),
   });
 

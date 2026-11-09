@@ -20,16 +20,22 @@ const FIELD_MASK = [
   "places.websiteUri",
   "places.nationalPhoneNumber",
   "places.photos.name",
+  "places.types",
+  "places.viewport",
 ].join(",");
 
 type LocalizedText = { text: string; languageCode?: string };
+export type LatLng = { latitude: number; longitude: number };
+export type Viewport = { low: LatLng; high: LatLng };
 
 export type GooglePlace = {
   id: string;
   displayName?: LocalizedText;
   formattedAddress?: string;
   addressComponents?: { longText?: string; shortText?: string; types?: string[] }[];
-  location?: { latitude: number; longitude: number };
+  location?: LatLng;
+  viewport?: Viewport;
+  types?: string[];
   rating?: number;
   userRatingCount?: number;
   googleMapsUri?: string;
@@ -46,10 +52,13 @@ export async function searchPlacesText({
   textQuery,
   includedType,
   pageSize = 5,
+  restrictTo,
 }: {
   textQuery: string;
   includedType?: string;
   pageSize?: number;
+  // Chỉ trả kết quả nằm trong khung này (lọc cứng, không phải ưu tiên)
+  restrictTo?: Viewport;
 }): Promise<GooglePlace[]> {
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
   if (!apiKey) throw new Error("Thiếu biến môi trường GOOGLE_MAPS_API_KEY.");
@@ -65,6 +74,7 @@ export async function searchPlacesText({
       textQuery,
       ...(includedType ? { includedType } : {}),
       pageSize,
+      ...(restrictTo ? { locationRestriction: { rectangle: restrictTo } } : {}),
       languageCode: "vi",
       regionCode: "VN",
     }),

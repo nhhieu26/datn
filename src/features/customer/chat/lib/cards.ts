@@ -43,8 +43,8 @@ export function getCards(message: ChatMessage): Card[] {
       }
     }
 
-    if (part.type === "tool-searchPlaces" && part.state === "output-available") {
-      for (const p of part.output) {
+    if (part.type === "tool-searchPlaces" && part.state === "output-available" && part.output.status === "ok") {
+      for (const p of part.output.places) {
         cards.set(p.url, {
           kind: PLACE_KIND[p.kind],
           title: p.name,

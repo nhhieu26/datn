@@ -9,7 +9,7 @@ export const chatTools = {
     description: "Hỏi lại người dùng MỘT câu khi yêu cầu quá mơ hồ để tìm kiếm.",
     inputSchema: z.object({
       question: z.string(),
-      options: z.array(z.string()).length(3).describe("Đúng 3 câu trả lời gợi ý."),
+      options: z.array(z.string()).min(2).max(4).describe("2-4 câu trả lời gợi ý."),
     }),
     outputSchema: z.string(),
   }),
@@ -27,20 +27,21 @@ export const chatTools = {
 
   searchPlaces: tool({
     description:
-      "Tìm khách sạn (hotel), nhà hàng (restaurant) hoặc điểm tham quan (destination) trên Google Maps. Gọi song song nhiều lần nếu cần nhiều loại.",
+      "Tìm khách sạn (hotel), nhà hàng (restaurant) hoặc điểm tham quan (destination) trên Google Maps, chỉ trong đúng khu vực `location`. Gọi song song nhiều lần nếu cần nhiều loại.",
     inputSchema: z.object({
       kind: z.enum(["hotel", "restaurant", "destination"]),
-      query: z
+      keyword: z.string().min(1).describe("Chỉ nhu cầu, không kèm địa điểm, vd: 'lẩu gà', 'homestay view núi'."),
+      location: z
         .string()
         .min(1)
-        .describe("Câu tìm Google Maps: nhu cầu + 'ở' + địa điểm cụ thể + tỉnh, vd: 'quán lẩu ngon ở Chí Linh, Hải Dương, Việt Nam'."),
+        .describe("Địa danh đúng như người dùng nói, kèm tỉnh nếu họ có nêu, vd: 'Chí Linh' hoặc 'Chí Linh, Hải Dương'."),
     }),
-    execute: async ({ kind, query }) => {
+    execute: async ({ kind, keyword, location }) => {
       try {
-        return await searchPlaces(kind, query);
+        return await searchPlaces(kind, keyword, location);
       } catch (error) {
         console.error("searchPlaces:", error);
-        return [];
+        return { status: "ok" as const, area: location, places: [] };
       }
     },
   }),
