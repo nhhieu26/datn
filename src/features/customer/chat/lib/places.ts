@@ -197,6 +197,81 @@ async function fetchArea(location: string): Promise<AreaResult> {
 
 // ---------- Tìm địa điểm ----------
 
+// Tra theo tên riêng: nơi nổi tiếng của một địa danh thường ở huyện lân cận (vd chùa Côn Sơn cách
+// TP Hải Dương ~30km), nên không khóa trong khung khu vực mà chỉ giới hạn bán kính.
+const NAME_LOOKUP_RADIUS_KM = 50;
+const MIN_NAME_OVERLAP = 0.5;
+
+const tokens = (s: string) => norm(s).split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+
+/** Tên Google trả về có chứa đủ nhiều từ của tên cần tìm không (tránh lấy nhầm nơi khác). */
+function nameMatches(wanted: string, found: string) {
+  const want = tokens(wanted);
+  const have = new Set(tokens(found));
+  return want.length > 0 && want.filter((t) => have.has(t)).length / want.length >= MIN_NAME_OVERLAP;
+}
+
+function distanceKm(a: LatLng, b: LatLng) {
+  const rad = (d: number) => (d * Math.PI) / 180;
+  const dLat = rad(b.latitude - a.latitude);
+  const dLng = rad(b.longitude - a.longitude);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.latitude)) * Math.cos(rad(b.latitude)) * Math.sin(dLng / 2) ** 2;
+  return 12_742 * Math.asin(Math.sqrt(h));
+}
+
+const center = (v: Viewport): LatLng => ({
+  latitude: (v.low.latitude + v.high.latitude) / 2,
+  longitude: (v.low.longitude + v.high.longitude) / 2,
+});
+
+/**
+ * Tra MỘT địa điểm theo tên riêng (vd "Chùa Côn Sơn") quanh khu vực `location`.
+ * Trả null nếu Google không có nơi nào trùng tên trong bán kính cho phép.
+ */
+export async function findPlaceByName(
+  kind: ExternalPlaceKind,
+  name: string,
+  location: string,
+  hint?: string,
+): Promise<Place | null> {
+  const queryKey = `${SOURCE}:name-v1|${kind}|${norm(location)}|${norm(name)}|${norm(hint ?? "")}`;
+
+  const cached = await prisma.externalPlaceSearch.findUnique({ where: { queryKey } });
+  if (cached && cached.expiresAt > new Date()) {
+    const row = cached.placeIds[0]
+      ? await prisma.externalPlace.findUnique({ where: { id: cached.placeIds[0] } })
+      : null;
+    return row ? toPlace(row) : null;
+  }
+
+  const resolved = await resolveArea(location);
+  if (!resolved || "ambiguous" in resolved) return null;
+
+  const origin = center(resolved.viewport);
+  const results = await searchPlacesText({
+    textQuery: [name, hint, resolved.label].filter(Boolean).join(", "),
+    pageSize: 5,
+  });
+  const match = results.find(
+    (p) =>
+      p.displayName?.text &&
+      p.location &&
+      p.businessStatus !== "CLOSED_PERMANENTLY" &&
+      nameMatches(name, p.displayName.text) &&
+      distanceKm(origin, p.location) <= NAME_LOOKUP_RADIUS_KM,
+  );
+  const row = match ? await saveGooglePlace(kind, match) : null;
+
+  const placeIds = row ? [row.id] : [];
+  const expiresAt = new Date(Date.now() + (row ? CACHE_TTL_MS : AREA_MISS_TTL_MS));
+  await prisma.externalPlaceSearch.upsert({
+    where: { queryKey },
+    create: { queryKey, placeIds, expiresAt },
+    update: { placeIds, expiresAt },
+  });
+  return row ? toPlace(row) : null;
+}
+
 /** Tìm địa điểm theo nhu cầu trong đúng khu vực, cache kết quả 30 ngày. */
 export async function searchPlaces(
   kind: ExternalPlaceKind,
