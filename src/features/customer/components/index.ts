@@ -1,3 +1,4 @@
+export * from "./chat-fab";
 export * from "./header-auth-button";
 export * from "./header-nav-links";
 export * from "./header-search-bar";
