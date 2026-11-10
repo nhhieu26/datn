@@ -740,7 +740,11 @@ export function RestaurantsManager({
         <DeleteRestaurantDialog
           restaurants={deletingRestaurants}
           onClose={() => setDeletingRestaurants(null)}
-          onDeleted={(ids) => selection.setGroup(ids, false)}
+          onDeleted={(ids) => {
+            selection.setGroup(ids, false);
+            setActionError("");
+            setActionNotice(`Đã dừng và hẹn xóa ${ids.length} nhà hàng.`);
+          }}
         />
       ) : null}
     </div>
