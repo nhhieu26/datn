@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { tourBookingCount } from "@/entities/booking-counts";
 import { tourRepo } from "@/entities/tour";
 import { tourBookingRepo } from "@/entities/tour-booking";
+import { FadeIn } from "@/features/customer/components/motion";
 import { PageBanner } from "@/features/customer/components/page-banner";
 import {
   TourBookingCard,
@@ -50,13 +51,17 @@ export default async function TourDetailPage({
         title="Chi tiết tour"
       />
       <section className="py-12">
-        <TourGallerySlider images={tour.images} title={tour.title} />
+        <FadeIn duration={0.5} inView={false} y={14}>
+          <TourGallerySlider images={tour.images} title={tour.title} />
+        </FadeIn>
         <div className="page-x">
-          <TourDetailHeading tour={tour} />
+          <FadeIn delay={0.08} duration={0.5} inView={false} y={14}>
+            <TourDetailHeading tour={tour} />
+          </FadeIn>
           <div className="mt-8 grid gap-8 lg:grid-cols-3 xl:grid-cols-[2fr_1fr]">
             <div className="lg:col-span-2 xl:col-span-1">
               <TourContent tour={tour} />
-              <div className="mt-8">
+              <FadeIn className="mt-8" y={18}>
                 <ServiceReviews
                   kind="tour"
                   serviceId={tour.id}
@@ -64,11 +69,13 @@ export default async function TourDetailPage({
                   take={reviewsTake}
                   total={tour.rating.count}
                 />
-              </div>
+              </FadeIn>
             </div>
-            <aside>
-              <TourBookingCard tour={tour} />
-            </aside>
+            <FadeIn delay={0.14} duration={0.55} inView={false} x={18} y={12}>
+              <aside>
+                <TourBookingCard tour={tour} />
+              </aside>
+            </FadeIn>
           </div>
         </div>
       </section>

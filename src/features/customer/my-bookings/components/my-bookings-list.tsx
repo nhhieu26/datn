@@ -1,3 +1,4 @@
+import { FadeIn } from "@/features/customer/components/motion";
 import Link from "next/link";
 import { PaymentBadge } from "@/features/provider/tour-bookings";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -48,7 +49,7 @@ export function MyBookingsList({
   const from = (query.page - 1) * MY_BOOKINGS_PAGE_SIZE + 1;
 
   return (
-    <>
+    <FadeIn key={`${query.tab}-${query.page}`} duration={0.35} inView={false} y={10}>
       <div className="overflow-x-auto rounded border border-new-input-border">
         <table className="w-full min-w-[820px] border-collapse">
           <thead>
@@ -65,7 +66,7 @@ export function MyBookingsList({
           </thead>
           <tbody>
             {items.map((item, index) => (
-              <tr key={item.code} className="border-b border-new-input-border last:border-b-0">
+              <tr key={item.code} className="border-b border-new-input-border transition-colors hover:bg-new-section-bg/50 last:border-b-0">
                 <td className={td}>{String(from + index).padStart(2, "0")}</td>
                 <td className={td}>
                   <Link href={`/bookings/${encodeURIComponent(item.code)}`} className="flex items-center gap-3">
@@ -123,6 +124,6 @@ export function MyBookingsList({
       </div>
 
       <MyBookingsPagination total={total} count={items.length} query={query} />
-    </>
+    </FadeIn>
   );
 }

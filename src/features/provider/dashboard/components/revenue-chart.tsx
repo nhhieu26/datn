@@ -60,7 +60,7 @@ export function RevenueChart({
         `#${id}`,
         (mode: "light" | "dark"): ApexOptions => ({
           chart: {
-            height: 256,
+            height: "100%",
             type: "area",
             toolbar: { show: false },
             zoom: { enabled: false },
@@ -141,7 +141,7 @@ export function RevenueChart({
   return (
     <div
       id={id}
-      className="h-64 w-full"
+      className="min-h-64 w-full flex-1"
       role="img"
       aria-label={`Biểu đồ ${chart.title.toLowerCase()} theo thời gian`}
     />

@@ -209,6 +209,24 @@ function providerWhere(
   };
 }
 
+/** Toàn bộ đơn khớp bộ lọc (không phân trang) để xuất file, tối đa EXPORT_LIMIT đơn. */
+export const EXPORT_LIMIT = 5000;
+
+export function findAllByProviderProfileId(
+  providerProfileId: string,
+  filter: RestaurantBookingFilter
+) {
+  return prisma.restaurantBooking.findMany({
+    where: providerWhere(providerProfileId, filter),
+    take: EXPORT_LIMIT,
+    include: {
+      restaurant: { select: { images: true } },
+      restaurantTimeSlot: { select: { endTime: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
 export async function findPageByProviderProfileId(
   providerProfileId: string,
   filter: RestaurantBookingFilter,

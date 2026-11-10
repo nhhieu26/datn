@@ -8,6 +8,7 @@ import { seedRestaurants } from "./seed-restaurant";
 import { seedDestinations } from "./seed-destination";
 import { seedTours } from "./seed-tour";
 import { seedBookings } from "./seed-booking";
+import { seedReviews } from "./seed-review";
 
 async function main() {
   console.log("Seeding provinces...");
@@ -33,6 +34,9 @@ async function main() {
 
   console.log("\nSeeding bookings...");
   await seedBookings();
+
+  console.log("\nSeeding reviews...");
+  await seedReviews();
 
   console.log("\nAll seeds completed.");
 }

@@ -1,9 +1,11 @@
 "use client";
 
-import { useActionState, useState } from "react";
 import type { ProfileUser } from "@/entities/user";
-import type { ActionState } from "@/shared/lib/action-state";
+import { FadeIn } from "@/features/customer/components/motion";
 import { PasswordEyeIcon } from "@/features/customer/components/password-eye-icon";
+import type { ActionState } from "@/shared/lib/action-state";
+import { AnimatePresence, motion } from "motion/react";
+import { useActionState, useState } from "react";
 import { changePasswordAction, updateProfileAction } from "../actions";
 
 const tabs = [
@@ -221,34 +223,55 @@ export function ProfileDashboard({ user }: { user: ProfileUser }) {
   const reset = () => setResetKey((k) => k + 1);
 
   return (
-    <div className="rounded-md bg-new-section-bg p-6">
+    <FadeIn className="rounded-md bg-new-section-bg p-6" duration={0.45} inView={false} y={12}>
       <div className="rounded-md bg-white p-6">
-          <ul className="mb-5 flex" role="tablist">
-            {tabs.map((tab) => (
+        <ul className="mb-5 flex" role="tablist">
+          {tabs.map((tab) => {
+            const isSelected = active === tab.id;
+            return (
               <li key={tab.id} role="presentation">
                 <button
                   type="button"
                   role="tab"
-                  aria-selected={active === tab.id}
+                  aria-selected={isSelected}
                   onClick={() => setActive(tab.id)}
-                  className={`mb-3.5 border-b-2 px-[11px] py-2 text-base font-medium transition-colors ${
-                    active === tab.id
-                      ? "border-new-teal-cta text-new-teal-cta"
-                      : "border-new-tab-border text-new-paragraph hover:border-new-teal-cta hover:text-new-teal-cta"
+                  className={`relative mb-3.5 cursor-pointer border-b-2 px-[11px] py-2 text-base font-medium transition-colors ${
+                    isSelected
+                      ? "border-transparent text-new-teal-cta"
+                      : "border-new-tab-border text-new-paragraph hover:text-new-teal-cta"
                   }`}
                 >
                   <span>{tab.label}</span>
+                  {isSelected && (
+                    <motion.span
+                      aria-hidden
+                      className="absolute right-0 -bottom-[2px] left-0 h-[2px] bg-new-teal-cta"
+                      layoutId="profile-tab-underline"
+                      transition={{ type: "spring", stiffness: 420, damping: 32 }}
+                    />
+                  )}
                 </button>
               </li>
-            ))}
-          </ul>
+            );
+          })}
+        </ul>
 
-          {active === "edit" ? (
-            <EditProfileForm key={resetKey} user={user} onCancel={reset} />
-          ) : (
-            <SecurityForm key={resetKey} onCancel={reset} />
-          )}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={active}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            initial={{ opacity: 0, y: 10 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {active === "edit" ? (
+              <EditProfileForm key={resetKey} user={user} onCancel={reset} />
+            ) : (
+              <SecurityForm key={resetKey} onCancel={reset} />
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
-    </div>
+    </FadeIn>
   );
 }

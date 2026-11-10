@@ -19,6 +19,7 @@ import {
   formatRelativeTime,
   reservationInstant,
 } from "@/lib/utils";
+import { ExportBookingsButton } from "@/features/provider/components/export-bookings-button";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { updateRestaurantBookingStatusAction } from "../actions";
@@ -313,6 +314,7 @@ export function RestaurantBookingsTable({
               />
             </div>
           ) : null}
+          <ExportBookingsButton endpoint="/api/provider/bookings/restaurants/export" />
           <button
             aria-busy={isPending}
             className={`px-3 py-2 ${layerButtonClass}`}

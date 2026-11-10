@@ -21,8 +21,15 @@ import { ChatServiceMap } from "@/features/customer/chat/components/chat-service
 import { QuestionPanel } from "@/features/customer/chat/components/question-panel";
 import { getCards, isMapCard } from "@/features/customer/chat/lib/cards";
 import type { ChatMessage as ChatMessageType } from "@/features/customer/chat/lib/tools";
+import {
+  FadeIn,
+  FloatSlow,
+  StaggerContainer,
+  StaggerItem,
+} from "@/features/customer/components/motion";
 import { PageBanner } from "@/features/customer/components/page-banner";
 import { createTrip, setPendingPrompt } from "@/features/trip-planner/lib/storage";
+import { motion } from "motion/react";
 
 const SUGGESTIONS = [
   "Lịch trình 2 ngày 1 đêm khám phá Ninh Bình trọn gói",
@@ -100,27 +107,33 @@ export function ChatPageContent() {
       <section className="page-x py-10">
         <div className="flex flex-col gap-[30px] lg:flex-row lg:items-start">
           {/* Cột trái: bản đồ khi có địa điểm, ngược lại là giới thiệu + gợi ý */}
-          <aside
+          <FadeIn
             className={
               mapCards.length > 0
                 ? "flex h-[420px] min-w-0 flex-col rounded-md bg-new-section-bg p-6 lg:h-[740px] lg:flex-1"
                 : "hidden min-w-0 flex-1 flex-col rounded-md bg-new-section-bg p-6 lg:flex lg:h-[740px]"
             }
+            duration={0.48}
+            inView={false}
+            x={-16}
+            y={8}
           >
             {mapCards.length > 0 ? (
               <ChatServiceMap activeUrl={activeUrl} items={mapCards} onSelectUrl={setActiveUrl} />
             ) : (
               <>
                 <div className="flex min-h-0 flex-1 items-center justify-center rounded bg-white p-6">
-                  <Image
-                    alt="Trợ lý du lịch Roamly AI"
-                    className="h-full max-h-[380px] w-full object-contain"
-                    height={1024}
-                    priority
-                    sizes="50vw"
-                    src="/AIbanner.png"
-                    width={1536}
-                  />
+                  <FloatSlow className="h-full w-full flex items-center justify-center" distance={8} duration={5}>
+                    <Image
+                      alt="Trợ lý du lịch Roamly AI"
+                      className="h-full max-h-[380px] w-full object-contain"
+                      height={1024}
+                      priority
+                      sizes="50vw"
+                      src="/AIbanner.png"
+                      width={1536}
+                    />
+                  </FloatSlow>
                 </div>
                 <h2 className="mt-6 text-2xl font-semibold text-new-title">
                   Roamly AI đồng hành cùng chuyến đi của bạn
@@ -131,10 +144,17 @@ export function ChatPageContent() {
                 <Suggestions className="grid grid-cols-2 gap-3" disabled={isBusy} onPick={send} />
               </>
             )}
-          </aside>
+          </FadeIn>
 
           {/* Khung chat */}
-          <div className="flex h-[740px] max-h-[calc(100dvh-6rem)] min-h-[540px] w-full flex-col rounded-md bg-new-section-bg p-6 lg:w-[540px] lg:shrink-0 xl:w-[580px]">
+          <FadeIn
+            className="flex h-[740px] max-h-[calc(100dvh-6rem)] min-h-[540px] w-full flex-col rounded-md bg-new-section-bg p-6 lg:w-[540px] lg:shrink-0 xl:w-[580px]"
+            delay={0.08}
+            duration={0.5}
+            inView={false}
+            x={16}
+            y={8}
+          >
             <div className="mb-4 flex items-center gap-2">
               <SparklesIcon className="size-5 text-new-teal-cta" />
               <h1 className="text-lg font-semibold text-new-title">Trò chuyện với Roamly AI</h1>
@@ -241,7 +261,7 @@ export function ChatPageContent() {
                 </form>
               )}
             </div>
-          </div>
+          </FadeIn>
         </div>
       </section>
     </div>
@@ -258,19 +278,22 @@ function Suggestions({
   onPick: (text: string) => void;
 }) {
   return (
-    <div className={className}>
+    <StaggerContainer className={className} inView={false} stagger={0.06}>
       {SUGGESTIONS.map((text) => (
-        <button
-          className="rounded bg-white px-4 py-3 text-left text-sm text-new-title transition-colors hover:text-new-teal-cta disabled:pointer-events-none disabled:opacity-50"
-          disabled={disabled}
-          key={text}
-          onClick={() => onPick(text)}
-          type="button"
-        >
-          {text}
-        </button>
+        <StaggerItem key={text} y={10}>
+          <motion.button
+            className="h-full w-full cursor-pointer rounded bg-white px-4 py-3 text-left text-sm text-new-title transition-all hover:shadow-sm hover:text-new-teal-cta disabled:pointer-events-none disabled:opacity-50"
+            disabled={disabled}
+            onClick={() => onPick(text)}
+            type="button"
+            whileHover={{ y: -2 }}
+            whileTap={{ scale: 0.985 }}
+          >
+            {text}
+          </motion.button>
+        </StaggerItem>
       ))}
-    </div>
+    </StaggerContainer>
   );
 }
 

@@ -263,6 +263,30 @@ function providerWhere(
   };
 }
 
+/** Toàn bộ đơn khớp bộ lọc (không phân trang) để xuất file, tối đa EXPORT_LIMIT đơn. */
+export const EXPORT_LIMIT = 5000;
+
+export function findAllByProviderProfileId(
+  providerProfileId: string,
+  filter: TourBookingFilter
+) {
+  return prisma.tourBooking.findMany({
+    where: providerWhere(providerProfileId, filter),
+    take: EXPORT_LIMIT,
+    include: {
+      payments: { select: { status: true }, orderBy: { createdAt: "desc" } },
+      refunds: { select: { status: true } },
+      tourDeparture: {
+        select: {
+          returnDate: true,
+          tour: { select: { images: true, durationDays: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
 export async function findPageByProviderProfileId(
   providerProfileId: string,
   filter: TourBookingFilter,
