@@ -5,8 +5,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { buildCalendarUrl } from "@/features/provider/calendar/search-params";
-import { formatCurrency, formatDate } from "@/lib/utils";
-import { restoreRestaurantAction } from "../actions";
+import { formatCurrency } from "@/lib/utils";
+import {
+  BulkActionsDropdown,
+  SelectionCheckbox,
+} from "@/features/provider/components/bulk-actions";
+import { useRowSelection } from "@/features/provider/components/use-row-selection";
+import { describeServiceStatus } from "@/features/provider/service-status";
+import {
+  restoreRestaurantAction,
+  setRestaurantsStatusAction,
+} from "../actions";
 import type { RestaurantListItem } from "../types";
 import { DeleteRestaurantDialog } from "./delete-restaurant-dialog";
 import { RestaurantIcon, type RestaurantIconName } from "./restaurant-icon";
@@ -22,7 +31,7 @@ type RestaurantStatusMeta = {
   dotClass: string;
 };
 
-// "stopped": provider đã xóa, nhà hàng dừng nhận đặt bàn và chờ cron xóa mềm
+// "stopped" (hiển thị "Chờ xóa"): provider đã xóa, nhà hàng dừng nhận đặt bàn và chờ cron xóa mềm
 type RestaurantDisplayStatus = ServiceStatus | "stopped";
 
 const statusMeta: Record<RestaurantDisplayStatus, RestaurantStatusMeta> = {
@@ -35,11 +44,11 @@ const statusMeta: Record<RestaurantDisplayStatus, RestaurantStatusMeta> = {
   paused: {
     label: "Tạm dừng",
     icon: "pause",
-    className: "bg-red-100 text-red-800",
-    dotClass: "bg-red-500",
+    className: "bg-yellow-100 text-yellow-800",
+    dotClass: "bg-yellow-500",
   },
   stopped: {
-    label: "Đã dừng",
+    label: "Chờ xóa",
     icon: "trash",
     className: "bg-red-100 text-red-800",
     dotClass: "bg-red-500",
@@ -52,8 +61,8 @@ const statusFilters: {
 }[] = [
   { value: "all", label: "Tất cả trạng thái" },
   { value: "published", label: "Đang mở bán" },
-  { value: "paused", label: "Tạm dừng" },
-  { value: "stopped", label: "Đã dừng" },
+  { value: "paused", label: "Tạm dừng (thủ công)" },
+  { value: "stopped", label: "Đang chờ xóa" },
 ];
 
 function getDisplayStatus(
@@ -78,6 +87,7 @@ const dropdownItemClass =
 
 function StatusBadge({ restaurant }: { restaurant: RestaurantListItem }) {
   const meta = statusMeta[getDisplayStatus(restaurant)];
+  const note = describeServiceStatus(restaurant);
   return (
     <div>
       <span
@@ -86,12 +96,15 @@ function StatusBadge({ restaurant }: { restaurant: RestaurantListItem }) {
         <RestaurantIcon name={meta.icon} className="size-3" />
         {meta.label}
       </span>
-      {restaurant.deleteScheduledAt ? (
-        <span className="mt-1 block text-xs whitespace-nowrap text-muted-foreground-1">
-          {new Date(restaurant.deleteScheduledAt) <= new Date() &&
-          restaurant.activeBookings > 0
-            ? `Chờ xóa – còn ${restaurant.activeBookings} booking đang xử lý`
-            : `Xóa ngày ${formatDate(restaurant.deleteScheduledAt)}`}
+      {note ? (
+        <span
+          className={`mt-1 block min-w-32 text-xs leading-snug ${
+            restaurant.deleteScheduledAt
+              ? "text-red-600"
+              : "text-muted-foreground-1"
+          }`}
+        >
+          {note}
         </span>
       ) : null}
     </div>
@@ -102,6 +115,11 @@ type RowHandlers = {
   onDelete: (restaurant: RestaurantListItem) => void;
   onRestore: (restaurant: RestaurantListItem) => void;
   isRestoring: boolean;
+  onChangeStatus: (
+    restaurant: RestaurantListItem,
+    status: ServiceStatus,
+  ) => void;
+  isUpdatingStatus: boolean;
 };
 
 function RowActions({
@@ -109,7 +127,11 @@ function RowActions({
   onDelete,
   onRestore,
   isRestoring,
+  onChangeStatus,
+  isUpdatingStatus,
 }: { restaurant: RestaurantListItem } & RowHandlers) {
+  const nextStatus: ServiceStatus =
+    restaurant.status === "published" ? "paused" : "published";
   const dropdownId = `hs-restaurant-actions-${restaurant.id}`;
   const isStopped = restaurant.deleteScheduledAt !== null;
 
@@ -180,6 +202,17 @@ function RowActions({
         ) : (
           <div className="space-y-0.5 border-t border-dropdown-divider p-1">
             <button
+              className={`${dropdownItemClass} disabled:pointer-events-none disabled:opacity-50`}
+              disabled={isUpdatingStatus}
+              onClick={() => onChangeStatus(restaurant, nextStatus)}
+              type="button"
+            >
+              <RestaurantIcon
+                name={nextStatus === "paused" ? "pause" : "check"}
+              />
+              {nextStatus === "paused" ? "Tạm dừng bán" : "Mở bán lại"}
+            </button>
+            <button
               className="flex w-full items-center gap-x-3 rounded-lg px-3 py-2 text-start text-sm text-red-600 hover:bg-red-50 focus:bg-red-50 focus:outline-hidden"
               onClick={() => onDelete(restaurant)}
               type="button"
@@ -196,10 +229,38 @@ function RowActions({
 
 function RestaurantRow({
   restaurant,
+  isSelected,
+  onToggleSelect,
   ...handlers
-}: { restaurant: RestaurantListItem } & RowHandlers) {
+}: {
+  restaurant: RestaurantListItem;
+  isSelected: boolean;
+  onToggleSelect: (id: string) => void;
+} & RowHandlers) {
+  const isStopped = restaurant.deleteScheduledAt !== null;
   return (
-    <tr className="hover:bg-layer-hover">
+    <tr
+      className={
+        isSelected
+          ? "bg-primary-50"
+          : isStopped
+            ? "bg-red-50/40 hover:bg-red-50/70"
+            : "hover:bg-layer-hover"
+      }
+    >
+      <td className="py-4 ps-6 pe-2 align-middle">
+        <SelectionCheckbox
+          checked={isSelected}
+          disabled={isStopped}
+          label={`Chọn ${restaurant.name}`}
+          onChange={() => onToggleSelect(restaurant.id)}
+          title={
+            isStopped
+              ? "Đang chờ xóa – hãy khôi phục trước khi đổi trạng thái"
+              : undefined
+          }
+        />
+      </td>
       <td className="min-w-80 px-6 py-4 align-middle">
         <div className="flex items-center gap-x-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -316,15 +377,29 @@ export function RestaurantsManager({
   const [statusFilter, setStatusFilter] = useState<
     RestaurantDisplayStatus | "all"
   >("all");
-  const [deletingRestaurant, setDeletingRestaurant] =
-    useState<RestaurantListItem | null>(null);
+  // Danh sách nhà hàng đang chờ xác nhận xóa (một dòng hoặc các dòng đã chọn)
+  const [deletingRestaurants, setDeletingRestaurants] = useState<
+    RestaurantListItem[] | null
+  >(null);
   const [isRestoring, startRestore] = useTransition();
-  const [restoreError, setRestoreError] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [actionNotice, setActionNotice] = useState("");
+  const [isUpdatingStatus, startStatusUpdate] = useTransition();
+  const selectableIds = useMemo(
+    () =>
+      restaurants
+        .filter((item) => item.deleteScheduledAt === null)
+        .map((item) => item.id),
+    [restaurants],
+  );
+  const selection = useRowSelection(selectableIds);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
 
   const provinces = useMemo(
-    () => [...new Set(restaurants.map((restaurant) => restaurant.provinceName))],
+    () => [
+      ...new Set(restaurants.map((restaurant) => restaurant.provinceName)),
+    ],
     [restaurants],
   );
 
@@ -357,17 +432,46 @@ export function RestaurantsManager({
     startIndex + pageSize,
   );
 
+  const pageSelectableIds = paginatedRestaurants
+    .filter((item) => item.deleteScheduledAt === null)
+    .map((item) => item.id);
+  const pageSelection = selection.getGroupState(pageSelectableIds);
+
+  const changeStatus = (ids: string[], status: ServiceStatus) => {
+    setActionError("");
+    setActionNotice("");
+    startStatusUpdate(async () => {
+      const result = await setRestaurantsStatusAction(ids, status);
+      if (result.status !== "success" || !result.data) {
+        setActionError(
+          result.formError ?? "Không thể đổi trạng thái nhà hàng.",
+        );
+        return;
+      }
+      const { updated, skipped } = result.data;
+      const verb = status === "published" ? "mở bán" : "tạm dừng";
+      setActionNotice(
+        skipped > 0
+          ? `Đã ${verb} ${updated} nhà hàng. Bỏ qua ${skipped} nhà hàng đã ở sẵn trạng thái này hoặc đã dừng.`
+          : `Đã ${verb} ${updated} nhà hàng.`,
+      );
+      selection.clear();
+      router.refresh();
+    });
+  };
+
   // Dòng mới hiện ra sau khi lọc/chuyển trang cần được Preline khởi tạo dropdown
   useEffect(() => {
     (window as HSWindow).HSDropdown?.autoInit();
   }, [paginatedRestaurants]);
 
   const handleRestore = (restaurant: RestaurantListItem) => {
-    setRestoreError("");
+    setActionError("");
+    setActionNotice("");
     startRestore(async () => {
       const result = await restoreRestaurantAction(restaurant.id);
       if (result.status !== "success") {
-        setRestoreError(result.formError ?? "Không thể khôi phục nhà hàng.");
+        setActionError(result.formError ?? "Không thể khôi phục nhà hàng.");
         return;
       }
       router.refresh();
@@ -389,7 +493,7 @@ export function RestaurantsManager({
   return (
     <div className="flex flex-col overflow-hidden rounded-xl border border-card-line bg-card shadow-2xs">
       <div className="grid gap-3 border-b border-card-line px-6 py-4 lg:flex lg:items-center lg:justify-between">
-        <div className="relative w-full md:max-w-sm">
+        <div className="relative w-full min-w-0 md:max-w-sm">
           <div className="pointer-events-none absolute inset-y-0 start-0 z-20 flex items-center ps-3.5">
             <RestaurantIcon
               name="search"
@@ -411,7 +515,7 @@ export function RestaurantsManager({
             value={search}
           />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 lg:shrink-0 lg:flex-nowrap">
           <select
             aria-label="Lọc theo tỉnh thành"
             className={`${inputClass} ps-3 pe-9`}
@@ -445,26 +549,51 @@ export function RestaurantsManager({
               </option>
             ))}
           </select>
-          <button
-            aria-busy={isRefreshing}
-            className={`px-3 py-2 ${layerButtonClass}`}
-            disabled={isRefreshing}
-            onClick={handleReset}
-            title="Đặt lại bộ lọc và làm mới dữ liệu"
-            type="button"
-          >
-            <RestaurantIcon
-              name="reset"
-              className={isRefreshing ? "size-4 shrink-0 animate-spin" : undefined}
+          <div className="flex items-center gap-2">
+            <button
+              aria-busy={isRefreshing}
+              className={`px-3 py-2 ${layerButtonClass}`}
+              disabled={isRefreshing}
+              onClick={handleReset}
+              title="Đặt lại bộ lọc và làm mới dữ liệu"
+              type="button"
+            >
+              <RestaurantIcon
+                name="reset"
+                className={
+                  isRefreshing ? "size-4 shrink-0 animate-spin" : undefined
+                }
+              />
+              {isRefreshing ? "Đang tải…" : "Đặt lại"}
+            </button>
+            <BulkActionsDropdown
+              count={selection.selectedIds.length}
+              id="hs-restaurants-bulk-actions"
+              isPending={isUpdatingStatus}
+              onChangeStatus={(status) =>
+                changeStatus(selection.selectedIds, status)
+              }
+              onDelete={() => {
+                const selected = new Set(selection.selectedIds);
+                setDeletingRestaurants(
+                  restaurants.filter((item) => selected.has(item.id)),
+                );
+              }}
+              unitLabel="nhà hàng"
             />
-            {isRefreshing ? "Đang tải…" : "Đặt lại"}
-          </button>
+          </div>
         </div>
       </div>
 
-      {restoreError ? (
+      {actionNotice ? (
+        <p className="border-b border-card-line bg-teal-50 px-6 py-3 text-sm text-teal-800">
+          {actionNotice}
+        </p>
+      ) : null}
+
+      {actionError ? (
         <p className="border-b border-card-line bg-red-50 px-6 py-3 text-sm text-red-700">
-          {restoreError}
+          {actionError}
         </p>
       ) : null}
 
@@ -472,6 +601,17 @@ export function RestaurantsManager({
         <table className="min-w-full divide-y divide-table-line">
           <thead className="bg-muted">
             <tr>
+              <th className="py-3 ps-6 pe-2 text-start" scope="col">
+                <SelectionCheckbox
+                  checked={pageSelection.checked}
+                  disabled={pageSelectableIds.length === 0}
+                  indeterminate={pageSelection.indeterminate}
+                  label="Chọn tất cả nhà hàng trên trang này"
+                  onChange={(checked) =>
+                    selection.setGroup(pageSelectableIds, checked)
+                  }
+                />
+              </th>
               {[
                 "Nhà hàng & Địa điểm",
                 "Giá thấp nhất / Địa chỉ",
@@ -490,7 +630,7 @@ export function RestaurantsManager({
                   </span>
                 </th>
               ))}
-              <th className="px-6 py-3 text-end" scope="col">
+              <th className="px-6 py-3 text-end whitespace-nowrap" scope="col">
                 <span className="text-xs font-semibold text-foreground uppercase">
                   Thao tác
                 </span>
@@ -502,7 +642,7 @@ export function RestaurantsManager({
               <tr>
                 <td
                   className="px-6 py-10 text-center text-sm text-muted-foreground-1"
-                  colSpan={7}
+                  colSpan={8}
                 >
                   Không tìm thấy nhà hàng phù hợp với bộ lọc.
                 </td>
@@ -511,8 +651,16 @@ export function RestaurantsManager({
               paginatedRestaurants.map((restaurant) => (
                 <RestaurantRow
                   isRestoring={isRestoring}
+                  isSelected={selection.isSelected(restaurant.id)}
+                  isUpdatingStatus={isUpdatingStatus}
                   key={restaurant.id}
-                  onDelete={setDeletingRestaurant}
+                  onChangeStatus={(restaurant, status) =>
+                    changeStatus([restaurant.id], status)
+                  }
+                  onToggleSelect={selection.toggle}
+                  onDelete={(restaurant) =>
+                    setDeletingRestaurants([restaurant])
+                  }
                   onRestore={handleRestore}
                   restaurant={restaurant}
                 />
@@ -588,10 +736,11 @@ export function RestaurantsManager({
         </nav>
       </div>
 
-      {deletingRestaurant ? (
+      {deletingRestaurants ? (
         <DeleteRestaurantDialog
-          onClose={() => setDeletingRestaurant(null)}
-          restaurant={deletingRestaurant}
+          restaurants={deletingRestaurants}
+          onClose={() => setDeletingRestaurants(null)}
+          onDeleted={(ids) => selection.setGroup(ids, false)}
         />
       ) : null}
     </div>

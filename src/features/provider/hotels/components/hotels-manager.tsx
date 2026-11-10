@@ -5,8 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { buildCalendarUrl } from "@/features/provider/calendar/search-params";
-import { formatCurrency, formatDate } from "@/lib/utils";
-import { restoreHotelAction } from "../actions";
+import { formatCurrency } from "@/lib/utils";
+import {
+  BulkActionsDropdown,
+  SelectionCheckbox,
+} from "@/features/provider/components/bulk-actions";
+import { useRowSelection } from "@/features/provider/components/use-row-selection";
+import { describeServiceStatus } from "@/features/provider/service-status";
+import { restoreHotelAction, setHotelsStatusAction } from "../actions";
 import { HotelListItem } from "../types";
 import { DeleteHotelDialog } from "./delete-hotel-dialog";
 import { HotelIcon, type HotelIconName } from "./hotel-icon";
@@ -22,7 +28,7 @@ type HotelStatusMeta = {
   dotClass: string;
 };
 
-// "stopped": provider đã xóa, khách sạn dừng bán và chờ cron xóa mềm
+// "stopped" (hiển thị "Chờ xóa"): provider đã xóa, khách sạn dừng bán và chờ cron xóa mềm
 type HotelDisplayStatus = ServiceStatus | "stopped";
 
 const statusMeta: Record<HotelDisplayStatus, HotelStatusMeta> = {
@@ -35,11 +41,11 @@ const statusMeta: Record<HotelDisplayStatus, HotelStatusMeta> = {
   paused: {
     label: "Tạm dừng",
     icon: "pause",
-    className: "bg-red-100 text-red-800",
-    dotClass: "bg-red-500",
+    className: "bg-yellow-100 text-yellow-800",
+    dotClass: "bg-yellow-500",
   },
   stopped: {
-    label: "Đã dừng",
+    label: "Chờ xóa",
     icon: "trash",
     className: "bg-red-100 text-red-800",
     dotClass: "bg-red-500",
@@ -49,8 +55,8 @@ const statusMeta: Record<HotelDisplayStatus, HotelStatusMeta> = {
 const statusFilters: { value: HotelDisplayStatus | "all"; label: string }[] = [
   { value: "all", label: "Tất cả trạng thái" },
   { value: "published", label: "Đang mở bán" },
-  { value: "paused", label: "Tạm dừng" },
-  { value: "stopped", label: "Đã dừng" },
+  { value: "paused", label: "Tạm dừng (thủ công)" },
+  { value: "stopped", label: "Đang chờ xóa" },
 ];
 
 function getDisplayStatus(hotel: HotelListItem): HotelDisplayStatus {
@@ -73,6 +79,7 @@ const dropdownItemClass =
 
 function StatusBadge({ hotel }: { hotel: HotelListItem }) {
   const meta = statusMeta[getDisplayStatus(hotel)];
+  const note = describeServiceStatus(hotel);
   return (
     <div>
       <span
@@ -81,12 +88,13 @@ function StatusBadge({ hotel }: { hotel: HotelListItem }) {
         <HotelIcon name={meta.icon} className="size-3" />
         {meta.label}
       </span>
-      {hotel.deleteScheduledAt ? (
-        <span className="mt-1 block text-xs whitespace-nowrap text-muted-foreground-1">
-          {new Date(hotel.deleteScheduledAt) <= new Date() &&
-          hotel.activeBookings > 0
-            ? `Chờ xóa – còn ${hotel.activeBookings} booking đang xử lý`
-            : `Xóa ngày ${formatDate(hotel.deleteScheduledAt)}`}
+      {note ? (
+        <span
+          className={`mt-1 block min-w-32 text-xs leading-snug ${
+            hotel.deleteScheduledAt ? "text-red-600" : "text-muted-foreground-1"
+          }`}
+        >
+          {note}
         </span>
       ) : null}
     </div>
@@ -117,6 +125,8 @@ type RowHandlers = {
   onDelete: (hotel: HotelListItem) => void;
   onRestore: (hotel: HotelListItem) => void;
   isRestoring: boolean;
+  onChangeStatus: (hotel: HotelListItem, status: ServiceStatus) => void;
+  isUpdatingStatus: boolean;
 };
 
 function RowActions({
@@ -124,7 +134,11 @@ function RowActions({
   onDelete,
   onRestore,
   isRestoring,
+  onChangeStatus,
+  isUpdatingStatus,
 }: { hotel: HotelListItem } & RowHandlers) {
+  const nextStatus: ServiceStatus =
+    hotel.status === "published" ? "paused" : "published";
   const dropdownId = `hs-hotel-actions-${hotel.id}`;
   const isStopped = hotel.deleteScheduledAt !== null;
 
@@ -195,6 +209,15 @@ function RowActions({
         ) : (
           <div className="space-y-0.5 border-t border-dropdown-divider p-1">
             <button
+              className={`${dropdownItemClass} disabled:pointer-events-none disabled:opacity-50`}
+              disabled={isUpdatingStatus}
+              onClick={() => onChangeStatus(hotel, nextStatus)}
+              type="button"
+            >
+              <HotelIcon name={nextStatus === "paused" ? "pause" : "check"} />
+              {nextStatus === "paused" ? "Tạm dừng bán" : "Mở bán lại"}
+            </button>
+            <button
               className="flex w-full items-center gap-x-3 rounded-lg px-3 py-2 text-start text-sm text-red-600 hover:bg-red-50 focus:bg-red-50 focus:outline-hidden"
               onClick={() => onDelete(hotel)}
               type="button"
@@ -211,10 +234,38 @@ function RowActions({
 
 function HotelRow({
   hotel,
+  isSelected,
+  onToggleSelect,
   ...handlers
-}: { hotel: HotelListItem } & RowHandlers) {
+}: {
+  hotel: HotelListItem;
+  isSelected: boolean;
+  onToggleSelect: (id: string) => void;
+} & RowHandlers) {
+  const isStopped = hotel.deleteScheduledAt !== null;
   return (
-    <tr className="hover:bg-layer-hover">
+    <tr
+      className={
+        isSelected
+          ? "bg-primary-50"
+          : isStopped
+            ? "bg-red-50/40 hover:bg-red-50/70"
+            : "hover:bg-layer-hover"
+      }
+    >
+      <td className="py-4 ps-6 pe-2 align-middle">
+        <SelectionCheckbox
+          checked={isSelected}
+          disabled={isStopped}
+          label={`Chọn ${hotel.name}`}
+          onChange={() => onToggleSelect(hotel.id)}
+          title={
+            isStopped
+              ? "Đang chờ xóa – hãy khôi phục trước khi đổi trạng thái"
+              : undefined
+          }
+        />
+      </td>
       <td className="min-w-80 px-6 py-4 align-middle">
         <div className="flex items-center gap-x-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -321,14 +372,25 @@ export function HotelsManager({ hotels }: { hotels: HotelListItem[] }) {
   const [isRefreshing, startRefresh] = useTransition();
   const [search, setSearch] = useState("");
   const [provinceFilter, setProvinceFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<
-    HotelDisplayStatus | "all"
-  >("all");
-  const [deletingHotel, setDeletingHotel] = useState<HotelListItem | null>(
+  const [statusFilter, setStatusFilter] = useState<HotelDisplayStatus | "all">(
+    "all",
+  );
+  // Danh sách khách sạn đang chờ xác nhận xóa (một dòng hoặc các dòng đã chọn)
+  const [deletingHotels, setDeletingHotels] = useState<HotelListItem[] | null>(
     null,
   );
   const [isRestoring, startRestore] = useTransition();
-  const [restoreError, setRestoreError] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [actionNotice, setActionNotice] = useState("");
+  const [isUpdatingStatus, startStatusUpdate] = useTransition();
+  const selectableIds = useMemo(
+    () =>
+      hotels
+        .filter((item) => item.deleteScheduledAt === null)
+        .map((item) => item.id),
+    [hotels],
+  );
+  const selection = useRowSelection(selectableIds);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
 
@@ -363,17 +425,46 @@ export function HotelsManager({ hotels }: { hotels: HotelListItem[] }) {
     startIndex + pageSize,
   );
 
+  const pageSelectableIds = paginatedHotels
+    .filter((item) => item.deleteScheduledAt === null)
+    .map((item) => item.id);
+  const pageSelection = selection.getGroupState(pageSelectableIds);
+
+  const changeStatus = (ids: string[], status: ServiceStatus) => {
+    setActionError("");
+    setActionNotice("");
+    startStatusUpdate(async () => {
+      const result = await setHotelsStatusAction(ids, status);
+      if (result.status !== "success" || !result.data) {
+        setActionError(
+          result.formError ?? "Không thể đổi trạng thái khách sạn.",
+        );
+        return;
+      }
+      const { updated, skipped } = result.data;
+      const verb = status === "published" ? "mở bán" : "tạm dừng";
+      setActionNotice(
+        skipped > 0
+          ? `Đã ${verb} ${updated} khách sạn. Bỏ qua ${skipped} khách sạn đã ở sẵn trạng thái này hoặc đã dừng.`
+          : `Đã ${verb} ${updated} khách sạn.`,
+      );
+      selection.clear();
+      router.refresh();
+    });
+  };
+
   // Dòng mới hiện ra sau khi lọc/chuyển trang cần được Preline khởi tạo dropdown
   useEffect(() => {
     (window as HSWindow).HSDropdown?.autoInit();
   }, [paginatedHotels]);
 
   const handleRestore = (hotel: HotelListItem) => {
-    setRestoreError("");
+    setActionError("");
+    setActionNotice("");
     startRestore(async () => {
       const result = await restoreHotelAction(hotel.id);
       if (result.status !== "success") {
-        setRestoreError(result.formError ?? "Không thể khôi phục khách sạn.");
+        setActionError(result.formError ?? "Không thể khôi phục khách sạn.");
         return;
       }
       router.refresh();
@@ -395,7 +486,7 @@ export function HotelsManager({ hotels }: { hotels: HotelListItem[] }) {
   return (
     <div className="flex flex-col overflow-hidden rounded-xl border border-card-line bg-card shadow-2xs">
       <div className="grid gap-3 border-b border-card-line px-6 py-4 lg:flex lg:items-center lg:justify-between">
-        <div className="relative w-full md:max-w-sm">
+        <div className="relative w-full min-w-0 md:max-w-sm">
           <div className="pointer-events-none absolute inset-y-0 start-0 z-20 flex items-center ps-3.5">
             <HotelIcon name="search" className="size-4 text-muted-foreground" />
           </div>
@@ -414,7 +505,7 @@ export function HotelsManager({ hotels }: { hotels: HotelListItem[] }) {
             value={search}
           />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 lg:shrink-0 lg:flex-nowrap">
           <select
             aria-label="Lọc theo tỉnh thành"
             className={`${inputClass} ps-3 pe-9`}
@@ -446,26 +537,51 @@ export function HotelsManager({ hotels }: { hotels: HotelListItem[] }) {
               </option>
             ))}
           </select>
-          <button
-            aria-busy={isRefreshing}
-            className={`px-3 py-2 ${layerButtonClass}`}
-            disabled={isRefreshing}
-            onClick={handleReset}
-            title="Đặt lại bộ lọc và làm mới dữ liệu"
-            type="button"
-          >
-            <HotelIcon
-              name="reset"
-              className={isRefreshing ? "size-4 shrink-0 animate-spin" : undefined}
+          <div className="flex items-center gap-2">
+            <button
+              aria-busy={isRefreshing}
+              className={`px-3 py-2 ${layerButtonClass}`}
+              disabled={isRefreshing}
+              onClick={handleReset}
+              title="Đặt lại bộ lọc và làm mới dữ liệu"
+              type="button"
+            >
+              <HotelIcon
+                name="reset"
+                className={
+                  isRefreshing ? "size-4 shrink-0 animate-spin" : undefined
+                }
+              />
+              {isRefreshing ? "Đang tải…" : "Đặt lại"}
+            </button>
+            <BulkActionsDropdown
+              count={selection.selectedIds.length}
+              id="hs-hotels-bulk-actions"
+              isPending={isUpdatingStatus}
+              onChangeStatus={(status) =>
+                changeStatus(selection.selectedIds, status)
+              }
+              onDelete={() => {
+                const selected = new Set(selection.selectedIds);
+                setDeletingHotels(
+                  hotels.filter((item) => selected.has(item.id)),
+                );
+              }}
+              unitLabel="khách sạn"
             />
-            {isRefreshing ? "Đang tải…" : "Đặt lại"}
-          </button>
+          </div>
         </div>
       </div>
 
-      {restoreError ? (
+      {actionNotice ? (
+        <p className="border-b border-card-line bg-teal-50 px-6 py-3 text-sm text-teal-800">
+          {actionNotice}
+        </p>
+      ) : null}
+
+      {actionError ? (
         <p className="border-b border-card-line bg-red-50 px-6 py-3 text-sm text-red-700">
-          {restoreError}
+          {actionError}
         </p>
       ) : null}
 
@@ -473,6 +589,17 @@ export function HotelsManager({ hotels }: { hotels: HotelListItem[] }) {
         <table className="min-w-full divide-y divide-table-line">
           <thead className="bg-muted">
             <tr>
+              <th className="py-3 ps-6 pe-2 text-start" scope="col">
+                <SelectionCheckbox
+                  checked={pageSelection.checked}
+                  disabled={pageSelectableIds.length === 0}
+                  indeterminate={pageSelection.indeterminate}
+                  label="Chọn tất cả khách sạn trên trang này"
+                  onChange={(checked) =>
+                    selection.setGroup(pageSelectableIds, checked)
+                  }
+                />
+              </th>
               {[
                 "Khách sạn & Địa điểm",
                 "Giá thấp nhất / Địa chỉ",
@@ -491,7 +618,7 @@ export function HotelsManager({ hotels }: { hotels: HotelListItem[] }) {
                   </span>
                 </th>
               ))}
-              <th className="px-6 py-3 text-end" scope="col">
+              <th className="px-6 py-3 text-end whitespace-nowrap" scope="col">
                 <span className="text-xs font-semibold text-foreground uppercase">
                   Thao tác
                 </span>
@@ -503,7 +630,7 @@ export function HotelsManager({ hotels }: { hotels: HotelListItem[] }) {
               <tr>
                 <td
                   className="px-6 py-10 text-center text-sm text-muted-foreground-1"
-                  colSpan={7}
+                  colSpan={8}
                 >
                   Không tìm thấy khách sạn phù hợp với bộ lọc.
                 </td>
@@ -513,8 +640,14 @@ export function HotelsManager({ hotels }: { hotels: HotelListItem[] }) {
                 <HotelRow
                   hotel={hotel}
                   isRestoring={isRestoring}
+                  isSelected={selection.isSelected(hotel.id)}
+                  isUpdatingStatus={isUpdatingStatus}
                   key={hotel.id}
-                  onDelete={setDeletingHotel}
+                  onChangeStatus={(hotel, status) =>
+                    changeStatus([hotel.id], status)
+                  }
+                  onToggleSelect={selection.toggle}
+                  onDelete={(hotel) => setDeletingHotels([hotel])}
                   onRestore={handleRestore}
                 />
               ))
@@ -589,10 +722,11 @@ export function HotelsManager({ hotels }: { hotels: HotelListItem[] }) {
         </nav>
       </div>
 
-      {deletingHotel ? (
+      {deletingHotels ? (
         <DeleteHotelDialog
-          hotel={deletingHotel}
-          onClose={() => setDeletingHotel(null)}
+          hotels={deletingHotels}
+          onClose={() => setDeletingHotels(null)}
+          onDeleted={(ids) => selection.setGroup(ids, false)}
         />
       ) : null}
     </div>

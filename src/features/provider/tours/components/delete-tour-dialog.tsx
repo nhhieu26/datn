@@ -4,19 +4,23 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { formatDate } from "@/lib/utils";
-import { deleteTourAction } from "../actions";
+import { deleteToursAction } from "../actions";
 import type { TourListItem } from "../types";
 import { TourIcon } from "./tour-icon";
 
 const TOUR_DELETE_GRACE_DAYS = 30;
 
 export function DeleteTourDialog({
-  tour,
+  tours,
   onClose,
+  onDeleted,
 }: {
-  tour: TourListItem;
+  tours: TourListItem[];
   onClose: () => void;
+  /** Gọi sau khi xóa thành công, với id các tour đã gửi xóa. */
+  onDeleted?: (ids: string[]) => void;
 }) {
+  const isMany = tours.length > 1;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
@@ -36,11 +40,13 @@ export function DeleteTourDialog({
     event.preventDefault();
     setError("");
     startTransition(async () => {
-      const result = await deleteTourAction(tour.id);
+      const ids = tours.map((item) => item.id);
+      const result = await deleteToursAction(ids);
       if (result.status !== "success") {
         setError(result.formError ?? "Không thể xóa tour.");
         return;
       }
+      onDeleted?.(ids);
       router.refresh();
       onClose();
     });
@@ -70,11 +76,22 @@ export function DeleteTourDialog({
           className="text-lg font-bold text-slate-900"
           id="delete-tour-heading"
         >
-          Dừng và xóa tour?
+          {isMany ? `Dừng và xóa ${tours.length} tour?` : "Dừng và xóa tour?"}
         </h2>
         <p className="mt-1 text-xs font-semibold text-brand-600">
-          {tour.code} · {tour.title}
+          {isMany
+            ? `${tours.length} tour đã chọn`
+            : `${tours[0].code} · ${tours[0].title}`}
         </p>
+        {isMany ? (
+          <ul className="mt-2 max-h-28 space-y-0.5 overflow-y-auto rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600">
+            {tours.map((item) => (
+              <li className="truncate" key={item.id}>
+                <span className="font-mono">{item.code}</span> · {item.title}
+              </li>
+            ))}
+          </ul>
+        ) : null}
 
         <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-sm text-amber-800">
           Tour sẽ <span className="font-semibold">dừng hoạt động ngay</span> và{" "}

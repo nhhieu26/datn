@@ -1,4 +1,8 @@
-import type { BookingStatus, Prisma } from "@/generated/prisma/client";
+import type {
+  BookingStatus,
+  Prisma,
+  ServiceStatus,
+} from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { hotelBookingCounts } from "../booking-counts";
 import {
@@ -196,17 +200,48 @@ export function remove(id: string): Promise<Hotel> {
   return prisma.hotel.delete({ where: { id } });
 }
 
-/** Dừng bán khách sạn và hẹn ngày xóa. Trả về số khách sạn bị ảnh hưởng (0 nếu không tìm thấy hoặc đã dừng). */
-export async function scheduleDeletion(
-  id: string,
+/**
+ * Dừng bán nhiều hotel và hẹn ngày xóa. Bỏ qua hotel không thuộc provider hoặc đã dừng trước đó.
+ * Trả về các hotel thực sự được hẹn xóa.
+ */
+export function scheduleDeletionMany(
+  ids: string[],
   providerProfileId: string,
   deleteAt: Date
-): Promise<number> {
-  const { count } = await prisma.hotel.updateMany({
-    where: { id, providerProfileId, deletedAt: null, deleteScheduledAt: null },
+): Promise<{ id: string; slug: string }[]> {
+  return prisma.hotel.updateManyAndReturn({
+    where: {
+      id: { in: ids },
+      providerProfileId,
+      deletedAt: null,
+      deleteScheduledAt: null,
+    },
     data: { status: "paused", deleteScheduledAt: deleteAt },
+    select: { id: true, slug: true },
   });
-  return count;
+}
+
+/**
+ * Đổi trạng thái mở bán / tạm dừng cho nhiều hotel của một provider.
+ * Bỏ qua hotel đã dừng (đang chờ xóa) hoặc đã ở sẵn trạng thái đích.
+ * Trả về các hotel thực sự được đổi.
+ */
+export function setStatusMany(
+  ids: string[],
+  providerProfileId: string,
+  status: ServiceStatus
+): Promise<{ id: string; slug: string }[]> {
+  return prisma.hotel.updateManyAndReturn({
+    where: {
+      id: { in: ids },
+      providerProfileId,
+      deletedAt: null,
+      deleteScheduledAt: null,
+      status: { not: status },
+    },
+    data: { status },
+    select: { id: true, slug: true },
+  });
 }
 
 /** Hủy lịch xóa, mở bán lại khách sạn đã dừng. Trả về 0 nếu khách sạn không ở trạng thái đã dừng. */
