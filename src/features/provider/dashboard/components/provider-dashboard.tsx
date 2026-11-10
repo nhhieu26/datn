@@ -165,7 +165,7 @@ export function ProviderDashboard({
               ))}
             </div>
           </div>
-          <div className="px-2 pb-4 md:px-3 md:pb-5">
+          <div className="flex min-h-64 flex-1 flex-col px-2 pb-4 md:px-3 md:pb-5">
             <RevenueChart chart={data.chart} />
           </div>
         </div>
