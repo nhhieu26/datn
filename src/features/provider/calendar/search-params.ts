@@ -5,6 +5,8 @@ export type CalendarQuery = {
   month: string;
   /** YYYY-MM-DD, luôn thuộc `month`. */
   date: string;
+  /** Id tour/khách sạn/nhà hàng để chỉ xem booking của dịch vụ đó. */
+  service?: string;
 };
 
 type RawParams = Record<string, string | string[] | undefined>;
@@ -31,13 +33,18 @@ export function parseCalendarQuery(
   const rawDate = first(params.date);
   const rawMonth = first(params.month);
   const date = isRealDate(rawDate) ? rawDate : null;
+  const service = first(params.service).trim() || undefined;
 
   const month = MONTH_PATTERN.test(rawMonth)
     ? rawMonth
     : (date ?? today).slice(0, 7);
 
-  if (date?.startsWith(month)) return { month, date };
-  return { month, date: today.startsWith(month) ? today : `${month}-01` };
+  if (date?.startsWith(month)) return { month, date, service };
+  return {
+    month,
+    date: today.startsWith(month) ? today : `${month}-01`,
+    service,
+  };
 }
 
 export function buildCalendarUrl(
@@ -47,6 +54,7 @@ export function buildCalendarUrl(
   const params = new URLSearchParams();
   if (query.month) params.set("month", query.month);
   if (query.date) params.set("date", query.date);
+  if (query.service) params.set("service", query.service);
   const search = params.toString();
   return `/provider/calendar/${slug}${search ? `?${search}` : ""}`;
 }

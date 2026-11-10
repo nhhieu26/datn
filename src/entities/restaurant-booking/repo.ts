@@ -422,12 +422,18 @@ export function findUpcomingForProvider(providerProfileId: string, from: Date, t
 }
 
 /** Đơn có ngày đặt bàn trong [from, to), dùng cho lịch của provider. */
-export function findForCalendar(providerProfileId: string, from: Date, to: Date) {
+export function findForCalendar(
+  providerProfileId: string,
+  from: Date,
+  to: Date,
+  serviceId?: string,
+) {
   return prisma.restaurantBooking.findMany({
     where: {
       providerProfileId,
       status: { not: "expired" },
       reservationDate: { gte: from, lt: to },
+      ...(serviceId && { restaurantId: serviceId }),
     },
     select: {
       code: true,

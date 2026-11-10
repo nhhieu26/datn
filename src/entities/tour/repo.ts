@@ -42,6 +42,15 @@ export function findPublishedDetailBySlug(slug: string) {
   });
 }
 
+/** Danh sách gọn (id, tên) cho bộ chọn dịch vụ trên lịch của provider. */
+export function findOptionsByProviderProfileId(providerProfileId: string) {
+  return prisma.tour.findMany({
+    where: { providerProfileId, deletedAt: null },
+    select: { id: true, title: true },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
 export function findAllByProviderProfileId(
   providerProfileId: string
 ): Promise<TourForProvider[]> {

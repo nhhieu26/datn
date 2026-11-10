@@ -2,6 +2,7 @@ import type { ServiceStatus } from "@/generated/prisma/enums";
 
 export type RestaurantListItem = {
   id: string;
+  slug: string;
   code: string;
   name: string;
   description: string;

@@ -4,6 +4,7 @@ import type { ServiceStatus } from "@/generated/prisma/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { buildCalendarUrl } from "@/features/provider/calendar/search-params";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { restoreTourAction } from "../actions";
 import { TourListItem } from "../types";
@@ -156,14 +157,24 @@ function RowActions({
               Chỉnh sửa
             </Link>
           )}
-          <button className={dropdownItemClass} type="button">
-            <TourIcon name="eye" />
-            Xem chi tiết
-          </button>
-          <button className={dropdownItemClass} type="button">
+          {getDisplayStatus(tour) === "published" ? (
+            <Link
+              className={dropdownItemClass}
+              href={`/tours/${tour.slug}`}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <TourIcon name="eye" />
+              Xem chi tiết
+            </Link>
+          ) : null}
+          <Link
+            className={dropdownItemClass}
+            href={buildCalendarUrl("tours", { service: tour.id })}
+          >
             <TourIcon name="calendar" />
             Lịch khởi hành
-          </button>
+          </Link>
         </div>
         {isStopped ? (
           <div className="space-y-0.5 border-t border-dropdown-divider p-1">

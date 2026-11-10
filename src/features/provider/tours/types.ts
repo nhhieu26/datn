@@ -2,6 +2,7 @@ import { ServiceStatus } from "@/generated/prisma/enums";
 
 export type TourListItem = {
   id: string;
+  slug: string;
   code: string;
   title: string;
   description: string;

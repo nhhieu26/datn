@@ -27,10 +27,12 @@ function dayNumberClass(day: CalendarDay) {
 
 export function CalendarMonth({
   slug,
+  serviceId,
   month,
   days,
 }: {
   slug: string;
+  serviceId?: string;
   month: string;
   days: CalendarDay[];
 }) {
@@ -44,7 +46,10 @@ export function CalendarMonth({
           <Link
             aria-label="Tháng trước"
             className={navButtonClass}
-            href={buildCalendarUrl(slug, { month: shiftMonth(month, -1) })}
+            href={buildCalendarUrl(slug, {
+              month: shiftMonth(month, -1),
+              service: serviceId,
+            })}
             scroll={false}
           >
             <BookingIcon name="chevronLeft" />
@@ -52,14 +57,17 @@ export function CalendarMonth({
           <Link
             aria-label="Tháng sau"
             className={navButtonClass}
-            href={buildCalendarUrl(slug, { month: shiftMonth(month, 1) })}
+            href={buildCalendarUrl(slug, {
+              month: shiftMonth(month, 1),
+              service: serviceId,
+            })}
             scroll={false}
           >
             <BookingIcon name="chevronRight" />
           </Link>
           <Link
             className="ms-1 text-sm font-medium text-primary hover:underline focus:underline focus:outline-hidden"
-            href={buildCalendarUrl(slug)}
+            href={buildCalendarUrl(slug, { service: serviceId })}
             scroll={false}
           >
             Hôm nay
@@ -102,6 +110,7 @@ export function CalendarMonth({
               href={buildCalendarUrl(slug, {
                 month: day.iso.slice(0, 7),
                 date: day.iso,
+                service: serviceId,
               })}
               scroll={false}
             >

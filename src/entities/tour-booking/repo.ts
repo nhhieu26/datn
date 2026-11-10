@@ -674,12 +674,18 @@ export function findUpcomingForProvider(providerProfileId: string, from: Date, t
 }
 
 /** Đơn có ngày khởi hành trong [from, to), dùng cho lịch của provider. */
-export function findForCalendar(providerProfileId: string, from: Date, to: Date) {
+export function findForCalendar(
+  providerProfileId: string,
+  from: Date,
+  to: Date,
+  serviceId?: string,
+) {
   return prisma.tourBooking.findMany({
     where: {
       providerProfileId,
       status: { notIn: UNCOUNTED_STATUSES },
       departureDate: { gte: from, lt: to },
+      ...(serviceId && { tourDeparture: { tourId: serviceId } }),
     },
     select: {
       code: true,

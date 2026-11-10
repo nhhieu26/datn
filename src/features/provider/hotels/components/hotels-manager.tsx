@@ -4,6 +4,7 @@ import type { ServiceStatus } from "@/generated/prisma/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { buildCalendarUrl } from "@/features/provider/calendar/search-params";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { restoreHotelAction } from "../actions";
 import { HotelListItem } from "../types";
@@ -156,10 +157,24 @@ function RowActions({
               Chỉnh sửa
             </Link>
           )}
-          <button className={dropdownItemClass} type="button">
-            <HotelIcon name="eye" />
-            Xem chi tiết
-          </button>
+          {getDisplayStatus(hotel) === "published" ? (
+            <Link
+              className={dropdownItemClass}
+              href={`/hotels/${hotel.slug}`}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <HotelIcon name="eye" />
+              Xem chi tiết
+            </Link>
+          ) : null}
+          <Link
+            className={dropdownItemClass}
+            href={buildCalendarUrl("hotels", { service: hotel.id })}
+          >
+            <HotelIcon name="calendar" />
+            Lịch đặt chỗ
+          </Link>
           <button className={dropdownItemClass} type="button">
             <HotelIcon name="door" />
             Quản lý phòng

@@ -4,6 +4,7 @@ import type { ServiceStatus } from "@/generated/prisma/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { buildCalendarUrl } from "@/features/provider/calendar/search-params";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { restoreRestaurantAction } from "../actions";
 import type { RestaurantListItem } from "../types";
@@ -141,10 +142,24 @@ function RowActions({
               Chỉnh sửa
             </Link>
           )}
-          <button className={dropdownItemClass} type="button">
-            <RestaurantIcon name="eye" />
-            Xem chi tiết
-          </button>
+          {getDisplayStatus(restaurant) === "published" ? (
+            <Link
+              className={dropdownItemClass}
+              href={`/restaurants/${restaurant.slug}`}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <RestaurantIcon name="eye" />
+              Xem chi tiết
+            </Link>
+          ) : null}
+          <Link
+            className={dropdownItemClass}
+            href={buildCalendarUrl("restaurants", { service: restaurant.id })}
+          >
+            <RestaurantIcon name="calendar" />
+            Lịch đặt chỗ
+          </Link>
           <button className={dropdownItemClass} type="button">
             <RestaurantIcon name="menu" />
             Xem thực đơn

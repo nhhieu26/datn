@@ -573,13 +573,19 @@ export function findUpcomingForProvider(providerProfileId: string, from: Date, t
 }
 
 /** Đơn có thời gian lưu trú giao với [from, to), dùng cho lịch của provider. */
-export function findForCalendar(providerProfileId: string, from: Date, to: Date) {
+export function findForCalendar(
+  providerProfileId: string,
+  from: Date,
+  to: Date,
+  serviceId?: string,
+) {
   return prisma.hotelBooking.findMany({
     where: {
       providerProfileId,
       status: { notIn: UNCOUNTED_STATUSES },
       checkInDate: { lt: to },
       checkOutDate: { gt: from },
+      ...(serviceId && { room: { hotelId: serviceId } }),
     },
     select: {
       code: true,

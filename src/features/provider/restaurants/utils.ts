@@ -49,6 +49,7 @@ export function mapRestaurantToListItem(
 
   return {
     id: restaurant.id,
+    slug: restaurant.slug,
     code: formatEntityCode("RS", restaurant.id),
     name: restaurant.name,
     description: restaurant.description ?? "",

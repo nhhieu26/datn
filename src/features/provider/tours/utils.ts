@@ -44,6 +44,7 @@ export function mapTourToListItem(tour: TourForProvider): TourListItem {
 
   return {
     id: tour.id,
+    slug: tour.slug,
     code,
     title: tour.title,
     description: tour.description ?? "",

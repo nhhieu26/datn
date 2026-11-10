@@ -37,6 +37,15 @@ export function findPublishedDetailBySlug(slug: string) {
   });
 }
 
+/** Danh sách gọn (id, tên) cho bộ chọn dịch vụ trên lịch của provider. */
+export function findOptionsByProviderProfileId(providerProfileId: string) {
+  return prisma.restaurant.findMany({
+    where: { providerProfileId, deletedAt: null },
+    select: { id: true, name: true },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
 export function findAllByProviderProfileId(
   providerProfileId: string
 ): Promise<RestaurantForProviderList[]> {

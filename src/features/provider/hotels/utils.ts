@@ -49,6 +49,7 @@ export function mapHotelToListItem(hotel: HotelForProviderList): HotelListItem {
 
   return {
     id: hotel.id,
+    slug: hotel.slug,
     code,
     name: hotel.name,
     description: hotel.description ?? "",
