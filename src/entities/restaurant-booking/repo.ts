@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 import type { BookingStatus, Prisma } from "@/generated/prisma/client";
+import { systemSettingRepo } from "@/entities/system-setting";
 import { prisma } from "@/lib/prisma";
 import {
   canCustomerCancelBefore,
   formatEntityCode,
   reservationInstant,
-  RESTAURANT_CANCEL_CUTOFF_HOURS,
   todayIsoDate,
 } from "@/lib/utils";
 import { ConflictError, NotFoundError } from "@/shared/lib/errors";
@@ -154,7 +154,12 @@ export async function summarizeByCustomerId(customerId: string) {
 }
 
 /** Customer tự hủy đơn chờ xác nhận / đã xác nhận, chỉ khi còn trước giờ đặt bàn đủ hạn hủy. */
-export function cancelForCustomer(code: string, customerId: string, reason: string) {
+export async function cancelForCustomer(
+  code: string,
+  customerId: string,
+  reason: string
+) {
+  const { restaurantCancelCutoffHours } = await systemSettingRepo.getSettings();
   return prisma.$transaction(async (tx) => {
     const rows = await tx.$queryRaw<
       { id: string; reservationDate: Date; startTime: string }[]
@@ -170,11 +175,11 @@ export function cancelForCustomer(code: string, customerId: string, reason: stri
       !canCustomerCancelBefore(
         reservationInstant(reservationDate, startTime),
         new Date(),
-        RESTAURANT_CANCEL_CUTOFF_HOURS
+        restaurantCancelCutoffHours
       )
     ) {
       throw new ConflictError(
-        `Chỉ có thể hủy đơn trước giờ đặt bàn ${RESTAURANT_CANCEL_CUTOFF_HOURS} giờ.`
+        `Chỉ có thể hủy đơn trước giờ đặt bàn ${restaurantCancelCutoffHours} giờ.`
       );
     }
     return tx.restaurantBooking.update({

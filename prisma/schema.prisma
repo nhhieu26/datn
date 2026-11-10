@@ -660,3 +660,23 @@ model ExternalArea {
   expiresAt DateTime
   createdAt DateTime @default(now())
 }
+
+// Cấu hình hệ thống toàn sàn (singleton id = "default") do Admin quản lý.
+model SystemSetting {
+  id                          String   @id @default("default")
+  commissionRate              Decimal  @default(0.1) @db.Decimal(5, 4)
+  usdRate                     Decimal  @default(25000) @db.Decimal(18, 2)
+  bookingHoldMinutes          Int      @default(10)
+  customerCancelCutoffHours   Int      @default(24)
+  restaurantCancelCutoffHours Int      @default(2)
+  serviceDeleteGraceDays      Int      @default(30)
+
+  platformName                String   @default("Roamly")
+  tagline                     String   @default("Người bạn đồng hành du lịch toàn diện cho khách sạn, nhà hàng, tour và những điểm đến khó quên.")
+  contactAddress              String   @default("70/A Tầng Divo Tower, Hà Nội, Việt Nam")
+  contactPhone                String   @default("(+84) 123 456 789")
+  contactEmail                String   @default("hello@roamly.vn")
+
+  updatedAt                   DateTime @updatedAt
+}
+

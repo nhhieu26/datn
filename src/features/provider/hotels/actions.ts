@@ -19,6 +19,7 @@ import {
 } from "@/entities/hotel";
 import { providerProfileRepo } from "@/entities/provider-profile";
 import { provinceRepo } from "@/entities/province";
+import { systemSettingRepo } from "@/entities/system-setting";
 import { tagRepo } from "@/entities/tag";
 import type { ActionState } from "@/shared/lib/action-state";
 
@@ -37,7 +38,6 @@ const ALLOWED_PHOTO_TYPES = ["image/png", "image/jpeg"];
 const MAX_PHOTOS = 5;
 const MAX_SLUG_ATTEMPTS = 5;
 const CLEANUP_ATTEMPTS = 3;
-const HOTEL_DELETE_GRACE_DAYS = 30;
 
 const STAGE_ERROR_MESSAGES: Record<CreationStage, string> = {
   authorization: "Không thể xác thực tài khoản. Vui lòng thử lại.",
@@ -989,8 +989,9 @@ export async function deleteHotelAction(hotelId: string): Promise<ActionState> {
   const { hotel, providerProfileId } = found;
 
   // Không xóa ngay: dừng bán, booking đang có vẫn xử lý bình thường; cron xóa mềm khi tới hạn
+  const { serviceDeleteGraceDays } = await systemSettingRepo.getSettings();
   const deleteAt = new Date(
-    Date.now() + HOTEL_DELETE_GRACE_DAYS * 24 * 60 * 60 * 1000,
+    Date.now() + serviceDeleteGraceDays * 24 * 60 * 60 * 1000,
   );
   try {
     const count = await hotelRepo.scheduleDeletion(

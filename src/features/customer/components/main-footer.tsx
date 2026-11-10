@@ -1,3 +1,4 @@
+import { systemSettingRepo } from "@/entities/system-setting";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -36,7 +37,10 @@ const LEGAL_LINKS = [
   "Cách trang web hoạt động",
 ];
 
-export function MainFooter() {
+export async function MainFooter() {
+  const settings = await systemSettingRepo.getSettings();
+  const telHref = `tel:${settings.contactPhone.replace(/[^+\d]/g, "")}`;
+
   return (
     <footer
       className="w-full relative z-20 pt-16 pb-8 px-6 sm:px-8 lg:px-16 text-gray-300 bg-new-footer-bg"
@@ -69,20 +73,18 @@ export function MainFooter() {
               Liên hệ
             </h3>
             <div className="space-y-4 text-sm text-gray-400">
-              <p className="leading-relaxed">
-                70/A Tầng Divo Tower, Hà Nội, Việt Nam
-              </p>
+              <p className="leading-relaxed">{settings.contactAddress}</p>
               <Link
                 className="block hover:text-white transition duration-150"
-                href="tel:+84123456789"
+                href={telHref}
               >
-                (+84) 123 456 789
+                {settings.contactPhone}
               </Link>
               <Link
                 className="block hover:text-white transition duration-150"
-                href="mailto:hello@roamly.vn"
+                href={`mailto:${settings.contactEmail}`}
               >
-                hello@roamly.vn
+                {settings.contactEmail}
               </Link>
             </div>
           </div>
@@ -92,15 +94,14 @@ export function MainFooter() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start pb-8 border-b border-gray-100">
             <div className="lg:col-span-7 pr-0 lg:pr-8">
               <Image
-                alt="Roamly Logo"
+                alt={`${settings.platformName} Logo`}
                 className="h-9 w-auto object-contain mb-3"
                 height={724}
                 src="/logo.png"
                 width={2172}
               />
               <p className="text-xs sm:text-sm text-gray-500 leading-relaxed max-w-md">
-                Người bạn đồng hành du lịch toàn diện cho khách sạn, nhà hàng,
-                tour và những điểm đến khó quên.
+                {settings.tagline}
               </p>
             </div>
 
@@ -140,7 +141,7 @@ export function MainFooter() {
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-400 pt-6">
-          <div>© 2026 Roamly. Bảo lưu mọi quyền.</div>
+          <div>© 2026 {settings.platformName}. Bảo lưu mọi quyền.</div>
           <div>Nhiều điểm đến hơn. Những câu chuyện tuyệt vời hơn.</div>
         </div>
       </div>

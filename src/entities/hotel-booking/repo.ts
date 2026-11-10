@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { Prisma, type BookingStatus } from "@/generated/prisma/client";
+import { systemSettingRepo } from "@/entities/system-setting";
 import { prisma } from "@/lib/prisma";
 import {
   canCustomerCancelBefore,
-  CUSTOMER_CANCEL_CUTOFF_HOURS,
   formatEntityCode,
   hasCheckedOut,
 } from "@/lib/utils";
@@ -17,8 +17,6 @@ import type {
 
 type Tx = Prisma.TransactionClient;
 
-const HOLD_MINUTES = Number(process.env.BOOKING_HOLD_MINUTES ?? 10);
-const COMMISSION_RATE = Number(process.env.PLATFORM_COMMISSION_RATE ?? 0.1);
 const DAY = 86_400_000;
 
 const toUtcDate = (isoDate: string) => new Date(`${isoDate}T00:00:00Z`);
@@ -50,8 +48,14 @@ export function releaseExpired(db: Tx | typeof prisma = prisma) {
   return releaseWhere(db, Prisma.sql`h."expiresAt" < ${new Date()}`);
 }
 
-/** Giữ phòng: kiểm tra phòng trống theo khoảng ngày và tạo booking pending_payment hết hạn sau HOLD_MINUTES. */
-export function createHeld(customerId: string, input: CreateHotelBookingInput) {
+/** Giữ phòng: kiểm tra phòng trống theo khoảng ngày và tạo booking pending_payment hết hạn sau bookingHoldMinutes. */
+export async function createHeld(
+  customerId: string,
+  input: CreateHotelBookingInput
+) {
+  const { commissionRate, bookingHoldMinutes } =
+    await systemSettingRepo.getSettings();
+
   return prisma.$transaction(async (tx) => {
     await releaseExpired(tx);
     // Mỗi customer chỉ giữ một đơn chờ thanh toán cho cùng loại phòng
@@ -97,7 +101,7 @@ export function createHeld(customerId: string, input: CreateHotelBookingInput) {
     // Giá luôn tính lại ở server, không tin dữ liệu từ client
     const unitPrice = room.basePrice;
     const totalAmount = unitPrice.mul(nights).mul(input.rooms);
-    const platformFee = totalAmount.mul(COMMISSION_RATE).toDecimalPlaces(2);
+    const platformFee = totalAmount.mul(commissionRate).toDecimalPlaces(2);
 
     return tx.hotelBooking.create({
       data: {
@@ -118,10 +122,10 @@ export function createHeld(customerId: string, input: CreateHotelBookingInput) {
         note: input.note || null,
         unitPrice,
         totalAmount,
-        commissionRate: COMMISSION_RATE,
+        commissionRate,
         platformFee,
         providerAmount: totalAmount.sub(platformFee),
-        expiresAt: new Date(Date.now() + HOLD_MINUTES * 60_000),
+        expiresAt: new Date(Date.now() + bookingHoldMinutes * 60_000),
       },
     });
   });
@@ -456,7 +460,12 @@ export function cancelForProvider(
 }
 
 /** Customer tự hủy đơn paid/confirmed, chỉ khi còn trước ngày nhận phòng đủ hạn hủy. */
-export function cancelForCustomer(code: string, customerId: string, reason: string) {
+export async function cancelForCustomer(
+  code: string,
+  customerId: string,
+  reason: string
+) {
+  const { customerCancelCutoffHours } = await systemSettingRepo.getSettings();
   return prisma.$transaction(async (tx) => {
     const rows = await tx.$queryRaw<{ id: string; checkInDate: Date }[]>`
       SELECT "id", "checkInDate" FROM "HotelBooking"
@@ -465,9 +474,15 @@ export function cancelForCustomer(code: string, customerId: string, reason: stri
         AND "status" IN ('paid'::"BookingStatus", 'confirmed'::"BookingStatus")
       FOR UPDATE`;
     if (rows.length === 0) throw new ConflictError(STALE_STATUS_MESSAGE);
-    if (!canCustomerCancelBefore(rows[0].checkInDate)) {
+    if (
+      !canCustomerCancelBefore(
+        rows[0].checkInDate,
+        new Date(),
+        customerCancelCutoffHours
+      )
+    ) {
       throw new ConflictError(
-        `Chỉ có thể hủy đơn trước ngày nhận phòng ${CUSTOMER_CANCEL_CUTOFF_HOURS} giờ.`
+        `Chỉ có thể hủy đơn trước ngày nhận phòng ${customerCancelCutoffHours} giờ.`
       );
     }
     return cancelAndCreateRefund(tx, rows[0].id, reason);
@@ -475,7 +490,11 @@ export function cancelForCustomer(code: string, customerId: string, reason: stri
 }
 
 /** Hoàn thành đơn từ ngày trả phòng: tạo Payout (processing) cho provider. */
-export function completeForProvider(code: string, providerProfileId: string) {
+export async function completeForProvider(
+  code: string,
+  providerProfileId: string
+) {
+  const { usdRate } = await systemSettingRepo.getSettings();
   return prisma.$transaction(async (tx) => {
     const id = await lockForProvider(tx, code, providerProfileId, "confirmed");
     const booking = await tx.hotelBooking.findUniqueOrThrow({
@@ -493,8 +512,7 @@ export function completeForProvider(code: string, providerProfileId: string) {
     const receiver = booking.providerProfile.paypalPayerId;
 
     const exchangeRate =
-      booking.payments[0]?.exchangeRate ??
-      new Prisma.Decimal(process.env.PAYPAL_USD_RATE ?? 25_000);
+      booking.payments[0]?.exchangeRate ?? new Prisma.Decimal(usdRate);
 
     const updated = await tx.hotelBooking.update({
       where: { id },

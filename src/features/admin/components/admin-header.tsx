@@ -9,6 +9,7 @@ const crumbLabels: Record<string, string> = {
   "/admin/profile-approval": "Duyệt hồ sơ đối tác",
   "/admin/destinations": "Quản lý địa điểm",
   "/admin/destinations/create": "Tạo mới",
+  "/admin/settings": "Cấu hình hệ thống",
 };
 
 function buildCrumbs(pathname: string) {
