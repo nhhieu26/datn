@@ -1,3 +1,6 @@
+"use client";
+
+import { motion } from "motion/react";
 import Link from "next/link";
 import {
   buildMyBookingsUrl,
@@ -25,13 +28,21 @@ export function MyBookingsTabs({
             href={buildMyBookingsUrl(query, { tab: tab.key })}
             scroll={false}
             aria-current={active ? "page" : undefined}
-            className={`-mb-px whitespace-nowrap border-b-2 px-3 py-3 text-base font-medium transition-colors ${
+            className={`relative -mb-px whitespace-nowrap border-b-2 px-3 py-3 text-base font-medium transition-colors ${
               active
-                ? "border-new-teal-cta text-new-teal-cta"
+                ? "border-transparent text-new-teal-cta"
                 : "border-transparent text-new-title hover:text-new-teal-cta"
             }`}
           >
             {tab.label}
+            {active && (
+              <motion.span
+                aria-hidden
+                className="absolute right-0 -bottom-[2px] left-0 h-[2px] bg-new-teal-cta"
+                layoutId="my-bookings-tab-underline"
+                transition={{ type: "spring", stiffness: 400, damping: 32 }}
+              />
+            )}
           </Link>
         );
       })}

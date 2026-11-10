@@ -1,9 +1,11 @@
 "use client";
 
+import type { Tag } from "@/entities/tag";
+import { FadeIn } from "@/features/customer/components/motion";
+import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import type { Tag } from "@/entities/tag";
 import { InterestsModal } from "./interests-modal";
 
 const navigation = [
@@ -27,7 +29,13 @@ export function CustomerSidebar({
   const initial = fullname.charAt(0).toUpperCase();
 
   return (
-    <aside className="hidden w-[320px] shrink-0 self-start rounded-md bg-new-section-bg p-6 lg:block">
+    <FadeIn
+      className="hidden w-[320px] shrink-0 self-start rounded-md bg-new-section-bg p-6 lg:block"
+      duration={0.45}
+      inView={false}
+      x={-16}
+      y={8}
+    >
       <div className="mb-[30px] flex items-center gap-2.5">
         <div className="flex h-[100px] w-[100px] shrink-0 items-center justify-center overflow-hidden rounded bg-white text-3xl font-semibold text-new-teal-cta">
           {initial}
@@ -39,7 +47,7 @@ export function CustomerSidebar({
           <button
             type="button"
             onClick={() => setInterestsOpen(true)}
-            className="flex items-center gap-1 text-sm font-medium capitalize text-new-teal-cta"
+            className="flex cursor-pointer items-center gap-1 text-sm font-medium capitalize text-new-teal-cta transition-opacity hover:opacity-80"
           >
             cập nhật sở thích
             <span className="material-symbols-outlined text-base">edit</span>
@@ -56,33 +64,43 @@ export function CustomerSidebar({
             <Link
               key={item.label}
               href={item.href}
-              className={`flex items-center gap-2 py-2 transition-colors ${
+              className={`relative flex items-center gap-2 rounded px-2.5 py-2 transition-colors ${
                 active
-                  ? "text-new-teal-cta"
+                  ? "text-new-teal-cta font-semibold"
                   : "text-new-title hover:text-new-teal-cta"
               }`}
             >
+              {active && (
+                <motion.span
+                  aria-hidden
+                  className="absolute inset-0 rounded bg-white shadow-xs"
+                  layoutId="account-sidebar-active"
+                  transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                />
+              )}
               <span
-                className={`material-symbols-outlined text-lg! leading-none ${
+                className={`relative z-10 material-symbols-outlined text-lg! leading-none ${
                   active ? "text-new-teal-cta!" : "text-new-paragraph!"
                 }`}
               >
                 {item.icon}
               </span>
-              <span>{item.label}</span>
+              <span className="relative z-10">{item.label}</span>
             </Link>
           );
         })}
       </nav>
 
-      {interestsOpen && (
-        <InterestsModal
-          onClose={() => setInterestsOpen(false)}
-          onSaved={() => setInterestsOpen(false)}
-          tags={tags}
-          selectedTags={selectedTags}
-        />
-      )}
-    </aside>
+      <AnimatePresence>
+        {interestsOpen && (
+          <InterestsModal
+            onClose={() => setInterestsOpen(false)}
+            onSaved={() => setInterestsOpen(false)}
+            tags={tags}
+            selectedTags={selectedTags}
+          />
+        )}
+      </AnimatePresence>
+    </FadeIn>
   );
 }

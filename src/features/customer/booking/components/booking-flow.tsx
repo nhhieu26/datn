@@ -1,6 +1,8 @@
 "use client";
 
+import { FadeIn } from "@/features/customer/components/motion";
 import { PageBanner } from "@/features/customer/components/page-banner";
+import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import {
@@ -221,42 +223,68 @@ export function BookingFlow({
       </PageBanner>
 
       <section className="page-x py-12">
-        {step === lastStep ? (
-          <CompleteStep
-            awaitingConfirmation={summary.kind === "restaurant"}
-            code={code}
-            contact={contact}
-            summary={summary}
-          />
-        ) : (
-          <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
-            <div>
-              <h3 className="mb-6 text-2xl font-bold text-new-title">
-                {step === 0 ? "Thông tin liên hệ" : "Thanh toán"}
-              </h3>
-              {step === 0 ? (
-                <ContactForm
-                  errors={errors}
-                  onChange={setContact}
-                  values={contact}
-                />
-              ) : (
-                <PaymentStep
-                  agreed={agreed}
-                  error={agreeError}
-                  notice={hold && <HoldCountdown remaining={remaining} />}
-                  onAgreeChange={(v) => {
-                    setAgreed(v);
-                    setAgreeError(undefined);
-                  }}
-                  totalAmount={summary.totalAmount ?? 0}
-                  usdRate={usdRate}
-                />
-              )}
-            </div>
-            <BookingSummaryCard summary={summary}>{action}</BookingSummaryCard>
-          </div>
-        )}
+        <AnimatePresence mode="wait">
+          {step === lastStep ? (
+            <motion.div
+              key="complete"
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -12 }}
+              initial={{ opacity: 0, y: 16, scale: 0.98 }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <CompleteStep
+                awaitingConfirmation={summary.kind === "restaurant"}
+                code={code}
+                contact={contact}
+                summary={summary}
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="form-grid"
+              animate={{ opacity: 1 }}
+              className="grid gap-8 lg:grid-cols-[2fr_1fr]"
+              exit={{ opacity: 0 }}
+              initial={{ opacity: 0 }}
+            >
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={`step-${step}`}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -16 }}
+                  initial={{ opacity: 0, x: 16 }}
+                  transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <h3 className="mb-6 text-2xl font-bold text-new-title">
+                    {step === 0 ? "Thông tin liên hệ" : "Thanh toán"}
+                  </h3>
+                  {step === 0 ? (
+                    <ContactForm
+                      errors={errors}
+                      onChange={setContact}
+                      values={contact}
+                    />
+                  ) : (
+                    <PaymentStep
+                      agreed={agreed}
+                      error={agreeError}
+                      notice={hold && <HoldCountdown remaining={remaining} />}
+                      onAgreeChange={(v) => {
+                        setAgreed(v);
+                        setAgreeError(undefined);
+                      }}
+                      totalAmount={summary.totalAmount ?? 0}
+                      usdRate={usdRate}
+                    />
+                  )}
+                </motion.div>
+              </AnimatePresence>
+              <FadeIn delay={0.1} duration={0.45} inView={false} x={16} y={10}>
+                <BookingSummaryCard summary={summary}>{action}</BookingSummaryCard>
+              </FadeIn>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </section>
     </>
   );

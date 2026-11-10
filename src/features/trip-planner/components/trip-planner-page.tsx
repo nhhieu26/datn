@@ -16,12 +16,14 @@ import {
   MessageScrollerViewport,
 } from "@/components/ui/message-scroller";
 import { QuestionPanel } from "@/features/customer/chat/components/question-panel";
+import { FadeIn } from "@/features/customer/components/motion";
 import { PageBanner } from "@/features/customer/components/page-banner";
 import { formatKm, totals } from "@/features/trip-planner/lib/format";
 import type { Itinerary, TravelMode } from "@/features/trip-planner/lib/itinerary";
 import { saveTrip, takePendingPrompt, type Trip } from "@/features/trip-planner/lib/storage";
 import type { TripChatMessage } from "@/features/trip-planner/lib/tools";
 import { useTrips } from "@/features/trip-planner/lib/use-trips";
+import { AnimatePresence, motion } from "motion/react";
 import { ItineraryList } from "./itinerary-list";
 import { TripMap } from "./trip-map";
 import { TripMessage } from "./trip-message";
@@ -218,7 +220,13 @@ function TripWorkspace({ initialTrip }: { initialTrip: Trip }) {
   return (
     <div className="flex flex-col gap-[30px] lg:flex-row lg:items-start">
       {/* Cột trái: bản đồ + lộ trình */}
-      <aside className="flex min-w-0 flex-col gap-4 rounded-md bg-new-section-bg p-6 lg:h-[740px] lg:flex-1">
+      <FadeIn
+        className="flex min-w-0 flex-col gap-4 rounded-md bg-new-section-bg p-6 lg:h-[740px] lg:flex-1"
+        duration={0.48}
+        inView={false}
+        x={-16}
+        y={8}
+      >
         <div className="flex items-center gap-2">
           <RouteIcon className="size-5 text-new-teal-cta" />
           <h2 className="min-w-0 flex-1 truncate text-lg font-semibold text-new-title">
@@ -231,13 +239,13 @@ function TripWorkspace({ initialTrip }: { initialTrip: Trip }) {
             <ListIcon className="size-4" /> Lộ trình đã lưu
           </Link>
         </div>
-        <div className={listOpen ? "h-[300px] shrink-0 lg:h-[46%]" : "h-[480px] lg:h-auto lg:min-h-0 lg:flex-1"}>
+        <div className={listOpen ? "h-[300px] shrink-0 lg:h-[46%] transition-all duration-300" : "h-[480px] lg:h-auto lg:min-h-0 lg:flex-1 transition-all duration-300"}>
           <TripMap activeIndex={activeIndex} day={day} onSelect={setActiveIndex} />
         </div>
         <button
           aria-controls="trip-itinerary-panel"
           aria-expanded={listOpen}
-          className="-my-1 flex shrink-0 items-center gap-2 rounded bg-white px-3 py-2 text-left text-sm font-semibold text-new-title transition-colors hover:text-new-teal-cta"
+          className="-my-1 flex shrink-0 cursor-pointer items-center gap-2 rounded bg-white px-3 py-2 text-left text-sm font-semibold text-new-title transition-colors hover:text-new-teal-cta"
           onClick={() => setListOpen((open) => !open)}
           type="button"
         >
@@ -249,39 +257,64 @@ function TripWorkspace({ initialTrip }: { initialTrip: Trip }) {
               </span>
             )}
           </span>
-          <ChevronDownIcon className={`size-4 shrink-0 transition-transform ${listOpen ? "" : "rotate-180"}`} />
+          <ChevronDownIcon className={`size-4 shrink-0 transition-transform duration-200 ${listOpen ? "" : "rotate-180"}`} />
         </button>
-        {!listOpen ? null : itinerary ? (
-          <div className="min-h-[320px] flex-1 lg:min-h-0" id="trip-itinerary-panel">
-            <ItineraryList
-              activeIndex={activeIndex}
-              busy={routing || isBusy}
-              days={itinerary.days}
-              mode={trip.mode}
-              onActivate={setActiveIndex}
-              onModeChange={changeMode}
-              onRemove={removeStop}
-              onSelectDay={(i) => {
-                setSelectedDay(i);
-                setActiveIndex(null);
-              }}
-              selectedDay={dayIndex}
-              warnings={warnings}
-            />
-          </div>
-        ) : (
-          <div className="flex flex-1 flex-col justify-center rounded bg-white p-6 text-sm" id="trip-itinerary-panel">
-            <p className="font-semibold text-new-title">Chưa có lộ trình</p>
-            <p className="mt-1">
-              Hãy cho Roamly AI biết bạn muốn đi đâu, bao nhiêu ngày và sở thích. AI sẽ tìm khách sạn, nhà hàng, điểm
-              tham quan trên Google Maps, sắp xếp đủ bữa ăn theo giờ và tối ưu quãng đường thực tế.
-            </p>
-          </div>
-        )}
-      </aside>
+        <AnimatePresence initial={false} mode="wait">
+          {!listOpen ? null : itinerary ? (
+            <motion.div
+              key="itinerary-list"
+              animate={{ opacity: 1, y: 0 }}
+              className="min-h-[320px] flex-1 lg:min-h-0"
+              exit={{ opacity: 0, y: 6 }}
+              id="trip-itinerary-panel"
+              initial={{ opacity: 0, y: 8 }}
+              transition={{ duration: 0.22 }}
+            >
+              <ItineraryList
+                activeIndex={activeIndex}
+                busy={routing || isBusy}
+                days={itinerary.days}
+                mode={trip.mode}
+                onActivate={setActiveIndex}
+                onModeChange={changeMode}
+                onRemove={removeStop}
+                onSelectDay={(i) => {
+                  setSelectedDay(i);
+                  setActiveIndex(null);
+                }}
+                selectedDay={dayIndex}
+                warnings={warnings}
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="itinerary-empty"
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-1 flex-col justify-center rounded bg-white p-6 text-sm"
+              exit={{ opacity: 0, y: 6 }}
+              id="trip-itinerary-panel"
+              initial={{ opacity: 0, y: 8 }}
+              transition={{ duration: 0.22 }}
+            >
+              <p className="font-semibold text-new-title">Chưa có lộ trình</p>
+              <p className="mt-1">
+                Hãy cho Roamly AI biết bạn muốn đi đâu, bao nhiêu ngày và sở thích. AI sẽ tìm khách sạn, nhà hàng, điểm
+                tham quan trên Google Maps, sắp xếp đủ bữa ăn theo giờ và tối ưu quãng đường thực tế.
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </FadeIn>
 
       {/* Khung chat */}
-      <div className="flex h-[740px] max-h-[calc(100dvh-6rem)] min-h-[540px] w-full flex-col rounded-md bg-new-section-bg p-6 lg:w-[480px] lg:shrink-0 xl:w-[520px]">
+      <FadeIn
+        className="flex h-[740px] max-h-[calc(100dvh-6rem)] min-h-[540px] w-full flex-col rounded-md bg-new-section-bg p-6 lg:w-[480px] lg:shrink-0 xl:w-[520px]"
+        delay={0.08}
+        duration={0.5}
+        inView={false}
+        x={16}
+        y={8}
+      >
         <div className="mb-4 flex items-center gap-2">
           <SparklesIcon className="size-5 text-new-teal-cta" />
           <h1 className="text-lg font-semibold text-new-title">Lập lộ trình cùng Roamly AI</h1>
@@ -402,7 +435,7 @@ function TripWorkspace({ initialTrip }: { initialTrip: Trip }) {
             </>
           )}
         </div>
-      </div>
+      </FadeIn>
     </div>
   );
 }
