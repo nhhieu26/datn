@@ -164,6 +164,15 @@ export function findById(
   return prisma.providerProfile.findFirst({ where: { id, userId } });
 }
 
+export function findDetailById(id: string, userId: string) {
+  return prisma.providerProfile.findFirst({
+    where: { id, userId },
+    include: {
+      _count: { select: { tours: true, hotels: true, restaurants: true } },
+    },
+  });
+}
+
 export function update(
   id: string,
   input: UpdateProviderProfileInput & {
@@ -182,6 +191,61 @@ export function update(
       website: website || null,
     },
   });
+}
+
+/**
+ * Xóa hồ sơ nếu không còn dịch vụ (chưa xóa mềm), booking hay payout nào.
+ * Kiểm tra và xóa trong một câu lệnh. Trả về 0 nếu không tìm thấy hoặc còn ràng buộc.
+ */
+export async function removeIfUnused(
+  id: string,
+  userId: string
+): Promise<number> {
+  const { count } = await prisma.providerProfile.deleteMany({
+    where: {
+      id,
+      userId,
+      tours: { none: { deletedAt: null } },
+      hotels: { none: { deletedAt: null } },
+      restaurants: { none: { deletedAt: null } },
+      tourBookings: { none: {} },
+      hotelBookings: { none: {} },
+      restaurantBookings: { none: {} },
+      payouts: { none: {} },
+    },
+  });
+  return count;
+}
+
+/** Đếm những thứ đang chặn việc xóa hồ sơ, để báo lý do cho provider. */
+export async function findDeletionBlockers(id: string, userId: string) {
+  const profile = await prisma.providerProfile.findFirst({
+    where: { id, userId },
+    select: {
+      _count: {
+        select: {
+          tours: { where: { deletedAt: null } },
+          hotels: { where: { deletedAt: null } },
+          restaurants: { where: { deletedAt: null } },
+          tourBookings: true,
+          hotelBookings: true,
+          restaurantBookings: true,
+          payouts: true,
+        },
+      },
+    },
+  });
+  if (!profile) return null;
+
+  const count = profile._count;
+  return {
+    services: count.tours + count.hotels + count.restaurants,
+    transactions:
+      count.tourBookings +
+      count.hotelBookings +
+      count.restaurantBookings +
+      count.payouts,
+  };
 }
 
 export function linkPayPal(

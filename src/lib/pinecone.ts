@@ -97,6 +97,35 @@ export async function clearDestinationEmbeddings(): Promise<void> {
   await getDestinationIndex().deleteAll();
 }
 
+type EmbeddingIndex = ReturnType<typeof getTourIndex>;
+
+/**
+ * Đổi metadata `status` của nhiều record mà không tạo lại vector.
+ * Trả về các id cập nhật thất bại (ví dụ record chưa từng được tạo).
+ */
+async function updateEmbeddingStatus(
+  index: EmbeddingIndex,
+  ids: string[],
+  status: string
+): Promise<string[]> {
+  const results = await Promise.allSettled(
+    ids.map((id) => index.update({ id, metadata: { status } }))
+  );
+  return ids.filter((_, i) => results[i].status === "rejected");
+}
+
+export function setTourEmbeddingStatus(ids: string[], status: string) {
+  return updateEmbeddingStatus(getTourIndex(), ids, status);
+}
+
+export function setHotelEmbeddingStatus(ids: string[], status: string) {
+  return updateEmbeddingStatus(getHotelIndex(), ids, status);
+}
+
+export function setRestaurantEmbeddingStatus(ids: string[], status: string) {
+  return updateEmbeddingStatus(getRestaurantIndex(), ids, status);
+}
+
 function buildProvinceFilter(provinceIds?: string[]) {
   if (!provinceIds?.length) return {};
   return {

@@ -1,9 +1,6 @@
 import type { TourForProvider, TourWithRelations } from "@/entities/tour";
 import { TourListItem, ToursSummary } from "./types";
-import type {
-  ItineraryDay,
-  TourFormState,
-} from "./components/tour-form";
+import type { ItineraryDay, TourFormState } from "./components/tour-form";
 import { formatEntityCode } from "@/lib/utils";
 
 const FALLBACK_IMAGE = "/image-notfound.png";
@@ -11,8 +8,14 @@ const FALLBACK_IMAGE = "/image-notfound.png";
 export function getToursSummary(tours: TourListItem[]): ToursSummary {
   return {
     total: tours.length,
-    published: tours.filter((tour) => tour.status === "published").length,
-    inactive: tours.filter((tour) => tour.status === "paused").length,
+    published: tours.filter(
+      (tour) => tour.status === "published" && tour.deleteScheduledAt === null,
+    ).length,
+    paused: tours.filter(
+      (tour) => tour.status === "paused" && tour.deleteScheduledAt === null,
+    ).length,
+    pendingDeletion: tours.filter((tour) => tour.deleteScheduledAt !== null)
+      .length,
   };
 }
 
@@ -94,7 +97,13 @@ export function mapTourToFormValues(tour: TourWithRelations): TourFormState {
     excludeServices: tour.excludeServices,
     photos: images.flatMap((image) =>
       typeof image?.url === "string" && typeof image?.fileId === "string"
-        ? [{ kind: "existing" as const, fileId: image.fileId, previewUrl: image.url }]
+        ? [
+            {
+              kind: "existing" as const,
+              fileId: image.fileId,
+              previewUrl: image.url,
+            },
+          ]
         : [],
     ),
     itinerary:

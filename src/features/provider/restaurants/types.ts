@@ -22,5 +22,7 @@ export type RestaurantListItem = {
 export type RestaurantsSummary = {
   total: number;
   published: number;
-  inactive: number;
+  /** Tạm dừng thủ công, không tính dịch vụ đang chờ xóa. */
+  paused: number;
+  pendingDeletion: number;
 };

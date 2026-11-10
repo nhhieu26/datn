@@ -4,19 +4,23 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { formatDate } from "@/lib/utils";
-import { deleteHotelAction } from "../actions";
+import { deleteHotelsAction } from "../actions";
 import type { HotelListItem } from "../types";
 import { HotelIcon } from "./hotel-icon";
 
 const HOTEL_DELETE_GRACE_DAYS = 30;
 
 export function DeleteHotelDialog({
-  hotel,
+  hotels,
   onClose,
+  onDeleted,
 }: {
-  hotel: HotelListItem;
+  hotels: HotelListItem[];
   onClose: () => void;
+  /** Gọi sau khi xóa thành công, với id các khách sạn đã gửi xóa. */
+  onDeleted?: (ids: string[]) => void;
 }) {
+  const isMany = hotels.length > 1;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
@@ -36,11 +40,13 @@ export function DeleteHotelDialog({
     event.preventDefault();
     setError("");
     startTransition(async () => {
-      const result = await deleteHotelAction(hotel.id);
+      const ids = hotels.map((item) => item.id);
+      const result = await deleteHotelsAction(ids);
       if (result.status !== "success") {
         setError(result.formError ?? "Không thể xóa khách sạn.");
         return;
       }
+      onDeleted?.(ids);
       router.refresh();
       onClose();
     });
@@ -70,11 +76,22 @@ export function DeleteHotelDialog({
           className="text-lg font-bold text-slate-900"
           id="delete-hotel-heading"
         >
-          Dừng và xóa khách sạn?
+          {isMany ? `Dừng và xóa ${hotels.length} khách sạn?` : "Dừng và xóa khách sạn?"}
         </h2>
         <p className="mt-1 text-xs font-semibold text-brand-600">
-          {hotel.code} · {hotel.name}
+          {isMany
+            ? `${hotels.length} khách sạn đã chọn`
+            : `${hotels[0].code} · ${hotels[0].name}`}
         </p>
+        {isMany ? (
+          <ul className="mt-2 max-h-28 space-y-0.5 overflow-y-auto rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600">
+            {hotels.map((item) => (
+              <li className="truncate" key={item.id}>
+                <span className="font-mono">{item.code}</span> · {item.name}
+              </li>
+            ))}
+          </ul>
+        ) : null}
 
         <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-sm text-amber-800">
           Khách sạn sẽ <span className="font-semibold">dừng hoạt động ngay</span> và{" "}

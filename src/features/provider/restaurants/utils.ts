@@ -9,15 +9,21 @@ import type { RestaurantFormState } from "./components/restaurant-form";
 const FALLBACK_IMAGE = "/image-notfound.png";
 
 export function getRestaurantsSummary(
-  restaurants: RestaurantListItem[]
+  restaurants: RestaurantListItem[],
 ): RestaurantsSummary {
   return {
     total: restaurants.length,
     published: restaurants.filter(
-      (restaurant) => restaurant.status === "published"
+      (restaurant) =>
+        restaurant.status === "published" &&
+        restaurant.deleteScheduledAt === null,
     ).length,
-    inactive: restaurants.filter(
-      (restaurant) => restaurant.status === "paused"
+    paused: restaurants.filter(
+      (restaurant) =>
+        restaurant.status === "paused" && restaurant.deleteScheduledAt === null,
+    ).length,
+    pendingDeletion: restaurants.filter(
+      (restaurant) => restaurant.deleteScheduledAt !== null,
     ).length,
   };
 }
@@ -30,8 +36,12 @@ function extractImageUrl(images: unknown): string {
   return FALLBACK_IMAGE;
 }
 
-function extractMenuItems(menu: unknown): { name?: unknown; price?: unknown }[] {
-  return Array.isArray(menu) ? (menu as { name?: unknown; price?: unknown }[]) : [];
+function extractMenuItems(
+  menu: unknown,
+): { name?: unknown; price?: unknown }[] {
+  return Array.isArray(menu)
+    ? (menu as { name?: unknown; price?: unknown }[])
+    : [];
 }
 
 function findLowestMenuPrice(menu: unknown): number | null {
@@ -43,7 +53,7 @@ function findLowestMenuPrice(menu: unknown): number | null {
 }
 
 export function mapRestaurantToListItem(
-  restaurant: RestaurantForProviderList
+  restaurant: RestaurantForProviderList,
 ): RestaurantListItem {
   const menuItems = extractMenuItems(restaurant.menu);
 
@@ -68,7 +78,7 @@ export function mapRestaurantToListItem(
 }
 
 export function mapRestaurantToFormValues(
-  restaurant: RestaurantWithRelations
+  restaurant: RestaurantWithRelations,
 ): RestaurantFormState {
   const images = Array.isArray(restaurant.images)
     ? (restaurant.images as { url?: unknown; fileId?: unknown }[])
@@ -105,13 +115,14 @@ export function mapRestaurantToFormValues(
               previewUrl: image.url,
             },
           ]
-        : []
+        : [],
     ),
     menu: menu.map((item) => {
       const price = Number(item.price);
       return {
         name: typeof item.name === "string" ? item.name : "",
-        description: typeof item.description === "string" ? item.description : "",
+        description:
+          typeof item.description === "string" ? item.description : "",
         price: Number.isFinite(price) ? String(price) : "",
       };
     }),
