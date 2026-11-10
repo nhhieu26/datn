@@ -726,7 +726,11 @@ export function HotelsManager({ hotels }: { hotels: HotelListItem[] }) {
         <DeleteHotelDialog
           hotels={deletingHotels}
           onClose={() => setDeletingHotels(null)}
-          onDeleted={(ids) => selection.setGroup(ids, false)}
+          onDeleted={(ids) => {
+            selection.setGroup(ids, false);
+            setActionError("");
+            setActionNotice(`Đã dừng và hẹn xóa ${ids.length} khách sạn.`);
+          }}
         />
       ) : null}
     </div>

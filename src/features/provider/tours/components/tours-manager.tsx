@@ -697,7 +697,11 @@ export function ToursManager({ tours }: { tours: TourListItem[] }) {
         <DeleteTourDialog
           tours={deletingTours}
           onClose={() => setDeletingTours(null)}
-          onDeleted={(ids) => selection.setGroup(ids, false)}
+          onDeleted={(ids) => {
+            selection.setGroup(ids, false);
+            setActionError("");
+            setActionNotice(`Đã dừng và hẹn xóa ${ids.length} tour.`);
+          }}
         />
       ) : null}
     </div>
