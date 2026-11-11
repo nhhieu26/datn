@@ -119,8 +119,13 @@ export function ArticleForm({
 
   // Đồng bộ khi server action trả kết quả mới (cập nhật state trong lúc render, không dùng effect)
   const [handledState, setHandledState] = useState(state);
+  // Trường đã sửa sau lần gửi gần nhất: ẩn lỗi cũ của trường đó
+  const [editedFields, setEditedFields] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   if (state !== handledState) {
     setHandledState(state);
+    setEditedFields(new Set());
     if (state.status === "success") {
       setShowSaved(true);
       setSavedStatus(form.status);
@@ -143,13 +148,23 @@ export function ArticleForm({
     return () => URL.revokeObjectURL(newCover.url);
   }, [newCover]);
 
-  const pickCover = (file: File | undefined) =>
+  const markEdited = (field: string) =>
+    setEditedFields((prev) =>
+      prev.has(field) ? prev : new Set(prev).add(field),
+    );
+
+  const pickCover = (file: File | undefined) => {
     setNewCover(file ? { file, url: URL.createObjectURL(file) } : null);
+    markEdited("cover");
+  };
 
   const update = <K extends keyof ArticleFormValues>(
     key: K,
     value: ArticleFormValues[K],
-  ) => setForm((prev) => ({ ...prev, [key]: value }));
+  ) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    markEdited(key);
+  };
 
   const toggleTag = (id: string) =>
     update(
@@ -173,7 +188,12 @@ export function ArticleForm({
     startTransition(() => formAction(fd));
   };
 
-  const errors = state.status === "error" ? state.fieldErrors : undefined;
+  const pendingErrors = Object.entries(
+    state.status === "error" ? (state.fieldErrors ?? {}) : {},
+  ).filter(([field]) => !editedFields.has(field));
+  const errors = pendingErrors.length
+    ? Object.fromEntries(pendingErrors)
+    : undefined;
 
   return (
     <div className="mx-auto w-full max-w-340 space-y-4 p-4 sm:space-y-6 sm:p-6">
