@@ -17,6 +17,7 @@ import {
   stepLabels,
 } from "@/features/customer/booking/lib/booking-labels";
 import { PageBanner } from "@/features/customer/components/page-banner";
+import { invoiceHref } from "@/features/invoice/links";
 import { auth } from "@/lib/auth";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -193,16 +194,27 @@ export default async function BookingResultPage({ params }: Props) {
   let content: React.ReactNode;
   if (paid) {
     content = (
-      <CompleteStep
-        code={booking.code}
-        contact={{
-          contactName: booking.contactName,
-          contactEmail: booking.contactEmail,
-          contactPhone: booking.contactPhone,
-          note: booking.note ?? "",
-        }}
-        summary={summary}
-      />
+      <>
+        <CompleteStep
+          code={booking.code}
+          contact={{
+            contactName: booking.contactName,
+            contactEmail: booking.contactEmail,
+            contactPhone: booking.contactPhone,
+            note: booking.note ?? "",
+          }}
+          summary={summary}
+        />
+        <div className="mt-8 text-center">
+          <Link
+            className="inline-flex items-center gap-2 rounded border border-new-teal px-6 py-3 font-bold text-new-teal transition-colors hover:bg-new-teal hover:text-white"
+            href={invoiceHref.customer(booking.code)}
+          >
+            <span aria-hidden className="material-symbols-outlined">receipt_long</span>
+            Xem hóa đơn
+          </Link>
+        </div>
+      </>
     );
   } else if (
     booking.status === "pending_payment" &&

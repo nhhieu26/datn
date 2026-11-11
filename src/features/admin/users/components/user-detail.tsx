@@ -11,6 +11,7 @@ import {
   StatusBadge,
 } from "@/features/admin/profile-approval/components/approval-shared";
 import { SettingsToast } from "@/features/admin/settings/components/settings-shared";
+import { hasInvoice, invoiceHref } from "@/features/invoice/links";
 import { getBookingStatusMeta } from "@/features/provider/tour-bookings/utils";
 import {
   formatCurrency,
@@ -270,6 +271,14 @@ export function UserDetail({
                                   <span className="font-mono text-xs text-muted-foreground-1">
                                     {booking.code}
                                   </span>
+                                  {hasInvoice(booking.code, booking.status) && (
+                                    <Link
+                                      className="text-xs font-medium text-primary hover:underline"
+                                      href={invoiceHref.admin(booking.code)}
+                                    >
+                                      Hóa đơn
+                                    </Link>
+                                  )}
                                 </div>
                               </td>
                               <td className="px-4 py-3 align-middle">

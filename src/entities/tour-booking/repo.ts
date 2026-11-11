@@ -10,6 +10,7 @@ import {
   hasTourEnded,
 } from "@/lib/utils";
 import { ConflictError, NotFoundError } from "@/shared/lib/errors";
+import { invoiceScopeWhere, type InvoiceScope } from "@/shared/lib/invoice-scope";
 import type {
   CreateTourBookingInput,
   TourBookingDetail,
@@ -138,6 +139,21 @@ export function findByCodeForCustomer(
         include: { tour: { select: { slug: true, province: true } } },
       },
       payments: { orderBy: { createdAt: "desc" } },
+    },
+  });
+}
+
+/** Booking kèm dữ liệu in hóa đơn, lọc theo phạm vi quyền của người xem. */
+export function findInvoiceByCode(code: string, scope: InvoiceScope) {
+  return prisma.tourBooking.findFirst({
+    where: { code, ...invoiceScopeWhere(scope) },
+    include: {
+      customer: { select: { fullname: true, email: true, phone: true } },
+      providerProfile: {
+        select: { businessName: true, address: true, taxCode: true, signatureUrl: true },
+      },
+      payments: { orderBy: { createdAt: "desc" } },
+      refunds: true,
     },
   });
 }

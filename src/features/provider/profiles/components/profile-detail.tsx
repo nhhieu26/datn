@@ -6,6 +6,7 @@ import { getServiceMeta } from "../../utils";
 import { DeleteProfileButton } from "./delete-profile-button";
 import { ServiceBadge, StatusBadge } from "./profile-badges";
 import { ProfileIcon, type ProfileIconName } from "./profile-icon";
+import { SignaturePad } from "./signature-pad";
 
 const layerButtonClass =
   "inline-flex items-center justify-center gap-x-2 rounded-lg border border-layer-line bg-layer text-sm font-medium text-layer-foreground shadow-2xs hover:bg-layer-hover focus:bg-layer-focus focus:outline-hidden";
@@ -289,6 +290,10 @@ export function ProfileDetail({
                 {formatDate(profile.paypalLinkedAt)}
               </InfoRow>
             </dl>
+          </Card>
+
+          <Card title="Chữ ký trên hóa đơn" icon="edit">
+            <SignaturePad profileId={profile.id} signatureUrl={profile.signatureUrl} />
           </Card>
 
           <Card title="Mốc thời gian" icon="clock">

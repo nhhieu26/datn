@@ -600,3 +600,41 @@ body {
 .roamly-popup-star-icon.is-filled {
   font-variation-settings: 'FILL' 1 !important;
 }
+
+/* In hóa đơn: chỉ giữ .invoice-sheet, ẩn sidebar/header/footer của mọi layout. */
+@media print {
+  @page {
+    margin: 12mm;
+  }
+
+  body:has(.invoice-sheet) {
+    background: #fff !important;
+  }
+
+  /* Ẩn mọi nhánh không chứa hóa đơn */
+  body:has(.invoice-sheet) *:not(:has(.invoice-sheet)):not(.invoice-sheet):not(.invoice-sheet *) {
+    display: none !important;
+  }
+
+  /* Tổ tiên của hóa đơn: bỏ khung cuộn, khoảng đệm và nền để in trọn trang */
+  body:has(.invoice-sheet) *:has(.invoice-sheet) {
+    position: static !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .invoice-sheet {
+    max-width: none !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}

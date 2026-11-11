@@ -281,3 +281,78 @@ export async function deleteProviderProfileAction(
   }
   return result;
 }
+
+const MAX_SIGNATURE_SIZE = 2 * 1024 * 1024;
+const ALLOWED_SIGNATURE_TYPES = ["image/png", "image/jpeg", "image/webp"];
+
+async function requireOwnProfile(profileId: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new UnauthenticatedError();
+  }
+  if (session.user.role !== "provider") {
+    throw new ForbiddenError("Chỉ tài khoản đối tác mới có thể quản lý chữ ký.");
+  }
+  const existing = await providerProfileRepo.findById(profileId, session.user.id);
+  if (!existing) {
+    throw new NotFoundError("Không tìm thấy hồ sơ.");
+  }
+  return { userId: session.user.id, existing };
+}
+
+async function safeDeleteImage(fileId: string | null) {
+  if (!fileId) return;
+  try {
+    await deleteImage(fileId);
+  } catch {
+    // ignore: ảnh mồ côi không ảnh hưởng tới người dùng
+  }
+}
+
+/** Lưu chữ ký (ảnh vẽ tay hoặc tải lên) dùng để in trên hóa đơn. */
+export async function saveProviderSignatureAction(
+  profileId: string,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const result = await runAction<undefined>(async () => {
+    const { userId, existing } = await requireOwnProfile(profileId);
+
+    const file = formData.get("signature");
+    if (!(file instanceof File) || file.size === 0) {
+      throw new ValidationError({ signature: ["Vui lòng vẽ hoặc chọn ảnh chữ ký."] });
+    }
+    if (!ALLOWED_SIGNATURE_TYPES.includes(file.type) || file.size > MAX_SIGNATURE_SIZE) {
+      throw new ValidationError({
+        signature: ["Ảnh chữ ký phải là PNG/JPG/WebP và dưới 2MB."],
+      });
+    }
+
+    const uploaded = await uploadImage(file, `provider-profiles/${userId}/signature`);
+    await providerProfileRepo.updateSignature(profileId, userId, {
+      signatureUrl: uploaded.url,
+      signatureFileId: uploaded.fileId,
+    });
+    await safeDeleteImage(existing.signatureFileId);
+  });
+
+  if (result.status === "success") {
+    revalidatePath(`/provider/profiles/${profileId}`);
+  }
+  return result;
+}
+
+export async function removeProviderSignatureAction(
+  profileId: string
+): Promise<ActionState> {
+  const result = await runAction<undefined>(async () => {
+    const { userId, existing } = await requireOwnProfile(profileId);
+    await providerProfileRepo.updateSignature(profileId, userId, null);
+    await safeDeleteImage(existing.signatureFileId);
+  });
+
+  if (result.status === "success") {
+    revalidatePath(`/provider/profiles/${profileId}`);
+  }
+  return result;
+}

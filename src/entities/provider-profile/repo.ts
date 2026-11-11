@@ -164,6 +164,20 @@ export function findById(
   return prisma.providerProfile.findFirst({ where: { id, userId } });
 }
 
+/** Cập nhật / xóa (null) chữ ký in trên hóa đơn — không ảnh hưởng trạng thái duyệt. */
+export function updateSignature(
+  id: string,
+  userId: string,
+  signature: { signatureUrl: string; signatureFileId: string } | null
+) {
+  return prisma.providerProfile.updateMany({
+    where: { id, userId },
+    data: signature
+      ? { ...signature, signatureUpdatedAt: new Date() }
+      : { signatureUrl: null, signatureFileId: null, signatureUpdatedAt: null },
+  });
+}
+
 export function findDetailById(id: string, userId: string) {
   return prisma.providerProfile.findFirst({
     where: { id, userId },

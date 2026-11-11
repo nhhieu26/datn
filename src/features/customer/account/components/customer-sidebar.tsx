@@ -9,6 +9,7 @@ import { useState } from "react";
 import { InterestsModal } from "./interests-modal";
 
 const navigation = [
+  { label: "Tổng quan", icon: "dashboard", href: "/dashboard" },
   { label: "Hồ sơ của tôi", icon: "person", href: "/profile" },
   { label: "Đơn đặt tour", icon: "tour", href: "/my-bookings" },
   { label: "Đơn đặt phòng", icon: "hotel", href: "/my-hotel-bookings" },
