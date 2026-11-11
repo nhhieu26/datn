@@ -285,3 +285,19 @@ export function findNamesByIds(ids: string[]) {
     select: { id: true, businessName: true, businessType: true },
   });
 }
+
+/** Hồ sơ đối tác đang chờ duyệt, gửi gần nhất trước (dashboard admin). */
+export function findRecentPending(take: number) {
+  return prisma.providerProfile.findMany({
+    where: { approvalStatus: "pending" },
+    select: {
+      id: true,
+      businessName: true,
+      businessType: true,
+      updatedAt: true,
+      user: { select: { fullname: true } },
+    },
+    orderBy: { updatedAt: "desc" },
+    take,
+  });
+}
