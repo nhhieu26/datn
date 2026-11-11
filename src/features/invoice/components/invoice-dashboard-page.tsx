@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { InvoiceData } from "../types";
-import { InvoiceActions } from "./invoice-actions";
 import { InvoiceSheet } from "./invoice-sheet";
 
 /** Khung trang hóa đơn trong layout quản trị (nhà cung cấp / admin). */
@@ -26,7 +25,6 @@ export function InvoiceDashboardPage({
           </Link>
         </div>
         <InvoiceSheet invoice={invoice} />
-        <InvoiceActions />
       </div>
     </main>
   );

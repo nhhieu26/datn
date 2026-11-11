@@ -1,4 +1,4 @@
-import { getInvoice, InvoiceActions, InvoiceSheet } from "@/features/invoice";
+import { getInvoice, InvoiceSheet } from "@/features/invoice";
 import { auth } from "@/lib/auth";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -19,8 +19,8 @@ export default async function CustomerInvoicePage({
   if (!invoice) notFound();
 
   return (
-    <main className="bg-new-section-bg px-4 py-10 sm:py-14">
-      <div className="mx-auto mb-5 flex max-w-205 items-center justify-between print:hidden">
+    <main className="bg-[#f8f9fc] px-4 py-10 sm:py-14">
+      <div className="mx-auto mb-5 flex max-w-220 items-center justify-between print:hidden">
         <Link
           className="inline-flex items-center gap-1 text-sm font-medium text-new-teal-cta hover:underline"
           href={`/bookings/${encodeURIComponent(invoice.code)}`}
@@ -30,9 +30,6 @@ export default async function CustomerInvoicePage({
         </Link>
       </div>
       <InvoiceSheet invoice={invoice} />
-      <div className="mt-6">
-        <InvoiceActions />
-      </div>
     </main>
   );
 }
