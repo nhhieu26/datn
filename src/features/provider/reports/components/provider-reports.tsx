@@ -7,7 +7,7 @@ import {
   usersIcon,
 } from "../../dashboard/components/provider-dashboard";
 import { RevenueChart } from "../../dashboard/components/revenue-chart";
-import type { ReportQuery } from "../search-params";
+import { buildReportUrl, REPORT_PATH, type ReportQuery } from "../search-params";
 import type { ReportData, ReportStatKey } from "../types";
 import { ReportExportButton } from "./report-export-button";
 import { ReportRangeDropdown } from "./report-range-dropdown";
@@ -54,7 +54,13 @@ export function ProviderReports({ data, query }: { data: ReportData; query: Repo
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <ReportRangeDropdown
-            kind={data.kind}
+            presetHrefs={{
+              "7d": buildReportUrl(data.kind, "7d"),
+              "30d": buildReportUrl(data.kind, "30d"),
+              "12m": buildReportUrl(data.kind, "12m"),
+            }}
+            action={REPORT_PATH}
+            hiddenFields={{ type: data.kind }}
             range={query.range}
             label={data.periodLabel}
             from={query.from}

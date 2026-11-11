@@ -490,3 +490,28 @@ export async function findRecentActivityForProvider(providerProfileId: string, t
   ]);
   return { created, cancelled };
 }
+
+// ---- Báo cáo toàn sàn (admin) ----
+
+/** Đơn đặt bàn tạo trong khoảng thời gian, kèm tỉnh/thành của nhà hàng; không có tiền. */
+export async function findAdminReportRows(range: { from: Date; to: Date }) {
+  const rows = await prisma.restaurantBooking.findMany({
+    where: createdIn(range),
+    select: {
+      createdAt: true,
+      status: true,
+      guests: true,
+      providerProfileId: true,
+      restaurant: { select: { provinceId: true } },
+    },
+  });
+  return rows.map((row) => ({
+    createdAt: row.createdAt,
+    status: row.status,
+    guests: row.guests,
+    totalAmount: 0,
+    platformFee: 0,
+    providerProfileId: row.providerProfileId,
+    provinceId: row.restaurant?.provinceId ?? null,
+  }));
+}

@@ -262,3 +262,26 @@ export function linkPayPal(
     },
   });
 }
+
+/** Số hồ sơ đối tác theo trạng thái duyệt (báo cáo admin). */
+export async function countByApprovalStatus() {
+  const rows = await prisma.providerProfile.groupBy({
+    by: ["approvalStatus"],
+    _count: { _all: true },
+  });
+  const counts: Record<ApprovalStatus, number> = {
+    not_submitted: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+  };
+  for (const row of rows) counts[row.approvalStatus] = row._count._all;
+  return counts;
+}
+
+export function findNamesByIds(ids: string[]) {
+  return prisma.providerProfile.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, businessName: true, businessType: true },
+  });
+}
