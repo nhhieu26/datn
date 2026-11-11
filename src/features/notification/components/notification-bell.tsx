@@ -16,6 +16,7 @@ import {
   FileCheck2,
   FileClock,
   FileX2,
+  MessageSquare,
   Sparkles,
   Star,
   XCircle,
@@ -80,6 +81,11 @@ function getTypeVisual(type: NotificationType) {
       return {
         icon: FileX2,
         bgClass: "bg-rose-50 text-rose-600",
+      };
+    case "article_comment_created":
+      return {
+        icon: MessageSquare,
+        bgClass: "bg-teal-50 text-teal-600",
       };
     case "transfer_failed":
       return {

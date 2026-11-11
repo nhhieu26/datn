@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { label: "Điểm đến", href: "/explore?kind=destination", kind: "destination" },
   { label: "Nhà hàng", href: "/explore?kind=restaurant", kind: "restaurant" },
   { label: "Lộ trình", href: "/trip-planner", kind: "trip" },
+  { label: "Bài viết", href: "/articles", kind: "articles" },
 ];
 
 const itemClass =
@@ -33,7 +34,9 @@ export function HeaderNavLinks() {
             ? pathname === "/"
             : item.kind === "trip"
               ? pathname.startsWith("/trip-planner")
-              : pathname === "/explore" && kind === item.kind;
+              : item.kind === "articles"
+                ? pathname.startsWith("/articles")
+                : pathname === "/explore" && kind === item.kind;
         return (
           <div
             key={item.href}

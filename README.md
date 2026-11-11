@@ -14,6 +14,7 @@
 - Quản lý đơn, xem/in hóa đơn, viết đánh giá sau khi sử dụng dịch vụ, bảng điều khiển tài khoản.
 - **Roamly AI** (`/chat`): chatbot tư vấn, tìm tour và địa điểm (dữ liệu nội bộ + Google Places + tìm kiếm web).
 - **Lập lịch trình AI** (`/trip-planner`): AI sinh lịch trình theo ngày, tính lộ trình và quãng đường thực tế bằng Google Routes.
+- **Bài viết** (`/articles`): cẩm nang, giới thiệu điểm đến, ẩm thực, kinh nghiệm du lịch; lọc theo danh mục, tìm kiếm, chia sẻ và bình luận (cần đăng nhập).
 
 ### Nhà cung cấp (`/provider`)
 - Tạo hồ sơ doanh nghiệp (chờ quản trị viên duyệt), liên kết tài khoản PayPal nhận tiền, chữ ký trên hóa đơn.
@@ -22,6 +23,7 @@
 
 ### Quản trị viên (`/admin`)
 - Dashboard tổng quan, duyệt hồ sơ nhà cung cấp, quản lý người dùng và điểm đến.
+- Quản lý bài viết giới thiệu (`/admin/articles`): soạn thảo rich text (Tiptap) có chèn ảnh, nháp/xuất bản, ẩn/xoá bình luận.
 - Báo cáo & thống kê (xuất Excel), cấu hình hệ thống (hoa hồng sàn, nội dung trang giới thiệu…).
 
 ### Mô hình thanh toán

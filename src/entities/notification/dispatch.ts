@@ -535,3 +535,33 @@ export function notifyWebhookTransferFailed(input: {
     }
   });
 }
+
+/**
+ * Khi Khách hàng bình luận một bài viết giới thiệu:
+ * - Gửi thông báo cho tất cả Quản trị viên để kiểm duyệt (ẩn/xoá nếu cần).
+ * Bình luận do chính quản trị viên viết thì không cần thông báo.
+ */
+export function notifyArticleCommentCreated(input: {
+  articleId: string;
+  articleTitle: string;
+  commentId: string;
+  commenterName: string;
+  commenterRole: string;
+  content: string;
+}) {
+  return notifySafe(async () => {
+    if (input.commenterRole === "admin") return;
+    const preview =
+      input.content.length > 120
+        ? `${input.content.slice(0, 117)}…`
+        : input.content;
+
+    await notificationRepo.notifyAdmins({
+      type: "article_comment_created",
+      title: `Bình luận mới: "${input.articleTitle}"`,
+      message: `${input.commenterName}: ${preview}`,
+      href: `/admin/articles/${encodeURIComponent(input.articleId)}/edit#comments`,
+      metadata: { articleId: input.articleId, commentId: input.commentId },
+    });
+  });
+}
