@@ -72,7 +72,7 @@ export function findPublishedBySlug(
 export function findPublishedRefById(id: string) {
   return prisma.article.findFirst({
     where: { id, ...published },
-    select: { id: true, slug: true },
+    select: { id: true, slug: true, title: true },
   });
 }
 

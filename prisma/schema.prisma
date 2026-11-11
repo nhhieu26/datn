@@ -701,6 +701,7 @@ enum NotificationType {
   profile_approved
   profile_rejected
   transfer_failed
+  article_comment_created
 }
 
 model Notification {

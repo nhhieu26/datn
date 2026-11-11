@@ -35,7 +35,7 @@ export function ArticleCommentsPanel({
   };
 
   return (
-    <div className="mx-auto w-full max-w-340 px-4 pb-6 sm:px-6">
+    <div className="mx-auto w-full max-w-340 scroll-mt-6 px-4 pb-6 sm:px-6" id="comments">
       <div className={cardClass}>
         <div className="border-b border-card-divider px-4 py-3 md:px-5">
           <h2 className="font-semibold text-foreground">
