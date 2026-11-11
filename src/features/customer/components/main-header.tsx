@@ -53,9 +53,9 @@ export async function MainHeader() {
 
           {session?.user && (
             <Link
-              aria-label="Hồ sơ của tôi"
+              aria-label="Tài khoản của tôi"
               className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-300 text-gray-700 hover:text-new-coral transition"
-              href="/profile"
+              href="/dashboard"
             >
               <svg
                 className="w-4 h-4"
