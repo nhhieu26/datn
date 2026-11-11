@@ -226,12 +226,14 @@ export function SignaturePad({
         </p>
         {signatureUrl ? (
           <div className="flex items-center justify-between gap-3 rounded-lg border border-card-line bg-white p-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              alt="Chữ ký hiện tại"
-              className="h-16 max-w-[70%] object-contain"
-              src={signatureUrl}
-            />
+            <div className="flex h-16 min-w-0 flex-1 items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                alt="Chữ ký hiện tại"
+                className="max-h-full max-w-full object-contain"
+                src={signatureUrl}
+              />
+            </div>
             <button
               className={layerButtonClass}
               disabled={isRemoving || isSaving}
