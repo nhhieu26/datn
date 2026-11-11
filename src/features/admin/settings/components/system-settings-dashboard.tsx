@@ -9,7 +9,11 @@ import { OperationalSettingsTab } from "./operational-settings-tab";
 import { PlatformInfoTab } from "./platform-info-tab";
 import { SettingsToast } from "./settings-shared";
 
-const TABS: { id: SettingsTabId; label: string; badge?: (d: SystemSettingsPageData) => string }[] = [
+const TABS: {
+  id: SettingsTabId;
+  label: string;
+  badge?: (d: SystemSettingsPageData) => string;
+}[] = [
   {
     id: "operational",
     label: "Vận hành & Thanh toán",
@@ -91,8 +95,8 @@ export function SystemSettingsDashboard({
 
         {/* Thẻ tóm tắt nhanh (Summary Cards) */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-xl border border-card-line bg-card p-4 shadow-2xs">
-            <p className="text-xs font-medium tracking-wider text-muted-foreground-1 uppercase">
+          <div className="flex flex-col rounded-xl border border-card-line bg-card p-4 shadow-2xs md:p-5">
+            <p className="text-xs font-medium tracking-wide text-muted-foreground-1 uppercase">
               Hoa hồng sàn hiện hành
             </p>
             <p className="mt-2 text-2xl font-semibold text-foreground">
@@ -103,8 +107,8 @@ export function SystemSettingsDashboard({
             </p>
           </div>
 
-          <div className="rounded-xl border border-card-line bg-card p-4 shadow-2xs">
-            <p className="text-xs font-medium tracking-wider text-muted-foreground-1 uppercase">
+          <div className="flex flex-col rounded-xl border border-card-line bg-card p-4 shadow-2xs md:p-5">
+            <p className="text-xs font-medium tracking-wide text-muted-foreground-1 uppercase">
               Tỉ giá PayPal (USD)
             </p>
             <p className="mt-2 text-2xl font-semibold text-foreground">
@@ -115,8 +119,8 @@ export function SystemSettingsDashboard({
             </p>
           </div>
 
-          <div className="rounded-xl border border-card-line bg-card p-4 shadow-2xs">
-            <p className="text-xs font-medium tracking-wider text-muted-foreground-1 uppercase">
+          <div className="flex flex-col rounded-xl border border-card-line bg-card p-4 shadow-2xs md:p-5">
+            <p className="text-xs font-medium tracking-wide text-muted-foreground-1 uppercase">
               Chính sách hủy & xóa
             </p>
             <p className="mt-2 text-2xl font-semibold text-foreground">
@@ -128,8 +132,8 @@ export function SystemSettingsDashboard({
             </p>
           </div>
 
-          <div className="rounded-xl border border-card-line bg-card p-4 shadow-2xs">
-            <p className="text-xs font-medium tracking-wider text-muted-foreground-1 uppercase">
+          <div className="flex flex-col rounded-xl border border-card-line bg-card p-4 shadow-2xs md:p-5">
+            <p className="text-xs font-medium tracking-wide text-muted-foreground-1 uppercase">
               Danh mục hệ thống
             </p>
             <p className="mt-2 text-2xl font-semibold text-foreground">
@@ -141,11 +145,12 @@ export function SystemSettingsDashboard({
           </div>
         </div>
 
-        {/* Thanh điều hướng Tabs */}
-        <div className="border-b border-layer-line">
+        {/* Thanh điều hướng Tabs (Preline - underline tabs) */}
+        <div className="border-b border-line-2">
           <nav
-            className="-mb-px flex space-x-6 overflow-x-auto"
+            className="-mb-px flex gap-x-6 overflow-x-auto"
             aria-label="Tabs cấu hình hệ thống"
+            role="tablist"
           >
             {TABS.map((tab) => {
               const active = activeTab === tab.id;
@@ -154,21 +159,22 @@ export function SystemSettingsDashboard({
                 <button
                   key={tab.id}
                   type="button"
+                  role="tab"
+                  aria-selected={active}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`inline-flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium whitespace-nowrap transition ${
+                  className={`inline-flex items-center gap-x-2 border-b-2 px-1 py-4 text-sm whitespace-nowrap focus:outline-hidden ${
                     active
-                      ? "border-primary text-primary"
-                      : "border-transparent text-muted-foreground-1 hover:border-line-3 hover:text-foreground"
+                      ? "border-primary font-medium text-primary"
+                      : "border-transparent text-muted-foreground-1 hover:text-primary-hover focus:text-primary-focus"
                   }`}
-                  aria-current={active ? "page" : undefined}
                 >
                   {tab.label}
                   {badgeText && (
                     <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                         active
-                          ? "bg-primary/10 text-primary"
-                          : "bg-surface text-muted-foreground-1"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-surface text-surface-foreground"
                       }`}
                     >
                       {badgeText}

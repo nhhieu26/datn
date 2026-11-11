@@ -18,7 +18,8 @@ export function getDefaultSystemSettings(): SystemSettings {
 
   return {
     commissionRate: Number.isFinite(envCommission) ? envCommission : 0.1,
-    usdRate: Number.isFinite(envUsdRate) && envUsdRate > 0 ? envUsdRate : 25_000,
+    usdRate:
+      Number.isFinite(envUsdRate) && envUsdRate > 0 ? envUsdRate : 25_000,
     bookingHoldMinutes:
       Number.isFinite(envHoldMinutes) && envHoldMinutes > 0
         ? Math.round(envHoldMinutes)
@@ -32,6 +33,8 @@ export function getDefaultSystemSettings(): SystemSettings {
     contactAddress: "70/A Tầng Divo Tower, Hà Nội, Việt Nam",
     contactPhone: "(+84) 123 456 789",
     contactEmail: "hello@roamly.vn",
+    aboutVideoUrl: "",
+    aboutVideoPosterUrl: "",
     updatedAt: null,
   };
 }
@@ -48,6 +51,8 @@ function toSystemSettings(row: {
   contactAddress: string;
   contactPhone: string;
   contactEmail: string;
+  aboutVideoUrl: string;
+  aboutVideoPosterUrl: string;
   updatedAt: Date;
 }): SystemSettings {
   return {
@@ -62,6 +67,8 @@ function toSystemSettings(row: {
     contactAddress: row.contactAddress,
     contactPhone: row.contactPhone,
     contactEmail: row.contactEmail,
+    aboutVideoUrl: row.aboutVideoUrl,
+    aboutVideoPosterUrl: row.aboutVideoPosterUrl,
     updatedAt: row.updatedAt.toISOString(),
   };
 }
@@ -75,7 +82,10 @@ export async function getSettings(): Promise<SystemSettings> {
     if (!row) return defaults;
     return toSystemSettings(row);
   } catch (error) {
-    console.warn("[systemSettingRepo.getSettings] fallback to defaults:", error);
+    console.warn(
+      "[systemSettingRepo.getSettings] fallback to defaults:",
+      error,
+    );
     return defaults;
   }
 }
@@ -103,6 +113,8 @@ export async function updateOperationalSettings(
       contactAddress: defaults.contactAddress,
       contactPhone: defaults.contactPhone,
       contactEmail: defaults.contactEmail,
+      aboutVideoUrl: defaults.aboutVideoUrl,
+      aboutVideoPosterUrl: defaults.aboutVideoPosterUrl,
       ...data,
     },
     update: data,
@@ -133,6 +145,8 @@ export async function updatePlatformInfo(
     contactAddress: input.contactAddress,
     contactPhone: input.contactPhone,
     contactEmail: input.contactEmail,
+    aboutVideoUrl: input.aboutVideoUrl,
+    aboutVideoPosterUrl: input.aboutVideoPosterUrl,
   };
 
   const row = await prisma.systemSetting.upsert({

@@ -19,6 +19,11 @@ import {
   inputClass,
   layerButtonClass,
   primaryButtonClass,
+  SettingsModal,
+  labelClass,
+  selectClass,
+  smallDangerButtonClass,
+  smallLayerButtonClass,
 } from "./settings-shared";
 
 type CategorySection = "tags" | "provinces";
@@ -271,20 +276,25 @@ export function CategoriesSettingsTab({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-card-line bg-card shadow-2xs">
+      <div className="flex flex-col rounded-xl border border-card-line bg-card shadow-2xs">
         {/* Header & Sub-tab */}
         <div className="flex flex-col gap-3 border-b border-card-line p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-          <div className="inline-flex self-start rounded-lg border border-layer-line bg-surface p-1">
+          <div
+            className="inline-flex gap-x-1 self-start rounded-xl bg-surface p-1"
+            role="tablist"
+          >
             <button
               type="button"
               onClick={() => {
                 setSection("tags");
                 setSearch("");
               }}
-              className={`rounded-md px-3.5 py-1.5 text-sm font-medium transition ${
+              role="tab"
+              aria-selected={section === "tags"}
+              className={`inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap focus:outline-hidden ${
                 section === "tags"
                   ? "bg-layer text-foreground shadow-2xs"
-                  : "text-muted-foreground-1 hover:text-foreground"
+                  : "text-muted-foreground-1 hover:text-foreground focus:text-foreground"
               }`}
             >
               Thẻ phân loại ({tags.length})
@@ -295,10 +305,12 @@ export function CategoriesSettingsTab({
                 setSection("provinces");
                 setSearch("");
               }}
-              className={`rounded-md px-3.5 py-1.5 text-sm font-medium transition ${
+              role="tab"
+              aria-selected={section === "provinces"}
+              className={`inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap focus:outline-hidden ${
                 section === "provinces"
                   ? "bg-layer text-foreground shadow-2xs"
-                  : "text-muted-foreground-1 hover:text-foreground"
+                  : "text-muted-foreground-1 hover:text-foreground focus:text-foreground"
               }`}
             >
               Tỉnh / Thành phố ({provinces.length})
@@ -340,7 +352,7 @@ export function CategoriesSettingsTab({
                   setProvinceTypeFilter(e.target.value as ProvinceTypeFilter)
                 }
                 aria-label="Lọc loại đơn vị hành chính"
-                className="rounded-lg border border-layer-line bg-layer px-3 py-2 text-sm text-foreground focus:border-primary-focus focus:ring-1 focus:ring-primary-focus focus:outline-hidden"
+                className={`${selectClass} sm:w-auto pe-9`}
               >
                 <option value="all">Tất cả loại</option>
                 <option value="city">Thành phố trực thuộc TW</option>
@@ -350,9 +362,7 @@ export function CategoriesSettingsTab({
 
             <button
               type="button"
-              onClick={
-                section === "tags" ? openCreateTag : openCreateProvince
-              }
+              onClick={section === "tags" ? openCreateTag : openCreateProvince}
               className={primaryButtonClass}
             >
               <svg
@@ -379,16 +389,16 @@ export function CategoriesSettingsTab({
             <table className="min-w-full divide-y divide-table-line">
               <thead className="bg-surface">
                 <tr>
-                  <th className="px-6 py-3 text-start text-xs font-semibold tracking-wider text-muted-foreground-1 uppercase">
+                  <th className="px-6 py-3 text-start text-xs font-medium tracking-wide text-muted-foreground-1 uppercase">
                     Tên thẻ
                   </th>
-                  <th className="px-6 py-3 text-start text-xs font-semibold tracking-wider text-muted-foreground-1 uppercase">
+                  <th className="px-6 py-3 text-start text-xs font-medium tracking-wide text-muted-foreground-1 uppercase">
                     Slug
                   </th>
-                  <th className="px-6 py-3 text-start text-xs font-semibold tracking-wider text-muted-foreground-1 uppercase">
+                  <th className="px-6 py-3 text-start text-xs font-medium tracking-wide text-muted-foreground-1 uppercase">
                     Đang gắn với dịch vụ / địa điểm
                   </th>
-                  <th className="px-6 py-3 text-end text-xs font-semibold tracking-wider text-muted-foreground-1 uppercase">
+                  <th className="px-6 py-3 text-end text-xs font-medium tracking-wide text-muted-foreground-1 uppercase">
                     Thao tác
                   </th>
                 </tr>
@@ -420,14 +430,14 @@ export function CategoriesSettingsTab({
                           <button
                             type="button"
                             onClick={() => openEditTag(tag)}
-                            className="rounded-lg border border-layer-line bg-layer px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-layer-hover"
+                            className={smallLayerButtonClass}
                           >
                             Sửa
                           </button>
                           <button
                             type="button"
                             onClick={() => setDeletingTag(tag)}
-                            className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100"
+                            className={smallDangerButtonClass}
                           >
                             Xóa
                           </button>
@@ -444,19 +454,19 @@ export function CategoriesSettingsTab({
             <table className="min-w-full divide-y divide-table-line">
               <thead className="bg-surface">
                 <tr>
-                  <th className="px-6 py-3 text-start text-xs font-semibold tracking-wider text-muted-foreground-1 uppercase">
+                  <th className="px-6 py-3 text-start text-xs font-medium tracking-wide text-muted-foreground-1 uppercase">
                     Tỉnh / Thành phố
                   </th>
-                  <th className="px-6 py-3 text-start text-xs font-semibold tracking-wider text-muted-foreground-1 uppercase">
+                  <th className="px-6 py-3 text-start text-xs font-medium tracking-wide text-muted-foreground-1 uppercase">
                     Phân loại
                   </th>
-                  <th className="px-6 py-3 text-start text-xs font-semibold tracking-wider text-muted-foreground-1 uppercase">
+                  <th className="px-6 py-3 text-start text-xs font-medium tracking-wide text-muted-foreground-1 uppercase">
                     Slug
                   </th>
-                  <th className="px-6 py-3 text-start text-xs font-semibold tracking-wider text-muted-foreground-1 uppercase">
+                  <th className="px-6 py-3 text-start text-xs font-medium tracking-wide text-muted-foreground-1 uppercase">
                     Dữ liệu liên kết
                   </th>
-                  <th className="px-6 py-3 text-end text-xs font-semibold tracking-wider text-muted-foreground-1 uppercase">
+                  <th className="px-6 py-3 text-end text-xs font-medium tracking-wide text-muted-foreground-1 uppercase">
                     Thao tác
                   </th>
                 </tr>
@@ -520,7 +530,7 @@ export function CategoriesSettingsTab({
                           <button
                             type="button"
                             onClick={() => openEditProvince(prov)}
-                            className="rounded-lg border border-layer-line bg-layer px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-layer-hover"
+                            className={smallLayerButtonClass}
                           >
                             Sửa
                           </button>
@@ -533,7 +543,7 @@ export function CategoriesSettingsTab({
                                 : "Xóa tỉnh/thành phố"
                             }
                             onClick={() => setDeletingProvince(prov)}
-                            className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40"
+                            className={smallDangerButtonClass}
                           >
                             Xóa
                           </button>
@@ -550,22 +560,20 @@ export function CategoriesSettingsTab({
 
       {/* Modal thêm / sửa Tag */}
       {tagModal && (
-        <div
-          className="fixed inset-0 z-80 flex items-center justify-center bg-slate-900/50 p-4"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="w-full max-w-md rounded-xl border border-card-line bg-card p-6 shadow-xl">
-            <h3 className="text-base font-semibold text-foreground">
+        <SettingsModal
+          maxWidth="max-w-md"
+          title={
+            <>
               {tagModal.mode === "create"
                 ? "Thêm thẻ phân loại mới"
                 : `Chỉnh sửa thẻ "${tagModal.item?.name}"`}
-            </h3>
-            <form onSubmit={handleSaveTag} className="mt-4 space-y-4">
+            </>
+          }
+        >
+          <div className="p-4">
+            <form onSubmit={handleSaveTag} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-foreground">
-                  Tên hiển thị
-                </label>
+                <label className={labelClass}>Tên hiển thị</label>
                 <input
                   type="text"
                   required
@@ -578,27 +586,25 @@ export function CategoriesSettingsTab({
                   }}
                   placeholder="Ví dụ: Nghỉ dưỡng biển"
                   disabled={isPending}
-                  className={`${inputClass} mt-1.5`}
+                  className={`${inputClass}`}
                 />
                 <FieldError errors={tagErrors.name} />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground">
-                  Đường dẫn tĩnh (Slug)
-                </label>
+                <label className={labelClass}>Đường dẫn tĩnh (Slug)</label>
                 <input
                   type="text"
                   value={tagSlug}
                   onChange={(e) => setTagSlug(slugify(e.target.value))}
                   placeholder="nghi-duong-bien"
                   disabled={isPending}
-                  className={`${inputClass} mt-1.5 font-mono`}
+                  className={`${inputClass} font-mono`}
                 />
                 <FieldError errors={tagErrors.slug} />
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-2">
+              <div className="flex items-center justify-end gap-x-2 border-t border-overlay-line pt-4">
                 <button
                   type="button"
                   disabled={isPending}
@@ -617,26 +623,22 @@ export function CategoriesSettingsTab({
               </div>
             </form>
           </div>
-        </div>
+        </SettingsModal>
       )}
 
       {/* Modal xác nhận xóa Tag */}
       {deletingTag && (
-        <div
-          className="fixed inset-0 z-80 flex items-center justify-center bg-slate-900/50 p-4"
-          role="dialog"
-          aria-modal="true"
+        <SettingsModal
+          maxWidth="max-w-md"
+          title={<>Xác nhận xóa thẻ &ldquo;{deletingTag.name}&rdquo;?</>}
         >
-          <div className="w-full max-w-md rounded-xl border border-card-line bg-card p-6 shadow-xl">
-            <h3 className="text-base font-semibold text-foreground">
-              Xác nhận xóa thẻ &ldquo;{deletingTag.name}&rdquo;?
-            </h3>
-            <p className="mt-2 text-sm text-muted-foreground-1">
+          <div className="p-4">
+            <p className="text-sm text-muted-foreground-1">
               {deletingTag.counts.total > 0
                 ? `Thẻ này đang được gắn với ${deletingTag.counts.total} dịch vụ/địa điểm. Khi xóa, liên kết thẻ trên các dịch vụ đó sẽ được gỡ bỏ.`
                 : "Thẻ này hiện chưa được gắn với dịch vụ hay địa điểm nào."}
             </p>
-            <div className="mt-5 flex items-center justify-end gap-2.5">
+            <div className="mt-4 flex items-center justify-end gap-x-2">
               <button
                 type="button"
                 disabled={isPending}
@@ -655,28 +657,26 @@ export function CategoriesSettingsTab({
               </button>
             </div>
           </div>
-        </div>
+        </SettingsModal>
       )}
 
       {/* Modal thêm / sửa Province */}
       {provinceModal && (
-        <div
-          className="fixed inset-0 z-80 flex items-center justify-center bg-slate-900/50 p-4"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="w-full max-w-lg rounded-xl border border-card-line bg-card p-6 shadow-xl">
-            <h3 className="text-base font-semibold text-foreground">
+        <SettingsModal
+          maxWidth="max-w-lg"
+          title={
+            <>
               {provinceModal.mode === "create"
                 ? "Thêm Tỉnh / Thành phố mới"
                 : `Chỉnh sửa "${provinceModal.item?.fullName}"`}
-            </h3>
-            <form onSubmit={handleSaveProvince} className="mt-4 space-y-4">
+            </>
+          }
+        >
+          <div className="p-4">
+            <form onSubmit={handleSaveProvince} className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium text-foreground">
-                    Tên ngắn gọn
-                  </label>
+                  <label className={labelClass}>Tên ngắn gọn</label>
                   <input
                     type="text"
                     required
@@ -695,15 +695,13 @@ export function CategoriesSettingsTab({
                     }}
                     placeholder="Ví dụ: Đà Nẵng"
                     disabled={isPending}
-                    className={`${inputClass} mt-1.5`}
+                    className={`${inputClass}`}
                   />
                   <FieldError errors={provErrors.name} />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground">
-                    Loại đơn vị hành chính
-                  </label>
+                  <label className={labelClass}>Loại đơn vị hành chính</label>
                   <select
                     value={provType}
                     onChange={(e) => {
@@ -718,7 +716,7 @@ export function CategoriesSettingsTab({
                       }
                     }}
                     disabled={isPending}
-                    className={`${inputClass} mt-1.5`}
+                    className={`${inputClass}`}
                   >
                     <option value="province">Tỉnh</option>
                     <option value="city">Thành phố</option>
@@ -729,9 +727,7 @@ export function CategoriesSettingsTab({
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium text-foreground">
-                    Tên hành chính đầy đủ
-                  </label>
+                  <label className={labelClass}>Tên hành chính đầy đủ</label>
                   <input
                     type="text"
                     required
@@ -739,29 +735,27 @@ export function CategoriesSettingsTab({
                     onChange={(e) => setProvFullName(e.target.value)}
                     placeholder="Thành phố Đà Nẵng"
                     disabled={isPending}
-                    className={`${inputClass} mt-1.5`}
+                    className={`${inputClass}`}
                   />
                   <FieldError errors={provErrors.fullName} />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground">
-                    Slug
-                  </label>
+                  <label className={labelClass}>Slug</label>
                   <input
                     type="text"
                     value={provSlug}
                     onChange={(e) => setProvSlug(slugify(e.target.value))}
                     placeholder="da-nang"
                     disabled={isPending}
-                    className={`${inputClass} mt-1.5 font-mono`}
+                    className={`${inputClass} font-mono`}
                   />
                   <FieldError errors={provErrors.slug} />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground">
+                <label className={labelClass}>
                   URL ảnh đại diện (tùy chọn)
                 </label>
                 <input
@@ -770,12 +764,12 @@ export function CategoriesSettingsTab({
                   onChange={(e) => setProvImageUrl(e.target.value)}
                   placeholder="https://images.unsplash.com/..."
                   disabled={isPending}
-                  className={`${inputClass} mt-1.5`}
+                  className={`${inputClass}`}
                 />
                 <FieldError errors={provErrors.imageUrl} />
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-2">
+              <div className="flex items-center justify-end gap-x-2 border-t border-overlay-line pt-4">
                 <button
                   type="button"
                   disabled={isPending}
@@ -794,25 +788,21 @@ export function CategoriesSettingsTab({
               </div>
             </form>
           </div>
-        </div>
+        </SettingsModal>
       )}
 
       {/* Modal xác nhận xóa Province */}
       {deletingProvince && (
-        <div
-          className="fixed inset-0 z-80 flex items-center justify-center bg-slate-900/50 p-4"
-          role="dialog"
-          aria-modal="true"
+        <SettingsModal
+          maxWidth="max-w-md"
+          title={<>Xác nhận xóa &ldquo;{deletingProvince.fullName}&rdquo;?</>}
         >
-          <div className="w-full max-w-md rounded-xl border border-card-line bg-card p-6 shadow-xl">
-            <h3 className="text-base font-semibold text-foreground">
-              Xác nhận xóa &ldquo;{deletingProvince.fullName}&rdquo;?
-            </h3>
-            <p className="mt-2 text-sm text-muted-foreground-1">
+          <div className="p-4">
+            <p className="text-sm text-muted-foreground-1">
               Tỉnh/thành phố này chưa có dịch vụ hoặc địa điểm liên kết và có
               thể xóa an toàn khỏi hệ thống.
             </p>
-            <div className="mt-5 flex items-center justify-end gap-2.5">
+            <div className="mt-4 flex items-center justify-end gap-x-2">
               <button
                 type="button"
                 disabled={isPending}
@@ -831,7 +821,7 @@ export function CategoriesSettingsTab({
               </button>
             </div>
           </div>
-        </div>
+        </SettingsModal>
       )}
     </div>
   );

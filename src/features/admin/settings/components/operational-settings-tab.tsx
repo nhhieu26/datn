@@ -13,6 +13,7 @@ import {
   inputClass,
   layerButtonClass,
   primaryButtonClass,
+  labelClass,
 } from "./settings-shared";
 
 const SAMPLE_BOOKING_AMOUNT = 5_000_000;
@@ -121,13 +122,10 @@ export function OperationalSettingsTab({
 
           <div className="mt-5 grid gap-5 sm:grid-cols-2">
             <div>
-              <label
-                htmlFor="commissionPercent"
-                className="block text-sm font-medium text-foreground"
-              >
+              <label htmlFor="commissionPercent" className={labelClass}>
                 Tỉ lệ hoa hồng sàn (%)
               </label>
-              <div className="relative mt-1.5">
+              <div className="relative">
                 <input
                   id="commissionPercent"
                   type="number"
@@ -150,13 +148,10 @@ export function OperationalSettingsTab({
             </div>
 
             <div>
-              <label
-                htmlFor="usdRate"
-                className="block text-sm font-medium text-foreground"
-              >
+              <label htmlFor="usdRate" className={labelClass}>
                 Tỉ giá quy đổi PayPal (VND / 1 USD)
               </label>
-              <div className="relative mt-1.5">
+              <div className="relative">
                 <input
                   id="usdRate"
                   type="number"
@@ -179,13 +174,10 @@ export function OperationalSettingsTab({
             </div>
 
             <div className="sm:col-span-2">
-              <label
-                htmlFor="bookingHoldMinutes"
-                className="block text-sm font-medium text-foreground"
-              >
+              <label htmlFor="bookingHoldMinutes" className={labelClass}>
                 Thời gian giữ chỗ chờ thanh toán (phút)
               </label>
-              <div className="relative mt-1.5 max-w-xs">
+              <div className="relative max-w-xs">
                 <input
                   id="bookingHoldMinutes"
                   type="number"
@@ -226,13 +218,10 @@ export function OperationalSettingsTab({
 
           <div className="mt-5 grid gap-5 sm:grid-cols-3">
             <div>
-              <label
-                htmlFor="customerCancelCutoffHours"
-                className="block text-sm font-medium text-foreground"
-              >
+              <label htmlFor="customerCancelCutoffHours" className={labelClass}>
                 Hạn hủy Tour & Khách sạn
               </label>
-              <div className="relative mt-1.5">
+              <div className="relative">
                 <input
                   id="customerCancelCutoffHours"
                   type="number"
@@ -256,11 +245,11 @@ export function OperationalSettingsTab({
             <div>
               <label
                 htmlFor="restaurantCancelCutoffHours"
-                className="block text-sm font-medium text-foreground"
+                className={labelClass}
               >
                 Hạn hủy đặt bàn Nhà hàng
               </label>
-              <div className="relative mt-1.5">
+              <div className="relative">
                 <input
                   id="restaurantCancelCutoffHours"
                   type="number"
@@ -284,13 +273,10 @@ export function OperationalSettingsTab({
             </div>
 
             <div>
-              <label
-                htmlFor="serviceDeleteGraceDays"
-                className="block text-sm font-medium text-foreground"
-              >
+              <label htmlFor="serviceDeleteGraceDays" className={labelClass}>
                 Thời gian chờ xóa dịch vụ
               </label>
-              <div className="relative mt-1.5">
+              <div className="relative">
                 <input
                   id="serviceDeleteGraceDays"
                   type="number"
@@ -353,7 +339,9 @@ export function OperationalSettingsTab({
 
           <dl className="mt-4 space-y-3 rounded-lg border border-layer-line bg-surface/60 p-4 text-sm">
             <div className="flex items-center justify-between">
-              <dt className="text-muted-foreground-1">Khách thanh toán (VND)</dt>
+              <dt className="text-muted-foreground-1">
+                Khách thanh toán (VND)
+              </dt>
               <dd className="font-semibold text-foreground">
                 {formatCurrency(SAMPLE_BOOKING_AMOUNT)}
               </dd>

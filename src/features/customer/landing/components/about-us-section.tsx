@@ -1,11 +1,18 @@
 import { FadeIn, ParallaxBox } from "@/features/customer/components/motion";
-import Image from "next/image";
 import Link from "next/link";
+import { parseVideoUrl } from "@/shared/lib/parse-video-url";
+import { AboutVideoPlayer } from "./about-video-player";
 
-const BEACH_IMAGE =
-  "/beach.jpg";
+const BEACH_IMAGE = "/beach.jpg";
 
-export function AboutUsSection() {
+export function AboutUsSection({
+  videoUrl,
+  posterUrl,
+}: {
+  videoUrl?: string;
+  posterUrl?: string;
+}) {
+  const video = parseVideoUrl(videoUrl);
   return (
     <section
       className="w-full relative z-20 py-16 page-x bg-new-about-bg overflow-hidden"
@@ -50,7 +57,11 @@ export function AboutUsSection() {
                   strokeWidth="2.5"
                   viewBox="0 0 24 24"
                 >
-                  <path d="M7 17L17 7M17 7H7M17 7V17" strokeLinecap="round" strokeLinejoin="round" />
+                  <path
+                    d="M7 17L17 7M17 7H7M17 7V17"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               </span>
             </Link>
@@ -69,34 +80,18 @@ export function AboutUsSection() {
             scale={0.98}
             y={24}
           >
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               alt="Bãi biển nhiệt đới nhìn từ trên cao"
-              className="object-cover object-center transition-transform duration-1000 group-hover:scale-105"
-              fill
-              sizes="(min-width: 1440px) 1300px, 100vw"
-              src={BEACH_IMAGE}
+              className="absolute inset-0 size-full object-cover object-center transition-transform duration-1000 group-hover:scale-105"
+              src={posterUrl?.trim() || BEACH_IMAGE}
             />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30">
-              <button
-                aria-label="Phát video"
-                className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center bg-white/45 backdrop-blur-md border-[1.5px] border-white/70 shadow-xl transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer"
-                type="button"
-              >
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0 rounded-full border border-white/70 animate-ping [animation-duration:2.6s]"
-                />
-                <span className="w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center bg-white/30 border border-white/50">
-                  <svg
-                    className="w-8 h-8 ml-1 text-new-teal"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <polygon points="6 3 20 12 6 21 6 3" />
-                  </svg>
-                </span>
-              </button>
-            </div>
+            {video && (
+              <AboutVideoPlayer
+                poster={posterUrl?.trim() || undefined}
+                video={video}
+              />
+            )}
           </FadeIn>
         </div>
       </div>

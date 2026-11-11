@@ -676,6 +676,8 @@ model SystemSetting {
   contactAddress              String   @default("70/A Tầng Divo Tower, Hà Nội, Việt Nam")
   contactPhone                String   @default("(+84) 123 456 789")
   contactEmail                String   @default("hello@roamly.vn")
+  aboutVideoUrl               String   @default("")
+  aboutVideoPosterUrl         String   @default("")
 
   updatedAt                   DateTime @updatedAt
 }

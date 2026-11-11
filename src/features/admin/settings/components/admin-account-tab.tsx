@@ -12,6 +12,7 @@ import {
   getActionErrorMessage,
   inputClass,
   primaryButtonClass,
+  labelClass,
 } from "./settings-shared";
 
 export function AdminAccountTab({
@@ -103,10 +104,7 @@ export function AdminAccountTab({
 
         <div className="mt-5 space-y-4">
           <div>
-            <label
-              htmlFor="adminFullname"
-              className="block text-sm font-medium text-foreground"
-            >
+            <label htmlFor="adminFullname" className={labelClass}>
               Họ và tên
             </label>
             <input
@@ -116,16 +114,13 @@ export function AdminAccountTab({
               value={fullname}
               onChange={(e) => setFullname(e.target.value)}
               disabled={isSavingProfile}
-              className={`${inputClass} mt-1.5`}
+              className={`${inputClass}`}
             />
             <FieldError errors={profileErrors.fullname} />
           </div>
 
           <div>
-            <label
-              htmlFor="adminEmail"
-              className="block text-sm font-medium text-foreground"
-            >
+            <label htmlFor="adminEmail" className={labelClass}>
               Email đăng nhập
             </label>
             <input
@@ -135,16 +130,13 @@ export function AdminAccountTab({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={isSavingProfile}
-              className={`${inputClass} mt-1.5`}
+              className={`${inputClass}`}
             />
             <FieldError errors={profileErrors.email} />
           </div>
 
           <div>
-            <label
-              htmlFor="adminPhone"
-              className="block text-sm font-medium text-foreground"
-            >
+            <label htmlFor="adminPhone" className={labelClass}>
               Số điện thoại
             </label>
             <input
@@ -154,7 +146,7 @@ export function AdminAccountTab({
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               disabled={isSavingProfile}
-              className={`${inputClass} mt-1.5`}
+              className={`${inputClass}`}
             />
             <FieldError errors={profileErrors.phone} />
           </div>
@@ -196,10 +188,7 @@ export function AdminAccountTab({
 
         <div className="mt-5 space-y-4">
           <div>
-            <label
-              htmlFor="currentPassword"
-              className="block text-sm font-medium text-foreground"
-            >
+            <label htmlFor="currentPassword" className={labelClass}>
               Mật khẩu hiện tại
             </label>
             <input
@@ -210,16 +199,13 @@ export function AdminAccountTab({
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               disabled={isChangingPass}
-              className={`${inputClass} mt-1.5`}
+              className={`${inputClass}`}
             />
             <FieldError errors={passwordErrors.current_password} />
           </div>
 
           <div>
-            <label
-              htmlFor="newPassword"
-              className="block text-sm font-medium text-foreground"
-            >
+            <label htmlFor="newPassword" className={labelClass}>
               Mật khẩu mới
             </label>
             <input
@@ -231,16 +217,13 @@ export function AdminAccountTab({
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               disabled={isChangingPass}
-              className={`${inputClass} mt-1.5`}
+              className={`${inputClass}`}
             />
             <FieldError errors={passwordErrors.new_password} />
           </div>
 
           <div>
-            <label
-              htmlFor="confirmPassword"
-              className="block text-sm font-medium text-foreground"
-            >
+            <label htmlFor="confirmPassword" className={labelClass}>
               Xác nhận mật khẩu mới
             </label>
             <input
@@ -252,7 +235,7 @@ export function AdminAccountTab({
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               disabled={isChangingPass}
-              className={`${inputClass} mt-1.5`}
+              className={`${inputClass}`}
             />
             <FieldError errors={passwordErrors.confirm_password} />
           </div>

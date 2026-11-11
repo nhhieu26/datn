@@ -2,6 +2,7 @@ import { destinationRepo } from "@/entities/destination";
 import { hotelRepo } from "@/entities/hotel";
 import { provinceRepo } from "@/entities/province";
 import { restaurantRepo } from "@/entities/restaurant";
+import { systemSettingRepo } from "@/entities/system-setting";
 import { tourRepo } from "@/entities/tour";
 import {
   AboutUsSection,
@@ -22,13 +23,15 @@ export const metadata: Metadata = {
 const PACKAGES_PER_KIND = 4;
 
 export default async function TrangChuPage() {
-  const [tours, hotels, restaurants, destinations, provinces] = await Promise.all([
-    tourRepo.findRecent(PACKAGES_PER_KIND),
-    hotelRepo.findRecent(PACKAGES_PER_KIND),
-    restaurantRepo.findRecent(PACKAGES_PER_KIND),
-    destinationRepo.findRecent(PACKAGES_PER_KIND),
-    provinceRepo.findAll(),
-  ]);
+  const [tours, hotels, restaurants, destinations, provinces, settings] =
+    await Promise.all([
+      tourRepo.findRecent(PACKAGES_PER_KIND),
+      hotelRepo.findRecent(PACKAGES_PER_KIND),
+      restaurantRepo.findRecent(PACKAGES_PER_KIND),
+      destinationRepo.findRecent(PACKAGES_PER_KIND),
+      provinceRepo.findAll(),
+      systemSettingRepo.getSettings(),
+    ]);
 
   const locations = provinces.map((province) => province.name);
 
@@ -37,9 +40,17 @@ export default async function TrangChuPage() {
       <HeroSection locations={locations} />
       <WhyChooseUsSection />
       <PopularPackagesSection
-        packages={serializePackages({ tours, hotels, restaurants, destinations })}
+        packages={serializePackages({
+          tours,
+          hotels,
+          restaurants,
+          destinations,
+        })}
       />
-      <AboutUsSection />
+      <AboutUsSection
+        videoUrl={settings.aboutVideoUrl}
+        posterUrl={settings.aboutVideoPosterUrl}
+      />
       <AskPlanTravelAiSection />
     </>
   );

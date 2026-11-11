@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseVideoUrl } from "@/shared/lib/parse-video-url";
 
 export const operationalSettingsSchema = z.object({
   commissionPercent: z.coerce
@@ -58,4 +59,20 @@ export const platformInfoSchema = z.object({
     .toLowerCase()
     .email("Email hỗ trợ không hợp lệ")
     .max(120, "Email hỗ trợ tối đa 120 ký tự"),
+  aboutVideoUrl: z
+    .string()
+    .trim()
+    .max(500, "Link video tối đa 500 ký tự")
+    .refine(
+      (v) => v === "" || parseVideoUrl(v) !== null,
+      "Link video phải là YouTube, Vimeo hoặc file .mp4/.webm (https://...)",
+    ),
+  aboutVideoPosterUrl: z
+    .string()
+    .trim()
+    .max(500, "Link ảnh bìa tối đa 500 ký tự")
+    .refine(
+      (v) => v === "" || /^(https?:\/\/|\/(?!\/)).+/i.test(v),
+      "Link ảnh bìa phải bắt đầu bằng http://, https:// hoặc / (ảnh trong thư mục public, vd: /beach.jpg)",
+    ),
 });
