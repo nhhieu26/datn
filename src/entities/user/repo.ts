@@ -191,3 +191,14 @@ export function updateStatus(id: string, status: UserStatus) {
     select: { id: true, status: true },
   });
 }
+
+/** Tài khoản khách hàng/đối tác tạo trong khoảng thời gian (báo cáo tăng trưởng). */
+export function findSignupRows(range: { from: Date; to: Date }) {
+  return prisma.user.findMany({
+    where: {
+      role: { in: ["customer", "provider"] },
+      createdAt: { gte: range.from, lt: range.to },
+    },
+    select: { createdAt: true, role: true },
+  });
+}

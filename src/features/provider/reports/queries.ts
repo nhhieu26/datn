@@ -31,12 +31,12 @@ const SOURCES: Record<BusinessType, ReportSource> = {
 };
 
 // Cùng định nghĩa với bảng điều khiển để số liệu hai trang khớp nhau
-const UNCOUNTED: Record<BusinessType, BookingStatus[]> = {
+export const UNCOUNTED: Record<BusinessType, BookingStatus[]> = {
   tour: ["pending_payment", "expired"],
   hotel: ["pending_payment", "expired"],
   restaurant: ["expired"],
 };
-const SECURED: Record<BusinessType, BookingStatus[]> = {
+export const SECURED: Record<BusinessType, BookingStatus[]> = {
   tour: ["paid", "confirmed", "completed"],
   hotel: ["paid", "confirmed", "completed"],
   restaurant: ["confirmed", "completed"],

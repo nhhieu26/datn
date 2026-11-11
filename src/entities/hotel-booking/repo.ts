@@ -674,3 +674,30 @@ export async function findRecentActivityForProvider(providerProfileId: string, t
   ]);
   return { created, cancelled, payments, refunds };
 }
+
+// ---- Báo cáo toàn sàn (admin) ----
+
+/** Đơn khách sạn tạo trong khoảng thời gian, kèm tỉnh/thành của khách sạn, cho trang báo cáo admin. */
+export async function findAdminReportRows(range: { from: Date; to: Date }) {
+  const rows = await prisma.hotelBooking.findMany({
+    where: createdIn(range),
+    select: {
+      createdAt: true,
+      status: true,
+      guests: true,
+      totalAmount: true,
+      platformFee: true,
+      providerProfileId: true,
+      room: { select: { hotel: { select: { provinceId: true } } } },
+    },
+  });
+  return rows.map((row) => ({
+    createdAt: row.createdAt,
+    status: row.status,
+    guests: row.guests,
+    totalAmount: Number(row.totalAmount),
+    platformFee: Number(row.platformFee),
+    providerProfileId: row.providerProfileId,
+    provinceId: row.room?.hotel.provinceId ?? null,
+  }));
+}

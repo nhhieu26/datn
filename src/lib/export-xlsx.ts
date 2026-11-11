@@ -11,37 +11,52 @@ export type XlsxColumn = {
 const XLSX_MIME =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-export async function buildXlsx(
-  sheetName: string,
-  columns: XlsxColumn[],
-  rows: Record<string, string | number | null>[],
-): Promise<Buffer> {
-  const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet(sheetName, {
-    views: [{ state: "frozen", ySplit: 1 }],
-  });
-  sheet.columns = columns.map((c) => ({
-    header: c.header,
-    key: c.key,
-    width: c.width ?? 18,
-    style: c.numFmt ? { numFmt: c.numFmt } : {},
-  }));
-  sheet.addRows(rows);
+export type XlsxRow = Record<string, string | number | null>;
 
-  const header = sheet.getRow(1);
-  header.font = { bold: true };
-  header.alignment = { vertical: "middle" };
-  header.fill = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: { argb: "FFE5E7EB" },
-  };
-  sheet.autoFilter = {
-    from: { row: 1, column: 1 },
-    to: { row: 1, column: columns.length },
-  };
+export type XlsxSheet = {
+  name: string;
+  columns: XlsxColumn[];
+  rows: XlsxRow[];
+};
+
+/** Workbook nhiều sheet, mỗi sheet có hàng tiêu đề cố định và bộ lọc. */
+export async function buildXlsxWorkbook(sheets: XlsxSheet[]): Promise<Buffer> {
+  const workbook = new ExcelJS.Workbook();
+  for (const { name, columns, rows } of sheets) {
+    const sheet = workbook.addWorksheet(name, {
+      views: [{ state: "frozen", ySplit: 1 }],
+    });
+    sheet.columns = columns.map((c) => ({
+      header: c.header,
+      key: c.key,
+      width: c.width ?? 18,
+      style: c.numFmt ? { numFmt: c.numFmt } : {},
+    }));
+    sheet.addRows(rows);
+
+    const header = sheet.getRow(1);
+    header.font = { bold: true };
+    header.alignment = { vertical: "middle" };
+    header.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFE5E7EB" },
+    };
+    sheet.autoFilter = {
+      from: { row: 1, column: 1 },
+      to: { row: 1, column: columns.length },
+    };
+  }
 
   return Buffer.from(await workbook.xlsx.writeBuffer());
+}
+
+export function buildXlsx(
+  sheetName: string,
+  columns: XlsxColumn[],
+  rows: XlsxRow[],
+): Promise<Buffer> {
+  return buildXlsxWorkbook([{ name: sheetName, columns, rows }]);
 }
 
 export function xlsxResponse(buffer: Buffer, filename: string) {

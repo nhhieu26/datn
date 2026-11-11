@@ -2,12 +2,13 @@
 
 import Form from "next/form";
 import Link from "next/link";
-import type { BusinessType } from "@/generated/prisma/client";
-import { buildReportUrl, REPORT_PATH, type ReportRange } from "../search-params";
+import type { ReportRange } from "../search-params";
+
+export type ReportPreset = Exclude<ReportRange, "custom">;
 
 const DROPDOWN_ID = "hs-report-range";
 
-const PRESETS: { value: Exclude<ReportRange, "custom">; label: string }[] = [
+const PRESETS: { value: ReportPreset; label: string }[] = [
   { value: "7d", label: "7 ngày qua" },
   { value: "30d", label: "30 ngày qua" },
   { value: "12m", label: "12 tháng qua" },
@@ -27,14 +28,21 @@ function closeDropdown() {
 }
 
 export function ReportRangeDropdown({
-  kind,
+  presetHrefs,
+  action,
+  hiddenFields = {},
   range,
   label,
   from,
   to,
   today,
 }: {
-  kind: BusinessType;
+  /** Link của từng khoảng có sẵn (tính ở server vì không truyền được hàm sang client). */
+  presetHrefs: Record<ReportPreset, string>;
+  /** Trang nhận form khoảng ngày tùy chọn. */
+  action: string;
+  /** Tham số giữ nguyên khi áp dụng khoảng tùy chọn, ví dụ `type`. */
+  hiddenFields?: Record<string, string>;
   range: ReportRange;
   label: string;
   from: string;
@@ -76,7 +84,7 @@ export function ReportRangeDropdown({
           {PRESETS.map((preset) => (
             <Link
               key={preset.value}
-              href={buildReportUrl(kind, preset.value)}
+              href={presetHrefs[preset.value]}
               scroll={false}
               role="menuitem"
               aria-current={preset.value === range ? "true" : undefined}
@@ -89,12 +97,14 @@ export function ReportRangeDropdown({
         </div>
 
         <Form
-          action={REPORT_PATH}
+          action={action}
           scroll={false}
           onSubmit={closeDropdown}
           className="mt-1.5 space-y-2 border-t border-dropdown-line px-1.5 pt-3 pb-1.5"
         >
-          <input type="hidden" name="type" value={kind} />
+          {Object.entries(hiddenFields).map(([name, value]) => (
+            <input key={name} type="hidden" name={name} value={value} />
+          ))}
           <input type="hidden" name="range" value="custom" />
           <p className="text-xs font-medium text-muted-foreground-1">Tùy chọn khoảng ngày</p>
           <label className="block text-xs text-muted-foreground-1">

@@ -7,7 +7,7 @@ import {
   toVn,
   type TimeBuckets,
 } from "../dashboard/utils";
-import type { ReportQuery } from "./search-params";
+import type { ReportRangeQuery } from "./search-params";
 
 /** Khoảng tùy chọn dài hơn số ngày này thì gộp theo tháng cho biểu đồ dễ đọc. */
 const MAX_DAILY_BUCKETS = 62;
@@ -84,7 +84,7 @@ function customRange(from: string, to: string): ReportPeriod {
 }
 
 /** Các mốc chia biểu đồ của kỳ đang xem và kỳ liền trước cùng độ dài. */
-export function resolveReportPeriod(query: ReportQuery, now = new Date()): ReportPeriod {
+export function resolveReportPeriod(query: ReportRangeQuery, now = new Date()): ReportPeriod {
   if (query.range === "custom") return customRange(query.from, query.to);
   if (query.range === "12m") return lastTwelveMonths(now);
   if (query.range === "30d") return lastDays(30, "30 ngày qua", now);

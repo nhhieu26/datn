@@ -5,7 +5,7 @@ export const REPORT_RANGES = ["7d", "30d", "12m", "custom"] as const;
 export type ReportRange = (typeof REPORT_RANGES)[number];
 
 export const REPORT_PATH = "/provider/reports";
-const DEFAULT_RANGE: ReportRange = "7d";
+export const DEFAULT_RANGE: ReportRange = "7d";
 
 export type ReportQuery = {
   type: BusinessType | null;
@@ -30,19 +30,26 @@ function isIsoDate(value: string) {
   return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
 }
 
-export function parseReportQuery(params: RawParams): ReportQuery {
-  const typeParam = first(params.type);
-  const type = BUSINESS_TYPES.find((t) => t === typeParam) ?? null;
+export type ReportRangeQuery = Omit<ReportQuery, "type">;
+
+/** Đọc range/from/to từ URL; khoảng tùy chọn không hợp lệ thì về mặc định. */
+export function parseReportRange(params: RawParams): ReportRangeQuery {
   const rangeParam = first(params.range);
   const range = REPORT_RANGES.find((r) => r === rangeParam) ?? DEFAULT_RANGE;
 
   if (range === "custom") {
     const from = first(params.from);
     const to = first(params.to);
-    if (isIsoDate(from) && isIsoDate(to) && from <= to) return { type, range, from, to };
-    return { type, range: DEFAULT_RANGE, from: "", to: "" };
+    if (isIsoDate(from) && isIsoDate(to) && from <= to) return { range, from, to };
+    return { range: DEFAULT_RANGE, from: "", to: "" };
   }
-  return { type, range, from: "", to: "" };
+  return { range, from: "", to: "" };
+}
+
+export function parseReportQuery(params: RawParams): ReportQuery {
+  const typeParam = first(params.type);
+  const type = BUSINESS_TYPES.find((t) => t === typeParam) ?? null;
+  return { type, ...parseReportRange(params) };
 }
 
 export function buildReportUrl(type: BusinessType, range: Exclude<ReportRange, "custom">) {
