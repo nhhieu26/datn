@@ -150,7 +150,7 @@ export function findInvoiceByCode(code: string, scope: InvoiceScope) {
     include: {
       customer: { select: { fullname: true, email: true, phone: true } },
       providerProfile: {
-        select: { businessName: true, address: true, taxCode: true },
+        select: { businessName: true, address: true, taxCode: true, signatureUrl: true },
       },
       payments: { orderBy: { createdAt: "desc" } },
       refunds: true,

@@ -17,7 +17,12 @@ export type InvoiceData = {
   status: BookingStatus;
   issuedAt: string;
   customer: { name: string; email: string; phone: string };
-  provider: { businessName: string; address: string | null; taxCode: string | null };
+  provider: {
+    businessName: string;
+    address: string | null;
+    taxCode: string | null;
+    signatureUrl: string | null;
+  };
   seller: {
     name: string;
     tagline: string;

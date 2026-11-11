@@ -142,10 +142,22 @@ export function InvoiceSheet({ invoice }: { invoice: InvoiceData }) {
       </section>
 
       {/* Signature */}
-      <section className="mb-7.5 max-w-50 text-center">
-        <p>{invoice.seller.name}</p>
-        <hr className="mx-auto my-2.5 w-50 border-0 border-t border-[#999]" />
-        <p>Chữ ký</p>
+      <section className="mb-7.5 w-full max-w-60 break-inside-avoid text-center">
+        <p>
+          <Label>Đại diện nhà cung cấp</Label>
+        </p>
+        <div className="flex h-20 items-end justify-center">
+          {invoice.provider.signatureUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              alt={`Chữ ký ${invoice.provider.businessName}`}
+              className="max-h-full max-w-full object-contain"
+              src={invoice.provider.signatureUrl}
+            />
+          )}
+        </div>
+        <hr className="mx-auto my-2.5 w-full border-0 border-t border-[#999]" />
+        <p>{invoice.provider.businessName}</p>
       </section>
 
       <p className="mb-5 text-center text-[#555]">
