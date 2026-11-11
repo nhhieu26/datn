@@ -1,4 +1,5 @@
 import { restaurantBookingRepo } from "@/entities/restaurant-booking";
+import { systemSettingRepo } from "@/entities/system-setting";
 import {
   buildMyBookingsUrl,
   getMyRestaurantBookingsSummary,
@@ -29,17 +30,19 @@ export default async function MyRestaurantBookingsPage({
 
   const query = parseMyBookingsQuery(await searchParams, MY_RESTAURANT_BOOKINGS_TABS);
 
-  const [{ items: bookings, total }, statusSummary] = await Promise.all([
-    restaurantBookingRepo.findPageByCustomerId(
-      session.user.id,
-      getTabStatuses(query.tab),
-      {
-        skip: (query.page - 1) * MY_BOOKINGS_PAGE_SIZE,
-        take: MY_BOOKINGS_PAGE_SIZE,
-      },
-    ),
-    restaurantBookingRepo.summarizeByCustomerId(session.user.id),
-  ]);
+  const [{ items: bookings, total }, statusSummary, settings] =
+    await Promise.all([
+      restaurantBookingRepo.findPageByCustomerId(
+        session.user.id,
+        getTabStatuses(query.tab),
+        {
+          skip: (query.page - 1) * MY_BOOKINGS_PAGE_SIZE,
+          take: MY_BOOKINGS_PAGE_SIZE,
+        },
+      ),
+      restaurantBookingRepo.summarizeByCustomerId(session.user.id),
+      systemSettingRepo.getSettings(),
+    ]);
 
   const totalPages = Math.max(1, Math.ceil(total / MY_BOOKINGS_PAGE_SIZE));
   if (query.page > totalPages) {
@@ -55,7 +58,9 @@ export default async function MyRestaurantBookingsPage({
       <div className="rounded-md bg-white p-6">
         <MyBookingsTabs query={query} tabs={MY_RESTAURANT_BOOKINGS_TABS} />
         <MyRestaurantBookingsList
-          items={bookings.map(mapToMyRestaurantBookingItem)}
+          items={bookings.map((b) =>
+            mapToMyRestaurantBookingItem(b, settings.restaurantCancelCutoffHours),
+          )}
           total={total}
           query={query}
           hasAnyBooking={summary.total > 0}

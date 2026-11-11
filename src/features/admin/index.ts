@@ -5,3 +5,4 @@ export {
   ProfileApprovalDetail,
 } from "./profile-approval";
 export { AdminLoginForm } from "./auth";
+export { SystemSettingsDashboard } from "./settings";

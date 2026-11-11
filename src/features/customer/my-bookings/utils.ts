@@ -10,6 +10,7 @@ import {
 } from "@/features/provider/tour-bookings";
 import {
   canCustomerCancelBefore,
+  CUSTOMER_CANCEL_CUTOFF_HOURS,
   reservationInstant,
   RESTAURANT_CANCEL_CUTOFF_HOURS,
 } from "@/lib/utils";
@@ -40,6 +41,7 @@ function toReviewState(
 
 export function mapToMyHotelBookingItem(
   booking: PageItem<typeof hotelBookingRepo.findPageByCustomerId>,
+  cancelCutoffHours = CUSTOMER_CANCEL_CUTOFF_HOURS,
 ): MyHotelBookingItem {
   return {
     code: booking.code,
@@ -57,7 +59,11 @@ export function mapToMyHotelBookingItem(
     expiresAt: booking.expiresAt?.toISOString() ?? null,
     cancelReason: booking.cancelReason,
     canCancel: CANCELLABLE_STATUSES.includes(booking.status),
-    cancelDeadlinePassed: !canCustomerCancelBefore(booking.checkInDate),
+    cancelDeadlinePassed: !canCustomerCancelBefore(
+      booking.checkInDate,
+      new Date(),
+      cancelCutoffHours,
+    ),
     review: toReviewState("hotel", booking, booking.room?.hotel.slug),
     createdAt: booking.createdAt.toISOString(),
   };
@@ -70,6 +76,7 @@ const CANCELLABLE_RESTAURANT_STATUSES: BookingStatus[] = [
 
 export function mapToMyRestaurantBookingItem(
   booking: PageItem<typeof restaurantBookingRepo.findPageByCustomerId>,
+  cancelCutoffHours = RESTAURANT_CANCEL_CUTOFF_HOURS,
 ): MyRestaurantBookingItem {
   return {
     code: booking.code,
@@ -85,7 +92,7 @@ export function mapToMyRestaurantBookingItem(
     cancelDeadlinePassed: !canCustomerCancelBefore(
       reservationInstant(booking.reservationDate, booking.startTime),
       new Date(),
-      RESTAURANT_CANCEL_CUTOFF_HOURS,
+      cancelCutoffHours,
     ),
     review: toReviewState("restaurant", booking, booking.restaurant?.slug),
     createdAt: booking.createdAt.toISOString(),
@@ -112,6 +119,7 @@ export function getMyRestaurantBookingsSummary({
 
 export function mapToMyBookingItem(
   booking: PageItem<typeof tourBookingRepo.findPageByCustomerId>,
+  cancelCutoffHours = CUSTOMER_CANCEL_CUTOFF_HOURS,
 ): MyBookingItem {
   return {
     code: booking.code,
@@ -125,7 +133,11 @@ export function mapToMyBookingItem(
     expiresAt: booking.expiresAt?.toISOString() ?? null,
     cancelReason: booking.cancelReason,
     canCancel: CANCELLABLE_STATUSES.includes(booking.status),
-    cancelDeadlinePassed: !canCustomerCancelBefore(booking.departureDate),
+    cancelDeadlinePassed: !canCustomerCancelBefore(
+      booking.departureDate,
+      new Date(),
+      cancelCutoffHours,
+    ),
     review: toReviewState("tour", booking, booking.tourDeparture?.tour.slug),
     createdAt: booking.createdAt.toISOString(),
   };

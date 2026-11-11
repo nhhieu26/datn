@@ -22,6 +22,7 @@ import {
 } from "@/entities/restaurant";
 import { providerProfileRepo } from "@/entities/provider-profile";
 import { provinceRepo } from "@/entities/province";
+import { systemSettingRepo } from "@/entities/system-setting";
 import { tagRepo } from "@/entities/tag";
 import type { ActionState } from "@/shared/lib/action-state";
 import {
@@ -53,7 +54,6 @@ const ALLOWED_PHOTO_TYPES = ["image/png", "image/jpeg"];
 const MAX_PHOTOS = 5;
 const MAX_SLUG_ATTEMPTS = 5;
 const CLEANUP_ATTEMPTS = 3;
-const RESTAURANT_DELETE_GRACE_DAYS = 30;
 
 const STAGE_ERROR_MESSAGES: Record<CreationStage, string> = {
   authorization: "Không thể xác thực tài khoản. Vui lòng thử lại.",
@@ -805,8 +805,9 @@ export async function deleteRestaurantsAction(
   if ("error" in authorized) return bulkError(authorized.error.formError ?? "");
 
   // Không xóa ngay: dừng bán, booking đang có vẫn xử lý bình thường; cron xóa mềm khi tới hạn
+  const { serviceDeleteGraceDays } = await systemSettingRepo.getSettings();
   const deleteAt = new Date(
-    Date.now() + RESTAURANT_DELETE_GRACE_DAYS * 24 * 60 * 60 * 1000,
+    Date.now() + serviceDeleteGraceDays * 24 * 60 * 60 * 1000,
   );
   let changed: { id: string; slug: string }[];
   try {
