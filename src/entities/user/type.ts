@@ -6,9 +6,16 @@ import type {
   loginSchema,
   roleSchema,
   updateProfileSchema,
+  userStatusSchema,
 } from "./schema";
 
 export type Role = z.infer<typeof roleSchema>;
+export type UserStatus = z.infer<typeof userStatusSchema>;
+export type AdminUserFilter = {
+  q?: string;
+  role?: Role;
+  status?: UserStatus;
+};
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 export type CreateUserInput = z.infer<typeof createUserSchema>;

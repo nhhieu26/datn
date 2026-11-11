@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { loginSchema } from "@/entities/user";
-import { findByEmail } from "@/entities/user/repo";
+import { findByEmail, findStatusById } from "@/entities/user/repo";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
@@ -48,6 +48,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.role = user.role;
         token.status = user.status;
         token.onboardingCompleted = user.onboardingCompleted;
+        return token;
+      }
+
+      // Kiểm tra lại trạng thái ở mỗi lần đọc phiên: tài khoản bị khoá
+      // (hoặc không còn tồn tại) mất phiên ngay, không đợi JWT hết hạn.
+      if (typeof token.id === "string") {
+        const status = await findStatusById(token.id);
+        if (status !== "active") return null;
       }
       return token;
     },
