@@ -70,13 +70,29 @@ export function HeroSearchCard({ locations }: HeroSearchCardProps) {
             <div className="flex items-center justify-between">
               <div className="flex items-start space-x-3">
                 <div className="mt-0.5 text-gray-900">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" strokeLinecap="round" strokeLinejoin="round" />
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
                 </div>
                 <div>
-                  <span className="block text-sm font-bold text-gray-900">Địa điểm</span>
+                  <span className="block text-sm font-bold text-gray-900">
+                    Địa điểm
+                  </span>
                   <span className="block text-xs text-gray-600 mt-0.5 font-medium">
                     {value ?? "Tất cả địa điểm"}
                   </span>
@@ -84,9 +100,16 @@ export function HeroSearchCard({ locations }: HeroSearchCardProps) {
               </div>
               <svg
                 className={`w-4 h-4 text-gray-800 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-                fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                viewBox="0 0 24 24"
               >
-                <path d="M19 9l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" />
+                <path
+                  d="M19 9l-7 7-7-7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
             </div>
           )}
@@ -104,21 +127,42 @@ export function HeroSearchCard({ locations }: HeroSearchCardProps) {
           >
             <div className="flex items-start space-x-3">
               <div className="mt-0.5 text-gray-900">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
                   <circle cx="12" cy="12" r="9" />
-                  <path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path
+                    d="M12 7v5l3 2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               </div>
               <div>
-                <span className="block text-sm font-bold text-gray-900">Ngày khởi hành</span>
-                <span className="block text-xs text-gray-600 mt-0.5 font-medium">{dateText}</span>
+                <span className="block text-sm font-bold text-gray-900">
+                  Ngày khởi hành
+                </span>
+                <span className="block text-xs text-gray-600 mt-0.5 font-medium">
+                  {dateText}
+                </span>
               </div>
             </div>
             <svg
               className={`w-4 h-4 text-gray-800 transition-transform duration-200 ${dateOpen ? "rotate-180" : ""}`}
-              fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              viewBox="0 0 24 24"
             >
-              <path d="M19 9l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" />
+              <path
+                d="M19 9l-7 7-7-7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </button>
           <AnimatePresence>
@@ -168,13 +212,21 @@ export function HeroSearchCard({ locations }: HeroSearchCardProps) {
         <div className="border-b border-gray-200 pb-3 pt-1">
           <label className="flex items-start space-x-3">
             <div className="mt-0.5 text-gray-900">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
                 <circle cx="11" cy="11" r="8" />
                 <path d="M21 21l-4.35-4.35" strokeLinecap="round" />
               </svg>
             </div>
             <div className="flex-1">
-              <span className="block text-sm font-bold text-gray-900">Từ khóa</span>
+              <span className="block text-sm font-bold text-gray-900">
+                Từ khóa
+              </span>
               <input
                 className="mt-0.5 w-full border-0 p-0 text-xs text-gray-600 placeholder-gray-500 focus:ring-0"
                 onChange={(event) => setKeyword(event.target.value)}
