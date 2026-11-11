@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { formatCurrency, formatDate, formatDateTime, formatRelativeTime } from "@/lib/utils";
 import { StrokeIcon, trendClass, usersIcon } from "@/features/provider/dashboard/components/provider-dashboard";
+import { hasInvoice, invoiceHref } from "@/features/invoice/links";
 import { getBookingStatusMeta } from "@/features/provider/tour-bookings/utils";
 import {
   AdminRevenueChart,
@@ -323,7 +324,17 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
                   return (
                     <tr key={`${b.type}-${b.id}`} className="hover:bg-muted-hover">
                       <td className="px-4 py-3 ps-5 whitespace-nowrap">
-                        <p className="text-sm font-medium text-foreground">{b.code}</p>
+                        {hasInvoice(b.code, b.status) ? (
+                          <Link
+                            className="text-sm font-medium text-primary hover:underline"
+                            href={invoiceHref.admin(b.code)}
+                            title="Xem hóa đơn"
+                          >
+                            {b.code}
+                          </Link>
+                        ) : (
+                          <p className="text-sm font-medium text-foreground">{b.code}</p>
+                        )}
                         <p className="text-xs text-muted-foreground-1">{formatRelativeTime(b.createdAt)}</p>
                       </td>
                       <td className="max-w-64 px-4 py-3">

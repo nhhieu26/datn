@@ -1,5 +1,6 @@
 import { FadeIn } from "@/features/customer/components/motion";
 import Link from "next/link";
+import { invoiceHref } from "@/features/invoice/links";
 import { PaymentBadge } from "@/features/provider/tour-bookings";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import {
@@ -116,6 +117,16 @@ export function MyBookingsList({
                     </span>
                     {item.status === "pending_payment" ? "Thanh toán" : "Chi tiết"}
                   </Link>
+                  {(item.paymentState === "paid" || item.paymentState === "refunded") && (
+                    <Link
+                      href={invoiceHref.customer(item.code)}
+                      className="mt-1 flex items-center gap-1 whitespace-nowrap font-medium text-new-teal-cta hover:underline"
+                      aria-label={`Xem hóa đơn ${item.code}`}
+                    >
+                      <span className="material-symbols-outlined text-lg!">receipt_long</span>
+                      Hóa đơn
+                    </Link>
+                  )}
                 </td>
               </tr>
             ))}
