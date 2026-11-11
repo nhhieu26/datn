@@ -1,6 +1,6 @@
 # Sơ đồ cơ sở dữ liệu
 
-PostgreSQL, quản lý bằng Prisma (`prisma/schema.prisma`). Sơ đồ chia thành 3 nhóm để dễ đọc; các bảng xuất hiện ở nhiều nhóm là cùng một bảng.
+PostgreSQL, quản lý bằng Prisma (`prisma/schema.prisma`). Sơ đồ chia thành 4 nhóm để dễ đọc; các bảng xuất hiện ở nhiều nhóm là cùng một bảng.
 
 ## 1. Người dùng, nhà cung cấp và dịch vụ
 
@@ -335,6 +335,45 @@ erDiagram
     }
 ```
 
+## 4. Bài viết giới thiệu
+
+```mermaid
+erDiagram
+    User ||--o{ Article : "viết (admin)"
+    Province |o--o{ Article : "liên quan"
+    Article ||--o{ ArticleTag : ""
+    Tag ||--o{ ArticleTag : ""
+    Article ||--o{ ArticleComment : "bình luận"
+    User ||--o{ ArticleComment : "viết"
+
+    Article {
+        string id PK
+        string authorId FK
+        string provinceId FK "nullable"
+        string title
+        string slug UK
+        string excerpt
+        string content "HTML đã sanitize"
+        json coverImage "{url, fileId}"
+        ArticleCategory category "guide | destination | food | experience | news"
+        ArticleStatus status "draft | published"
+        int readMinutes
+        int viewCount
+        datetime publishedAt
+    }
+    ArticleTag {
+        string articleId PK, FK
+        string tagId PK, FK
+    }
+    ArticleComment {
+        string id PK
+        string articleId FK
+        string userId FK
+        string content
+        boolean isHidden "admin ẩn / AI kiểm duyệt"
+    }
+```
+
 ## Ghi chú thiết kế
 
 - **Snapshot dữ liệu đơn:** đơn đặt lưu lại tên dịch vụ, giá, tỷ lệ hoa hồng tại thời điểm đặt. Khi dịch vụ bị sửa hoặc xóa, khóa ngoại tới `TourDeparture` / `Room` / `Restaurant` chuyển thành `NULL` (`onDelete: SetNull`), đơn vẫn còn nguyên.
@@ -344,3 +383,4 @@ erDiagram
 - **Xóa mềm dịch vụ:** nhà cung cấp xóa tour/khách sạn/nhà hàng → đặt `deleteScheduledAt`; Vercel Cron đặt `deletedAt` khi hết thời gian ân hạn (`serviceDeleteGraceDays`).
 - **Nhà hàng không thanh toán trước:** `RestaurantBooking` không có cột tiền và không liên kết `Payment` / `Payout`.
 - **Một user nhiều hồ sơ:** mỗi nhà cung cấp có tối đa một hồ sơ cho mỗi loại hình (`@@unique([userId, businessType])`).
+- **Bài viết:** nội dung soạn bằng Tiptap, lưu HTML đã qua `sanitize-html` phía server; chỉ bài `published` hiển thị cho khách. Bình luận bị ẩn (`isHidden`) không hiển thị nhưng vẫn lưu để admin xem lại.

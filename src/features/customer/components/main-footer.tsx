@@ -7,7 +7,7 @@ const COLUMNS = [
     title: "Công ty",
     links: [
       { label: "Về chúng tôi", href: "#" },
-      { label: "Tin tức", href: "#" },
+      { label: "Bài viết", href: "/articles" },
       { label: "Câu hỏi thường gặp", href: "#" },
       { label: "Liên hệ", href: "#" },
     ],
