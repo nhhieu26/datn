@@ -27,15 +27,22 @@ export function ToursSummaryCards({ summary }: { summary: ToursSummary }) {
     },
     {
       label: "Tạm dừng",
-      value: summary.inactive,
-      hint: "Cần bảo trì lịch",
+      value: summary.paused,
+      hint: "Dừng thủ công, có thể mở bán lại",
       icon: "pause",
+      iconClass: "bg-yellow-100 text-yellow-700",
+    },
+    {
+      label: "Chờ xóa",
+      value: summary.pendingDeletion,
+      hint: "Tự xóa khi hết hạn, khôi phục được",
+      icon: "trash",
       iconClass: "bg-red-100 text-red-700",
     },
   ];
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
+    <div className="grid gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
       {cards.map((card) => (
         <div
           key={card.label}

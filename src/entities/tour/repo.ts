@@ -1,4 +1,8 @@
-import type { BookingStatus, Prisma } from "@/generated/prisma/client";
+import type {
+  BookingStatus,
+  Prisma,
+  ServiceStatus,
+} from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { tourBookingCounts } from "../booking-counts";
 import {
@@ -185,17 +189,48 @@ export function remove(id: string): Promise<Tour> {
   return prisma.tour.delete({ where: { id } });
 }
 
-/** Dừng bán tour và hẹn ngày xóa. Trả về số tour bị ảnh hưởng (0 nếu không tìm thấy hoặc đã dừng). */
-export async function scheduleDeletion(
-  id: string,
+/**
+ * Dừng bán nhiều tour và hẹn ngày xóa. Bỏ qua tour không thuộc provider hoặc đã dừng trước đó.
+ * Trả về các tour thực sự được hẹn xóa.
+ */
+export function scheduleDeletionMany(
+  ids: string[],
   providerProfileId: string,
   deleteAt: Date
-): Promise<number> {
-  const { count } = await prisma.tour.updateMany({
-    where: { id, providerProfileId, deletedAt: null, deleteScheduledAt: null },
+): Promise<{ id: string; slug: string }[]> {
+  return prisma.tour.updateManyAndReturn({
+    where: {
+      id: { in: ids },
+      providerProfileId,
+      deletedAt: null,
+      deleteScheduledAt: null,
+    },
     data: { status: "paused", deleteScheduledAt: deleteAt },
+    select: { id: true, slug: true },
   });
-  return count;
+}
+
+/**
+ * Đổi trạng thái mở bán / tạm dừng cho nhiều tour của một provider.
+ * Bỏ qua tour đã dừng (đang chờ xóa) hoặc đã ở sẵn trạng thái đích.
+ * Trả về các tour thực sự được đổi.
+ */
+export function setStatusMany(
+  ids: string[],
+  providerProfileId: string,
+  status: ServiceStatus
+): Promise<{ id: string; slug: string }[]> {
+  return prisma.tour.updateManyAndReturn({
+    where: {
+      id: { in: ids },
+      providerProfileId,
+      deletedAt: null,
+      deleteScheduledAt: null,
+      status: { not: status },
+    },
+    data: { status },
+    select: { id: true, slug: true },
+  });
 }
 
 /** Hủy lịch xóa, mở bán lại tour đã dừng. Trả về 0 nếu tour không ở trạng thái đã dừng. */

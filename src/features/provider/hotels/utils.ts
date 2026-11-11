@@ -16,8 +16,15 @@ const FALLBACK_IMAGE = "/image-notfound.png";
 export function getHotelsSummary(hotels: HotelListItem[]): HotelsSummary {
   return {
     total: hotels.length,
-    published: hotels.filter((hotel) => hotel.status === "published").length,
-    inactive: hotels.filter((hotel) => hotel.status === "paused").length,
+    published: hotels.filter(
+      (hotel) =>
+        hotel.status === "published" && hotel.deleteScheduledAt === null,
+    ).length,
+    paused: hotels.filter(
+      (hotel) => hotel.status === "paused" && hotel.deleteScheduledAt === null,
+    ).length,
+    pendingDeletion: hotels.filter((hotel) => hotel.deleteScheduledAt !== null)
+      .length,
   };
 }
 
@@ -57,7 +64,10 @@ export function mapHotelToListItem(hotel: HotelForProviderList): HotelListItem {
     provinceName: hotel.province.name,
     address: hotel.address,
     roomCount: hotel.rooms.length,
-    totalRoomQuantity: hotel.rooms.reduce((sum, room) => sum + room.quantity, 0),
+    totalRoomQuantity: hotel.rooms.reduce(
+      (sum, room) => sum + room.quantity,
+      0,
+    ),
     lowestRoomPrice: findLowestRoomBasePrice(hotel.rooms),
     averageRoomPrice: findAverageRoomBasePrice(hotel.rooms),
     tagNames: hotel.tags.map((item) => item.tag.name),

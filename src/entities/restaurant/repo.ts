@@ -1,4 +1,8 @@
-import type { BookingStatus, Prisma } from "@/generated/prisma/client";
+import type {
+  BookingStatus,
+  Prisma,
+  ServiceStatus,
+} from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { restaurantBookingCounts } from "../booking-counts";
 import {
@@ -157,17 +161,48 @@ export function remove(id: string): Promise<Restaurant> {
   return prisma.restaurant.delete({ where: { id } });
 }
 
-/** Dừng bán nhà hàng và hẹn ngày xóa. Trả về số nhà hàng bị ảnh hưởng (0 nếu không tìm thấy hoặc đã dừng). */
-export async function scheduleDeletion(
-  id: string,
+/**
+ * Dừng bán nhiều restaurant và hẹn ngày xóa. Bỏ qua restaurant không thuộc provider hoặc đã dừng trước đó.
+ * Trả về các restaurant thực sự được hẹn xóa.
+ */
+export function scheduleDeletionMany(
+  ids: string[],
   providerProfileId: string,
   deleteAt: Date
-): Promise<number> {
-  const { count } = await prisma.restaurant.updateMany({
-    where: { id, providerProfileId, deletedAt: null, deleteScheduledAt: null },
+): Promise<{ id: string; slug: string }[]> {
+  return prisma.restaurant.updateManyAndReturn({
+    where: {
+      id: { in: ids },
+      providerProfileId,
+      deletedAt: null,
+      deleteScheduledAt: null,
+    },
     data: { status: "paused", deleteScheduledAt: deleteAt },
+    select: { id: true, slug: true },
   });
-  return count;
+}
+
+/**
+ * Đổi trạng thái mở bán / tạm dừng cho nhiều restaurant của một provider.
+ * Bỏ qua restaurant đã dừng (đang chờ xóa) hoặc đã ở sẵn trạng thái đích.
+ * Trả về các restaurant thực sự được đổi.
+ */
+export function setStatusMany(
+  ids: string[],
+  providerProfileId: string,
+  status: ServiceStatus
+): Promise<{ id: string; slug: string }[]> {
+  return prisma.restaurant.updateManyAndReturn({
+    where: {
+      id: { in: ids },
+      providerProfileId,
+      deletedAt: null,
+      deleteScheduledAt: null,
+      status: { not: status },
+    },
+    data: { status },
+    select: { id: true, slug: true },
+  });
 }
 
 /** Hủy lịch xóa, mở bán lại nhà hàng đã dừng. Trả về 0 nếu nhà hàng không ở trạng thái đã dừng. */
