@@ -1,3 +1,4 @@
+import { NotificationBell } from "@/features/notification";
 import { auth } from "@/lib/auth";
 import Image from "next/image";
 import Link from "next/link";
@@ -9,7 +10,7 @@ export async function MainHeader() {
 
   return (
     <header
-      className="w-full relative z-30 page-x bg-new-hero-bg"
+      className="w-full relative z-50 page-x bg-new-hero-bg"
       data-purpose="site-header"
     >
       <div className="flex items-center justify-between h-20">
@@ -52,25 +53,28 @@ export async function MainHeader() {
           </Link>
 
           {session?.user && (
-            <Link
-              aria-label="Tài khoản của tôi"
-              className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-300 text-gray-700 hover:text-new-coral transition"
-              href="/dashboard"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            <>
+              <NotificationBell variant="customer" />
+              <Link
+                aria-label="Tài khoản của tôi"
+                className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-300 text-gray-700 hover:text-new-coral transition"
+                href="/dashboard"
               >
-                <path
-                  d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a7.5 7.5 0 0115 0v.75H4.5v-.75z"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                />
-              </svg>
-            </Link>
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a7.5 7.5 0 0115 0v.75H4.5v-.75z"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                  />
+                </svg>
+              </Link>
+            </>
           )}
 
           <HeaderAuthButton isAuthenticated={!!session?.user} />

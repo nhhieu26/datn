@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { notifyReviewCreated } from "@/entities/notification";
 import { createReviewSchema, reviewRepo } from "@/entities/review";
 import { auth } from "@/lib/auth";
 import { fromZodError, runAction } from "@/shared/lib/action-state";
@@ -19,7 +20,9 @@ export async function createReviewAction(input: unknown) {
 
     const { slug } = await reviewRepo.create(session.user.id, parsed.data);
 
-    const { kind } = parsed.data;
+    const { kind, bookingCode, rating } = parsed.data;
+    await notifyReviewCreated({ kind, bookingCode, rating });
+
     revalidatePath(`${SERVICE_PATH[kind]}/${slug}`);
     revalidatePath(MY_BOOKINGS_PATH[kind]);
     revalidatePath("/explore");

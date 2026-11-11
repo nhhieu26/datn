@@ -9,6 +9,7 @@ import {
   createRestaurantBookingSchema,
   restaurantBookingRepo,
 } from "@/entities/restaurant-booking";
+import { notifyRestaurantBookingCreated } from "@/entities/notification";
 import {
   createTourBookingSchema,
   tourBookingRepo,
@@ -112,6 +113,7 @@ export async function createRestaurantBookingAction(input: unknown) {
     const parsed = createRestaurantBookingSchema.safeParse(input);
     if (!parsed.success) throw new ValidationError(fromZodError(parsed.error));
     const booking = await restaurantBookingRepo.createConfirmed(customerId, parsed.data);
+    await notifyRestaurantBookingCreated(booking.id);
     return { code: booking.code };
   });
 }

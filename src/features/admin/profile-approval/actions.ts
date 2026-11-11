@@ -2,6 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import {
+  notifyProfileRejected,
+  notifyProfilesApproved,
+} from "@/entities/notification";
 import { providerProfileRepo } from "@/entities/provider-profile";
 import {
   ConflictError,
@@ -74,8 +78,14 @@ export async function approveProviderProfilesAction(
       throw new ConflictError("Có hồ sơ chưa được gửi để xét duyệt.");
     }
 
+    const pendingIds = existing
+      .filter((profile) => profile.approvalStatus === "pending")
+      .map((profile) => profile.id);
     const updated = await providerProfileRepo.approvePendingByIds(uniqueIds);
     const profiles = await providerProfileRepo.findApprovalStatesByIds(uniqueIds);
+    if (updated.count > 0 && pendingIds.length > 0) {
+      await notifyProfilesApproved(pendingIds);
+    }
 
     return {
       profiles: profiles.map(toPatch),
@@ -122,6 +132,10 @@ export async function rejectProviderProfileAction(
     const profiles = await providerProfileRepo.findApprovalStatesByIds([
       parsed.data.id,
     ]);
+    await notifyProfileRejected({
+      profileId: parsed.data.id,
+      reason: parsed.data.reason,
+    });
 
     return {
       profiles: profiles.map(toPatch),

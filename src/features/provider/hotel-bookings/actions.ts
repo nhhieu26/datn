@@ -2,6 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { hotelBookingRepo } from "@/entities/hotel-booking";
+import {
+  notifyProviderUpdatedBooking,
+  notifyTransferFailed,
+} from "@/entities/notification";
 import { providerProfileRepo } from "@/entities/provider-profile";
 import { tourBookingRepo } from "@/entities/tour-booking";
 import { updateBookingStatusSchema } from "@/features/provider/tour-bookings/schema";
@@ -41,6 +45,11 @@ export async function updateHotelBookingStatusAction(input: unknown) {
     let moneyStatus: TransferStatus | undefined;
     if (data.status === "confirmed") {
       await hotelBookingRepo.confirmForProvider(data.code, providerProfileId);
+      await notifyProviderUpdatedBooking({
+        kind: "hotel",
+        code: data.code,
+        status: "confirmed",
+      });
     } else if (data.status === "cancelled") {
       const { booking, refund, captureId } =
         await hotelBookingRepo.cancelForProvider(
@@ -59,6 +68,19 @@ export async function updateHotelBookingStatusAction(input: unknown) {
           }),
         (result) => tourBookingRepo.markRefundResult(refund.id, result),
       );
+      await notifyProviderUpdatedBooking({
+        kind: "hotel",
+        code: booking.code,
+        status: "cancelled",
+        reason: data.reason,
+      });
+      if (moneyStatus === "failed") {
+        await notifyTransferFailed({
+          transferType: "refund",
+          kind: "hotel",
+          bookingCode: booking.code,
+        });
+      }
     } else {
       const { booking, payout, recipientType } =
         await hotelBookingRepo.completeForProvider(data.code, providerProfileId);
@@ -74,6 +96,18 @@ export async function updateHotelBookingStatusAction(input: unknown) {
           }),
         (result) => tourBookingRepo.markPayoutResult(payout.id, result),
       );
+      await notifyProviderUpdatedBooking({
+        kind: "hotel",
+        code: booking.code,
+        status: "completed",
+      });
+      if (moneyStatus === "failed") {
+        await notifyTransferFailed({
+          transferType: "payout",
+          kind: "hotel",
+          bookingCode: booking.code,
+        });
+      }
     }
 
     revalidatePath("/provider/bookings/hotels");
