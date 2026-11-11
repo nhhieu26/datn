@@ -100,5 +100,8 @@ Dự án triển khai trên Vercel. `vercel.json` cấu hình Cron Jobs hằng n
 
 ## Tài liệu
 
+- [`docs/so-do-csdl.md`](docs/so-do-csdl.md) — sơ đồ cơ sở dữ liệu (ERD).
+- [`docs/use-case.md`](docs/use-case.md) — sơ đồ use case và đặc tả tóm tắt.
+- [`docs/user-flow.md`](docs/user-flow.md) — user flow theo vai trò, vòng đời đơn đặt, luồng thanh toán.
 - [`docs/cong-thanh-toan.md`](docs/cong-thanh-toan.md) — khảo sát và lựa chọn cổng thanh toán.
 - [`docs/tinh-nang-dang-ky-dang-nhap.md`](docs/tinh-nang-dang-ky-dang-nhap.md) — mô tả tính năng đăng ký / đăng nhập.
