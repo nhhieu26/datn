@@ -6,3 +6,4 @@ export {
 } from "./profile-approval";
 export { AdminLoginForm } from "./auth";
 export { SystemSettingsDashboard } from "./settings";
+export { UserDetail, UsersDashboard } from "./users";
