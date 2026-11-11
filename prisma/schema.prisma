@@ -87,6 +87,7 @@ model User {
   hotelBookings      HotelBooking[]
   restaurantBookings RestaurantBooking[]
   reviews            Review[]
+  notifications      Notification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -683,4 +684,33 @@ model SystemSetting {
   aboutVideoPosterUrl String @default("")
 
   updatedAt DateTime @updatedAt
+}
+
+enum NotificationType {
+  booking_created
+  booking_paid
+  booking_confirmed
+  booking_cancelled
+  booking_completed
+  review_created
+  profile_submitted
+  profile_approved
+  profile_rejected
+  transfer_failed
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  message   String
+  href      String?
+  readAt    DateTime?
+  metadata  Json             @default("{}")
+  createdAt DateTime         @default(now())
+
+  @@index([userId, readAt, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
 }

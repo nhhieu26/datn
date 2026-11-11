@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { PENDING_COOKIE, readPendingLink } from "@/lib/paypal-pending";
 import { deleteImage, uploadImage } from "@/lib/imagekit";
+import { notifyProfileSubmitted } from "@/entities/notification";
 import {
   createProviderProfileSchema,
   providerProfileRepo,
@@ -91,7 +92,7 @@ export async function createProviderProfileAction(
       photoFileId = uploaded.fileId;
     }
 
-    await providerProfileRepo.create({
+    const created = await providerProfileRepo.create({
       ...parsed.data,
       userId: session.user.id,
       photoUrl,
@@ -101,6 +102,11 @@ export async function createProviderProfileAction(
       paypalLinkedAt: new Date(paypal.linkedAt),
     });
     cookieStore.delete(PENDING_COOKIE);
+    await notifyProfileSubmitted({
+      profileId: created.id,
+      businessName: created.businessName,
+      businessType: created.businessType,
+    });
   });
 
   if (result.status === "success") {
@@ -210,6 +216,14 @@ export async function updateProviderProfileAction(
       approvalStatus,
       rejectionReason,
     });
+    if (approvalStatus === "pending") {
+      await notifyProfileSubmitted({
+        profileId,
+        businessName: parsed.data.businessName,
+        businessType: existing.businessType,
+        isResubmit: true,
+      });
+    }
   });
 
   if (result.status === "success") {
