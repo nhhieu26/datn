@@ -19,10 +19,12 @@ export type RecentBooking = {
   createdAt: Date;
 };
 
-// customer: booking do người dùng đặt; provider: booking các hồ sơ của họ nhận được
+// customer: booking do người dùng đặt; provider: booking các hồ sơ của họ nhận được;
+// all: toàn sàn (dashboard admin)
 export type RecentBookingScope =
   | { customerId: string }
-  | { providerUserId: string };
+  | { providerUserId: string }
+  | { all: true };
 
 const base = {
   id: true,
@@ -40,9 +42,11 @@ export async function findRecentBookings(
   take: number,
 ): Promise<RecentBooking[]> {
   const where =
-    "customerId" in scope
-      ? { customerId: scope.customerId }
-      : { providerProfile: { userId: scope.providerUserId } };
+    "all" in scope
+      ? {}
+      : "customerId" in scope
+        ? { customerId: scope.customerId }
+        : { providerProfile: { userId: scope.providerUserId } };
   const page = { where, orderBy: { createdAt: "desc" }, take } as const;
 
   const [tours, hotels, restaurants] = await Promise.all([

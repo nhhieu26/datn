@@ -202,3 +202,20 @@ export function findSignupRows(range: { from: Date; to: Date }) {
     select: { createdAt: true, role: true },
   });
 }
+
+/** Tài khoản khách hàng/đối tác đăng ký gần nhất (dashboard admin). */
+export function findRecentSignups(take: number) {
+  return prisma.user.findMany({
+    where: { role: { in: ["customer", "provider"] } },
+    select: {
+      id: true,
+      fullname: true,
+      email: true,
+      role: true,
+      status: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: "desc" },
+    take,
+  });
+}

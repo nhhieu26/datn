@@ -20,7 +20,7 @@ import { KIND_LABELS } from "../queries";
 import type { AdminReportData, AdminReportStatKey } from "../types";
 import { AdminRevenueChart, BookingsDonutChart, UserGrowthChart } from "./admin-report-charts";
 
-const statStyle: Record<AdminReportStatKey, { icon: ReactNode; className: string }> = {
+export const statStyle: Record<AdminReportStatKey, { icon: ReactNode; className: string }> = {
   gmv: { icon: moneyIcon, className: "bg-primary-100 text-primary-700" },
   fee: {
     icon: (
@@ -45,13 +45,13 @@ const statStyle: Record<AdminReportStatKey, { icon: ReactNode; className: string
   users: { icon: usersIcon, className: "bg-indigo-100 text-indigo-700" },
 };
 
-const KIND_DOT: Record<BusinessType, string> = {
+export const KIND_DOT: Record<BusinessType, string> = {
   tour: "bg-primary-600",
   hotel: "bg-teal-500",
   restaurant: "bg-amber-500",
 };
 
-const KIND_BADGE: Record<BusinessType, string> = {
+export const KIND_BADGE: Record<BusinessType, string> = {
   tour: "bg-primary-100 text-primary-800",
   hotel: "bg-teal-100 text-teal-800",
   restaurant: "bg-amber-100 text-amber-800",
