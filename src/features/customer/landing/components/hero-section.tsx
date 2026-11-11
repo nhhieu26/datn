@@ -62,7 +62,8 @@ export function HeroSection({ locations }: HeroSectionProps) {
           </StaggerItem>
           <StaggerItem>
             <h1 className="text-4xl sm:text-5xl lg:text-[58px] font-extrabold text-gray-900 leading-[1.15] tracking-tight mb-6 max-w-xl">
-              Lên kế hoạch du lịch đến những vùng đất mơ ước chỉ với một cú nhấp!
+              Lên kế hoạch du lịch đến những vùng đất mơ ước chỉ với một cú
+              nhấp!
             </h1>
           </StaggerItem>
           <StaggerItem>

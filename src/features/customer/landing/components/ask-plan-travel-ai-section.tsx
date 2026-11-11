@@ -39,7 +39,11 @@ export function AskPlanTravelAiSection() {
           <div className="flex items-center gap-2 mb-4">
             <svg className="w-7 h-7" viewBox="0 0 32 32">
               <path className="fill-new-coral" d="M18 4L28 24H8L18 4Z" />
-              <path className="fill-new-coral-alt" d="M11 12L20 28H2L11 12Z" opacity="0.9" />
+              <path
+                className="fill-new-coral-alt"
+                d="M11 12L20 28H2L11 12Z"
+                opacity="0.9"
+              />
             </svg>
             <span className="text-2xl font-black text-gray-900 tracking-tight">
               Roamly<span className="text-new-coral">.</span>
@@ -66,7 +70,11 @@ export function AskPlanTravelAiSection() {
               strokeWidth="2.5"
               viewBox="0 0 24 24"
             >
-              <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
+              <path
+                d="M5 12h14M12 5l7 7-7 7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </Link>
         </FadeIn>
