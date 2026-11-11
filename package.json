@@ -1,5 +1,6 @@
 {
-  "name": "appinit",
+  "name": "roamly",
+  "description": "Roamly - nền tảng đặt dịch vụ du lịch (tour, khách sạn, nhà hàng) tích hợp trợ lý AI",
   "version": "0.1.0",
   "private": true,
   "scripts": {
