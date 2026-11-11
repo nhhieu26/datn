@@ -565,3 +565,35 @@ export function notifyArticleCommentCreated(input: {
     });
   });
 }
+
+/**
+ * Khi nội dung (review / bình luận) bị AI gắn cờ — chờ duyệt hoặc tự động ẩn:
+ * - Gửi thông báo cho tất cả Quản trị viên để xem xét.
+ */
+export function notifyContentFlagged(input: {
+  target: "review" | "article_comment";
+  id: string;
+  authorName: string;
+  subject: string;
+  content: string;
+  status: "pending" | "rejected";
+  reason: string | null;
+}) {
+  return notifySafe(async () => {
+    const preview =
+      input.content.length > 100
+        ? `${input.content.slice(0, 97)}…`
+        : input.content;
+    const what = input.target === "review" ? "Đánh giá" : "Bình luận";
+    const state = input.status === "pending" ? "cần duyệt" : "đã bị AI ẩn";
+    const tab = input.target === "review" ? "reviews" : "comments";
+
+    await notificationRepo.notifyAdmins({
+      type: "content_flagged",
+      title: `${what} ${state}: "${input.subject}"`,
+      message: `${input.authorName}: ${preview}${input.reason ? ` — ${input.reason}` : ""}`,
+      href: `/admin/moderation?tab=${tab}&status=${input.status}`,
+      metadata: { target: input.target, id: input.id, status: input.status },
+    });
+  });
+}

@@ -371,7 +371,7 @@ export async function findPageByCustomerId(
             tour: { select: { images: true, durationDays: true, slug: true } },
           },
         },
-        review: { select: { id: true } },
+        review: { select: { id: true, status: true } },
       },
       orderBy: { createdAt: "desc" },
     }),

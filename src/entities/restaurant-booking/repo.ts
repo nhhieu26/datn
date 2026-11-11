@@ -125,7 +125,7 @@ export async function findPageByCustomerId(
       include: {
         restaurant: { select: { images: true, slug: true } },
         restaurantTimeSlot: { select: { endTime: true } },
-        review: { select: { id: true } },
+        review: { select: { id: true, status: true } },
       },
       orderBy: { createdAt: "desc" },
     }),

@@ -1,12 +1,15 @@
-import type { Prisma } from "@/generated/prisma/client";
+import type { ModerationStatus, Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   ConflictError,
   ForbiddenError,
   NotFoundError,
 } from "@/shared/lib/errors";
+import type { ModerationOutcome } from "@/lib/moderation/types";
 import type { CreateReviewInput } from "./schema";
 import type {
+  ModerationReviewFilter,
+  ModerationReviewItem,
   ProviderReviewFilter,
   ProviderReviewItem,
   ProviderReviewSummary,
@@ -29,7 +32,7 @@ export async function findManyByService(
   take: number
 ): Promise<ReviewItem[]> {
   const rows = await prisma.review.findMany({
-    where: serviceWhere(kind, serviceId),
+    where: { ...serviceWhere(kind, serviceId), status: "approved" },
     orderBy: { createdAt: "desc" },
     take,
     select: {
@@ -44,6 +47,15 @@ export async function findManyByService(
     ...row,
     customerName: customer.fullname,
   }));
+}
+
+/** Review chưa được hiển thị (chờ duyệt / bị ẩn) của chính customer cho dịch vụ. */
+export function findOwnUnpublished(customerId: string, kind: ReviewKind, serviceId: string) {
+  return prisma.review.findMany({
+    where: { ...serviceWhere(kind, serviceId), customerId, status: { not: "approved" } },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, rating: true, content: true, status: true, moderationReason: true, createdAt: true },
+  });
 }
 
 function providerWhere(
@@ -64,6 +76,7 @@ export async function findPageByProviderProfileId(
 ): Promise<{ items: ProviderReviewItem[]; total: number }> {
   const where: Prisma.ReviewWhereInput = {
     ...providerWhere(kind, providerProfileId),
+    status: "approved",
     ...(filter.rating ? { rating: filter.rating } : {}),
   };
   const [rows, total] = await Promise.all([
@@ -103,7 +116,7 @@ export async function summarizeByProviderProfileId(
 ): Promise<ProviderReviewSummary> {
   const groups = await prisma.review.groupBy({
     by: ["rating"],
-    where: providerWhere(kind, providerProfileId),
+    where: { ...providerWhere(kind, providerProfileId), status: "approved" },
     _count: { _all: true },
   });
   const distribution: ProviderReviewSummary["distribution"] = [0, 0, 0, 0, 0];
@@ -152,6 +165,25 @@ export async function findReviewableBookings(
   return rows.map((r) => ({ code: r.code, date: r.reservationDate }));
 }
 
+/** Tên dịch vụ của đơn (ngữ cảnh cho bước kiểm duyệt AI). */
+export async function findServiceNameForBooking(
+  kind: ReviewKind,
+  code: string,
+  customerId: string
+): Promise<string | null> {
+  const where = { code, customerId };
+  if (kind === "tour") {
+    const row = await prisma.tourBooking.findFirst({ where, select: { tourTitle: true } });
+    return row?.tourTitle ?? null;
+  }
+  if (kind === "hotel") {
+    const row = await prisma.hotelBooking.findFirst({ where, select: { hotelName: true } });
+    return row?.hotelName ?? null;
+  }
+  const row = await prisma.restaurantBooking.findFirst({ where, select: { restaurantName: true } });
+  return row?.restaurantName ?? null;
+}
+
 type BookingForReview = {
   id: string;
   status: string;
@@ -197,8 +229,29 @@ async function lockService(tx: Tx, kind: ReviewKind, id: string) {
   return rows[0]?.slug ?? null;
 }
 
-/** Customer đánh giá một đơn đã hoàn thành; cập nhật lại điểm trung bình của dịch vụ. */
-export function create(customerId: string, input: CreateReviewInput) {
+/** Tính lại điểm trung bình + số review của dịch vụ, chỉ tính review đã được duyệt. */
+async function recomputeServiceRating(tx: Tx, kind: ReviewKind, serviceId: string) {
+  const stats = await tx.review.aggregate({
+    where: { ...serviceWhere(kind, serviceId), status: "approved" },
+    _avg: { rating: true },
+    _count: true,
+  });
+  const data = {
+    ratingAvg: Math.round((stats._avg.rating ?? 0) * 10) / 10,
+    reviewCount: stats._count,
+  };
+  const where = { id: serviceId };
+  if (kind === "tour") await tx.tour.update({ where, data });
+  else if (kind === "hotel") await tx.hotel.update({ where, data });
+  else await tx.restaurant.update({ where, data });
+}
+
+/** Customer đánh giá một đơn đã hoàn thành (kèm kết quả kiểm duyệt); cập nhật lại điểm trung bình của dịch vụ. */
+export function create(
+  customerId: string,
+  input: CreateReviewInput,
+  moderation: ModerationOutcome
+) {
   const { kind, bookingCode, rating, content } = input;
   return prisma.$transaction(async (tx) => {
     const booking = await findBookingForReview(tx, kind, bookingCode, customerId);
@@ -222,33 +275,146 @@ export function create(customerId: string, input: CreateReviewInput) {
     });
     if (reviewed > 0) throw new ConflictError("Bạn đã đánh giá đơn này rồi.");
 
-    await tx.review.create({
+    const review = await tx.review.create({
       data: {
         customerId,
         rating,
         content,
+        status: moderation.status,
+        moderationSource: moderation.source,
+        moderationReason: moderation.reason,
+        moderationCategories: moderation.categories,
+        moderatedAt: new Date(),
         ...(kind === "tour"
           ? { tourId: booking.serviceId, tourBookingId: booking.id }
           : kind === "hotel"
             ? { hotelId: booking.serviceId, hotelBookingId: booking.id }
             : { restaurantId: booking.serviceId, restaurantBookingId: booking.id }),
       },
+      select: { id: true },
     });
 
-    const stats = await tx.review.aggregate({
-      where: serviceWhere(kind, booking.serviceId),
-      _avg: { rating: true },
-      _count: true,
-    });
-    const data = {
-      ratingAvg: Math.round((stats._avg.rating ?? 0) * 10) / 10,
-      reviewCount: stats._count,
-    };
-    const where = { id: booking.serviceId };
-    if (kind === "tour") await tx.tour.update({ where, data });
-    else if (kind === "hotel") await tx.hotel.update({ where, data });
-    else await tx.restaurant.update({ where, data });
+    if (moderation.status === "approved") {
+      await recomputeServiceRating(tx, kind, booking.serviceId);
+    }
 
-    return { slug };
+    return { slug, reviewId: review.id };
+  });
+}
+
+// ---- Kiểm duyệt (admin) ----
+
+const moderationSelect = {
+  id: true,
+  rating: true,
+  content: true,
+  status: true,
+  moderationSource: true,
+  moderationReason: true,
+  moderationCategories: true,
+  moderatedAt: true,
+  createdAt: true,
+  customer: { select: { fullname: true, email: true } },
+  tour: { select: { id: true, title: true, slug: true } },
+  hotel: { select: { id: true, name: true, slug: true } },
+  restaurant: { select: { id: true, name: true, slug: true } },
+  tourBooking: { select: { code: true } },
+  hotelBooking: { select: { code: true } },
+  restaurantBooking: { select: { code: true } },
+} satisfies Prisma.ReviewSelect;
+
+type ModerationRow = Prisma.ReviewGetPayload<{ select: typeof moderationSelect }>;
+
+function toModerationItem(row: ModerationRow): ModerationReviewItem {
+  const { customer, tour, hotel, restaurant, tourBooking, hotelBooking, restaurantBooking, ...rest } = row;
+  const service = tour
+    ? { kind: "tour" as const, serviceId: tour.id, serviceName: tour.title, serviceSlug: tour.slug }
+    : hotel
+      ? { kind: "hotel" as const, serviceId: hotel.id, serviceName: hotel.name, serviceSlug: hotel.slug }
+      : {
+          kind: "restaurant" as const,
+          serviceId: restaurant?.id ?? null,
+          serviceName: restaurant?.name ?? "(đã xóa)",
+          serviceSlug: restaurant?.slug ?? null,
+        };
+  return {
+    ...rest,
+    ...service,
+    customerName: customer.fullname,
+    customerEmail: customer.email,
+    bookingCode: tourBooking?.code ?? hotelBooking?.code ?? restaurantBooking?.code ?? null,
+  };
+}
+
+function moderationWhere(filter: ModerationReviewFilter): Prisma.ReviewWhereInput {
+  return {
+    ...(filter.status ? { status: filter.status } : {}),
+    ...(filter.source ? { moderationSource: filter.source } : {}),
+    ...(filter.q
+      ? {
+          OR: [
+            { content: { contains: filter.q, mode: "insensitive" } },
+            { customer: { fullname: { contains: filter.q, mode: "insensitive" } } },
+          ],
+        }
+      : {}),
+  };
+}
+
+export async function findPageForModeration(
+  filter: ModerationReviewFilter,
+  { skip, take }: { skip: number; take: number }
+): Promise<{ items: ModerationReviewItem[]; total: number }> {
+  const where = moderationWhere(filter);
+  const [rows, total] = await Promise.all([
+    prisma.review.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take,
+      select: moderationSelect,
+    }),
+    prisma.review.count({ where }),
+  ]);
+  return { items: rows.map(toModerationItem), total };
+}
+
+export async function countByStatus(): Promise<Record<ModerationStatus, number>> {
+  const groups = await prisma.review.groupBy({ by: ["status"], _count: { _all: true } });
+  const result: Record<ModerationStatus, number> = { approved: 0, pending: 0, rejected: 0 };
+  for (const g of groups) result[g.status] = g._count._all;
+  return result;
+}
+
+/** Admin duyệt/ẩn review; tính lại điểm dịch vụ. Trả về thông tin để revalidate + thông báo. */
+export function setStatus(id: string, status: ModerationStatus, reason?: string | null) {
+  return prisma.$transaction(async (tx) => {
+    const current = await tx.review.findUnique({
+      where: { id },
+      select: { status: true, tourId: true, hotelId: true, restaurantId: true },
+    });
+    if (!current) throw new NotFoundError("Không tìm thấy đánh giá.");
+
+    const kind: ReviewKind = current.tourId ? "tour" : current.hotelId ? "hotel" : "restaurant";
+    const serviceId = current.tourId ?? current.hotelId ?? current.restaurantId;
+    const slug = serviceId ? await lockService(tx, kind, serviceId) : null;
+
+    const row = await tx.review.update({
+      where: { id },
+      data: {
+        status,
+        moderationSource: "admin",
+        moderatedAt: new Date(),
+        ...(reason !== undefined ? { moderationReason: reason } : {}),
+        ...(status === "approved" ? { moderationCategories: [] } : {}),
+      },
+      select: moderationSelect,
+    });
+
+    if (serviceId && slug && current.status !== status) {
+      await recomputeServiceRating(tx, kind, serviceId);
+    }
+
+    return { previousStatus: current.status, item: toModerationItem(row), slug };
   });
 }

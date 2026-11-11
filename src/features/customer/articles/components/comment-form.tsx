@@ -35,6 +35,7 @@ export function CommentForm({
             className="block min-h-32 w-full resize-y rounded-lg border border-new-chip px-4 py-3 text-sm text-new-title placeholder:text-new-paragraph/60 focus:border-new-teal focus:ring-new-teal"
             maxLength={1000}
             name="content"
+            defaultValue={state.status === "error" ? (state.data?.content ?? "") : ""}
             placeholder="Chia sẻ cảm nghĩ hoặc kinh nghiệm của bạn…"
             required
           />
@@ -44,7 +45,17 @@ export function CommentForm({
             </p>
           ) : null}
           {state.status === "success" ? (
-            <p className="text-sm text-new-teal">Cảm ơn bạn! Bình luận đã được đăng.</p>
+            state.data?.moderation === "pending" ? (
+              <p className="text-sm text-amber-700">
+                Cảm ơn bạn! Bình luận đang chờ kiểm duyệt và sẽ hiển thị sau khi được duyệt.
+              </p>
+            ) : state.data?.moderation === "rejected" ? (
+              <p className="text-sm text-red-600">
+                Bình luận không được hiển thị do vi phạm tiêu chuẩn cộng đồng.
+              </p>
+            ) : (
+              <p className="text-sm text-new-teal">Cảm ơn bạn! Bình luận đã được đăng.</p>
+            )
           ) : null}
           <button
             className="inline-flex items-center rounded-md bg-new-teal px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-new-teal-cta disabled:opacity-60"

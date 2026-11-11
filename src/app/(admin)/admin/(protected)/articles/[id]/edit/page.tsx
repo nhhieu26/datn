@@ -52,7 +52,10 @@ export default async function EditArticlePage({
           id: c.id,
           authorName: c.user.fullname,
           content: c.content,
-          isHidden: c.isHidden,
+          status: c.status,
+          moderationSource: c.moderationSource,
+          moderationReason: c.moderationReason,
+          moderationCategories: c.moderationCategories,
           createdAt: c.createdAt.toISOString(),
         }))}
       />

@@ -346,7 +346,7 @@ export async function findPageByCustomerId(
             hotel: { select: { images: true, slug: true } },
           },
         },
-        review: { select: { id: true } },
+        review: { select: { id: true, status: true } },
       },
       orderBy: { createdAt: "desc" },
     }),

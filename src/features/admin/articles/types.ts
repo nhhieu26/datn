@@ -24,7 +24,10 @@ export type ArticleCommentAdminItem = {
   id: string;
   authorName: string;
   content: string;
-  isHidden: boolean;
+  status: "approved" | "pending" | "rejected";
+  moderationSource: "keyword" | "ai" | "admin" | "fallback" | null;
+  moderationReason: string | null;
+  moderationCategories: string[];
   createdAt: string;
 };
 

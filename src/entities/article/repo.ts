@@ -1,4 +1,5 @@
-import type { Prisma } from "@/generated/prisma/client";
+import type { ModerationStatus, Prisma } from "@/generated/prisma/client";
+import type { ModerationOutcome } from "@/lib/moderation/types";
 import { prisma } from "@/lib/prisma";
 import {
   articleListInclude,
@@ -173,7 +174,7 @@ export function findVisibleComments(
   articleId: string,
 ): Promise<ArticleCommentRow[]> {
   return prisma.articleComment.findMany({
-    where: { articleId, isHidden: false },
+    where: { articleId, status: "approved" },
     include: commentInclude,
     orderBy: { createdAt: "desc" },
   });
@@ -187,12 +188,20 @@ export function findAllComments(articleId: string): Promise<ArticleCommentRow[]>
   });
 }
 
-export function createComment(input: {
-  articleId: string;
-  userId: string;
-  content: string;
-}) {
-  return prisma.articleComment.create({ data: input });
+export function createComment(
+  input: { articleId: string; userId: string; content: string },
+  moderation: ModerationOutcome,
+) {
+  return prisma.articleComment.create({
+    data: {
+      ...input,
+      status: moderation.status,
+      moderationSource: moderation.source,
+      moderationReason: moderation.reason,
+      moderationCategories: moderation.categories,
+      moderatedAt: new Date(),
+    },
+  });
 }
 
 export function findCommentById(id: string) {
@@ -202,8 +211,85 @@ export function findCommentById(id: string) {
   });
 }
 
-export function setCommentHidden(id: string, isHidden: boolean) {
-  return prisma.articleComment.update({ where: { id }, data: { isHidden } });
+/** Admin duyệt / ẩn bình luận. */
+export function setCommentStatus(
+  id: string,
+  status: ModerationStatus,
+  reason?: string | null,
+) {
+  return prisma.articleComment.update({
+    where: { id },
+    data: {
+      status,
+      moderationSource: "admin",
+      moderatedAt: new Date(),
+      ...(reason !== undefined ? { moderationReason: reason } : {}),
+      ...(status === "approved" ? { moderationCategories: [] } : {}),
+    },
+    include: { article: { select: { id: true, slug: true } } },
+  });
+}
+
+// ---- Kiểm duyệt (admin) ----
+
+export type CommentModerationFilter = {
+  status?: ModerationStatus;
+  source?: "keyword" | "ai" | "admin" | "fallback";
+  q?: string;
+};
+
+const commentModerationInclude = {
+  user: { select: { fullname: true, email: true } },
+  article: { select: { id: true, title: true, slug: true } },
+} satisfies Prisma.ArticleCommentInclude;
+
+export type CommentModerationRow = Prisma.ArticleCommentGetPayload<{
+  include: typeof commentModerationInclude;
+}>;
+
+function commentModerationWhere(
+  filter: CommentModerationFilter,
+): Prisma.ArticleCommentWhereInput {
+  return {
+    ...(filter.status ? { status: filter.status } : {}),
+    ...(filter.source ? { moderationSource: filter.source } : {}),
+    ...(filter.q
+      ? {
+          OR: [
+            { content: { contains: filter.q, mode: "insensitive" } },
+            { user: { fullname: { contains: filter.q, mode: "insensitive" } } },
+          ],
+        }
+      : {}),
+  };
+}
+
+export async function findCommentPageForModeration(
+  filter: CommentModerationFilter,
+  { skip, take }: { skip: number; take: number },
+): Promise<{ items: CommentModerationRow[]; total: number }> {
+  const where = commentModerationWhere(filter);
+  const [items, total] = await Promise.all([
+    prisma.articleComment.findMany({
+      where,
+      include: commentModerationInclude,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take,
+    }),
+    prisma.articleComment.count({ where }),
+  ]);
+  return { items, total };
+}
+
+export async function countCommentsByStatus(): Promise<Record<ModerationStatus, number>> {
+  const groups = await prisma.articleComment.groupBy({
+    by: ["status"],
+    _count: { _all: true },
+  });
+  const result: Record<ModerationStatus, number> = { approved: 0, pending: 0, rejected: 0 };
+  for (const g of groups) result[g.status] = g._count._all;
+  return result;
 }
 
 export function deleteComment(id: string) {

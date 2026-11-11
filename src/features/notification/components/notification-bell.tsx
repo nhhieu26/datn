@@ -17,6 +17,7 @@ import {
   FileClock,
   FileX2,
   MessageSquare,
+  ShieldAlert,
   Sparkles,
   Star,
   XCircle,
@@ -86,6 +87,11 @@ function getTypeVisual(type: NotificationType) {
       return {
         icon: MessageSquare,
         bgClass: "bg-teal-50 text-teal-600",
+      };
+    case "content_flagged":
+      return {
+        icon: ShieldAlert,
+        bgClass: "bg-orange-50 text-orange-600",
       };
     case "transfer_failed":
       return {

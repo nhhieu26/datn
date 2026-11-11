@@ -31,11 +31,15 @@ const CANCELLABLE_STATUSES: BookingStatus[] = ["paid", "confirmed"];
 
 function toReviewState(
   kind: BookingKind,
-  booking: { status: BookingStatus; review: { id: string } | null },
+  booking: { status: BookingStatus; review: { id: string; status: string } | null },
   slug: string | undefined,
 ): ReviewState {
   if (booking.status !== "completed") return null;
-  if (booking.review) return "reviewed";
+  if (booking.review) {
+    if (booking.review.status === "pending") return "review_pending";
+    if (booking.review.status === "rejected") return "review_rejected";
+    return "reviewed";
+  }
   return slug ? reviewUrl(kind, slug) : null;
 }
 

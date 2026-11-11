@@ -14,6 +14,7 @@ import {
 } from "@/entities/article";
 import { provinceRepo } from "@/entities/province";
 import { tagRepo } from "@/entities/tag";
+import { logModeration } from "@/lib/moderation";
 import {
   fromZodError,
   runAction,
@@ -234,17 +235,26 @@ export async function uploadArticleInlineImageAction(
   });
 }
 
-export async function setArticleCommentHiddenAction(
+export async function setArticleCommentStatusAction(
   commentId: string,
-  isHidden: boolean,
+  status: "approved" | "rejected",
 ): Promise<ActionState> {
   return runAction<undefined>(async () => {
-    await requireAdmin();
+    const session = await requireAdmin();
     const comment = await articleRepo.findCommentById(commentId);
     if (!comment) throw new NotFoundError("Không tìm thấy bình luận.");
-    await articleRepo.setCommentHidden(commentId, isHidden);
+    await articleRepo.setCommentStatus(commentId, status);
+    await logModeration({
+      target: "article_comment",
+      targetId: commentId,
+      userId: session.user.id,
+      content: comment.content,
+      stage: "admin",
+      verdict: status === "approved" ? "approve" : "reject",
+    });
     revalidatePath(`/articles/${comment.article.slug}`);
     revalidatePath(`/admin/articles/${comment.article.id}/edit`);
+    revalidatePath("/admin/moderation");
     return undefined;
   });
 }

@@ -1,15 +1,29 @@
 "use client";
 
-import { Eye, EyeOff, Trash2 } from "lucide-react";
+import { Check, EyeOff, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { categoryLabel } from "@/lib/moderation/types";
 import { formatDateTime } from "@/lib/utils";
 import {
   deleteArticleCommentAction,
-  setArticleCommentHiddenAction,
+  setArticleCommentStatusAction,
 } from "../actions";
 import type { ArticleCommentAdminItem } from "../types";
 import { cardClass, layerButtonClass } from "./styles";
+
+const STATUS_BADGE: Record<ArticleCommentAdminItem["status"], { label: string; cls: string } | null> = {
+  approved: null,
+  pending: { label: "Chờ duyệt", cls: "bg-amber-100 text-amber-800" },
+  rejected: { label: "Đang ẩn", cls: "bg-rose-100 text-rose-700" },
+};
+
+const SOURCE_LABEL: Record<NonNullable<ArticleCommentAdminItem["moderationSource"]>, string> = {
+  keyword: "Bộ lọc từ khóa",
+  ai: "AI",
+  admin: "Quản trị viên",
+  fallback: "AI lỗi",
+};
 
 export function ArticleCommentsPanel({
   comments,
@@ -42,7 +56,7 @@ export function ArticleCommentsPanel({
             Bình luận ({comments.length})
           </h2>
           <p className="text-sm text-muted-foreground-1">
-            Bình luận bị ẩn sẽ không hiển thị với khách.
+            Bình luận được AI kiểm duyệt khi gửi; chỉ bình luận đã duyệt mới hiển thị với khách.
           </p>
         </div>
         {error ? <p className="px-5 pt-3 text-sm text-red-600">{error}</p> : null}
@@ -53,7 +67,7 @@ export function ArticleCommentsPanel({
             {comments.map((c) => (
               <li
                 className={`flex flex-col gap-3 p-4 sm:flex-row sm:items-start md:px-5 ${
-                  c.isHidden ? "opacity-60" : ""
+                  c.status === "rejected" ? "opacity-60" : ""
                 }`}
                 key={c.id}
               >
@@ -63,28 +77,52 @@ export function ArticleCommentsPanel({
                     <span className="ms-2 text-xs font-normal text-muted-foreground-1">
                       {formatDateTime(c.createdAt)}
                     </span>
-                    {c.isHidden ? (
-                      <span className="ms-2 rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">
-                        Đang ẩn
+                    {STATUS_BADGE[c.status] ? (
+                      <span
+                        className={`ms-2 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[c.status]!.cls}`}
+                      >
+                        {STATUS_BADGE[c.status]!.label}
                       </span>
                     ) : null}
                   </p>
                   <p className="mt-1 text-sm whitespace-pre-line text-muted-foreground-2">
                     {c.content}
                   </p>
+                  {c.status !== "approved" && (c.moderationReason || c.moderationCategories.length > 0) ? (
+                    <p className="mt-1.5 text-xs text-muted-foreground-1">
+                      {c.moderationSource ? `${SOURCE_LABEL[c.moderationSource]}: ` : null}
+                      {c.moderationCategories.map(categoryLabel).join(", ")}
+                      {c.moderationReason ? ` — ${c.moderationReason}` : null}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  <button
-                    className={layerButtonClass}
-                    disabled={busyId === c.id}
-                    onClick={() =>
-                      run(c.id, () => setArticleCommentHiddenAction(c.id, !c.isHidden))
-                    }
-                    type="button"
-                  >
-                    {c.isHidden ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
-                    {c.isHidden ? "Hiện" : "Ẩn"}
-                  </button>
+                  {c.status !== "approved" ? (
+                    <button
+                      className={`${layerButtonClass} text-emerald-700`}
+                      disabled={busyId === c.id}
+                      onClick={() =>
+                        run(c.id, () => setArticleCommentStatusAction(c.id, "approved"))
+                      }
+                      type="button"
+                    >
+                      <Check className="size-4" />
+                      Duyệt
+                    </button>
+                  ) : null}
+                  {c.status !== "rejected" ? (
+                    <button
+                      className={layerButtonClass}
+                      disabled={busyId === c.id}
+                      onClick={() =>
+                        run(c.id, () => setArticleCommentStatusAction(c.id, "rejected"))
+                      }
+                      type="button"
+                    >
+                      <EyeOff className="size-4" />
+                      Ẩn
+                    </button>
+                  ) : null}
                   {confirmId === c.id ? (
                     <button
                       className="inline-flex items-center gap-x-2 rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"

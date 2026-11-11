@@ -90,6 +90,7 @@ model User {
   notifications      Notification[]
   articles           Article[]
   articleComments    ArticleComment[]
+  moderationLogs     ModerationLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -615,9 +616,17 @@ model Review {
   restaurantBookingId String?            @unique
   restaurantBooking   RestaurantBooking? @relation(fields: [restaurantBookingId], references: [id], onDelete: SetNull)
 
+  // Kiểm duyệt nội dung (lọc từ khóa → AI → admin). Chỉ review approved được hiển thị và tính điểm.
+  status               ModerationStatus  @default(approved)
+  moderationSource     ModerationSource?
+  moderationReason     String?
+  moderationCategories String[]          @default([])
+  moderatedAt          DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([status, createdAt])
   @@index([tourId, createdAt])
   @@index([hotelId, createdAt])
   @@index([restaurantId, createdAt])
@@ -702,6 +711,7 @@ enum NotificationType {
   profile_rejected
   transfer_failed
   article_comment_created
+  content_flagged
 }
 
 model Notification {
@@ -779,10 +789,69 @@ model ArticleComment {
   userId    String
   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   content   String
-  isHidden  Boolean @default(false)
+
+  // Kiểm duyệt nội dung; chỉ bình luận approved được hiển thị công khai.
+  status               ModerationStatus  @default(approved)
+  moderationSource     ModerationSource?
+  moderationReason     String?
+  moderationCategories String[]          @default([])
+  moderatedAt          DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([articleId, createdAt])
+  @@index([status, createdAt])
+}
+
+enum ModerationStatus {
+  approved
+  pending
+  rejected
+}
+
+// Bước đã đưa ra quyết định cuối cùng cho nội dung.
+enum ModerationSource {
+  keyword
+  ai
+  admin
+  fallback
+}
+
+enum ModerationTarget {
+  review
+  article_comment
+}
+
+enum ModerationStage {
+  keyword
+  ai
+  admin
+}
+
+enum ModerationVerdict {
+  block
+  approve
+  pending
+  reject
+}
+
+// Nhật ký mỗi lần kiểm duyệt (kể cả nội dung bị chặn ngay ở form, không được lưu) — phục vụ thống kê.
+model ModerationLog {
+  id         String            @id @default(cuid())
+  target     ModerationTarget
+  targetId   String?
+  userId     String?
+  user       User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  content    String
+  stage      ModerationStage
+  verdict    ModerationVerdict
+  categories String[]          @default([])
+  reason     String?
+  confidence Float?
+  latencyMs  Int?
+  createdAt  DateTime          @default(now())
+
+  @@index([createdAt])
+  @@index([target, verdict])
 }
