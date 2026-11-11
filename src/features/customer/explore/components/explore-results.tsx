@@ -61,7 +61,9 @@ export function ExploreResults({ items, total, query }: ExploreResultsProps) {
                 initial={{ opacity: 0, y: -6, scale: 0.98 }}
                 transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
               >
-                {SORT_OPTIONS.map((s) => (
+                {SORT_OPTIONS.filter(
+                  (s) => s.value !== "relevance" || query.q,
+                ).map((s) => (
                   <li key={s.value}>
                     <button
                       className={`w-full text-left px-4 py-2 text-base transition-colors cursor-pointer ${

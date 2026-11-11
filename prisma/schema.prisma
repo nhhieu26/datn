@@ -91,6 +91,7 @@ model User {
   articles           Article[]
   articleComments    ArticleComment[]
   moderationLogs     ModerationLog[]
+  searchHistories    SearchHistory[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -854,4 +855,20 @@ model ModerationLog {
 
   @@index([createdAt])
   @@index([target, verdict])
+}
+
+// 20 lượt tìm kiếm gần nhất của mỗi người dùng, kèm vector để gợi ý cá nhân hóa.
+model SearchHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // đã chuẩn hóa: trim, gộp khoảng trắng, chữ thường
+  query     String
+  // vector gemini-embedding-001, 768 chiều
+  embedding Float[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, query])
+  @@index([userId, updatedAt])
 }

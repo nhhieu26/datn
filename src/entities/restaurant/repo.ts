@@ -9,7 +9,9 @@ import {
   menuAveragePrice,
   needsScan,
   paginateByPrice,
+  paginateByRelevance,
   ratingWhere,
+  searchWhere,
   type ListFilter,
 } from "../list-filter";
 import type {
@@ -244,6 +246,14 @@ export function findRecent(take: number) {
   });
 }
 
+/** Nhà hàng đang bán theo danh sách id (cùng dữ liệu với findRecent), không giữ thứ tự. */
+export function findPublishedByIds(ids: string[]) {
+  return prisma.restaurant.findMany({
+    where: { id: { in: ids }, status: "published", deletedAt: null },
+    include: { province: true, timeSlots: true },
+  });
+}
+
 export async function findPaged(filter: ListFilter) {
   const where: Prisma.RestaurantWhereInput = {
     status: "published",
@@ -251,15 +261,23 @@ export async function findPaged(filter: ListFilter) {
     ...ratingWhere(filter),
     ...(filter.province && { province: { name: filter.province } }),
     ...(filter.tag && { tags: { some: { tag: { name: filter.tag } } } }),
-    ...(filter.q && {
-      OR: [
-        { name: { contains: filter.q, mode: "insensitive" } },
-        { address: { contains: filter.q, mode: "insensitive" } },
-      ],
-    }),
+    ...searchWhere<Prisma.RestaurantWhereInput>(filter, (q) => [
+      { name: { contains: q, mode: "insensitive" } },
+      { address: { contains: q, mode: "insensitive" } },
+    ]),
   };
   const include = { province: true, timeSlots: true } as const;
   const orderBy = { createdAt: "desc" } as const;
+
+  if (filter.sort === "relevance") {
+    const all = await prisma.restaurant.findMany({ where, include });
+    return paginateByRelevance(
+      all,
+      (r) => r.name,
+      (r) => menuAveragePrice(r.menu),
+      filter,
+    );
+  }
 
   // giá nhà hàng = giá món trung bình trong menu
   if (needsScan(filter)) {

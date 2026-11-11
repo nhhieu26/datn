@@ -3,8 +3,9 @@
 import { FadeIn } from "@/features/customer/components/motion";
 import { motion } from "motion/react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { LocationPicker } from "../../components/location-picker";
+import { clearSearchesAction, deleteSearchAction } from "../actions";
 import { KIND_FILTERS } from "../data";
 import { buildExploreUrl, type ExploreQuery } from "../lib/search-params";
 import { PriceRangeSlider } from "./price-range-slider";
@@ -28,11 +29,26 @@ function Heading({ icon, title }: { icon: string; title: string }) {
   );
 }
 
-type FilterSidebarProps = { locations: string[]; query: ExploreQuery };
+export type RecentSearch = { id: string; query: string };
 
-export function FilterSidebar({ locations, query }: FilterSidebarProps) {
+type FilterSidebarProps = {
+  locations: string[];
+  query: ExploreQuery;
+  recentSearches: RecentSearch[];
+};
+
+export function FilterSidebar({
+  locations,
+  query,
+  recentSearches,
+}: FilterSidebarProps) {
   const router = useRouter();
   const [keyword, setKeyword] = useState(query.q);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  // id các mục vừa xóa, ẩn ngay trong lúc chờ server
+  const [removed, setRemoved] = useState<ReadonlySet<string>>(new Set());
+  const [, startTransition] = useTransition();
+  const history = recentSearches.filter((s) => !removed.has(s.id));
 
   function apply(patch: Partial<ExploreQuery> = {}) {
     router.push(buildExploreUrl(query, patch));
@@ -46,9 +62,10 @@ export function FilterSidebar({ locations, query }: FilterSidebarProps) {
 
           <div className="mt-5">
             <form
-              className="mb-3 flex items-center gap-2.5 rounded-lg border border-new-chip px-4 py-3 transition-colors focus-within:border-new-teal-cta"
+              className="relative mb-3 flex items-center gap-2.5 rounded-lg border border-new-chip px-4 py-3 transition-colors focus-within:border-new-teal-cta"
               onSubmit={(e) => {
                 e.preventDefault();
+                setHistoryOpen(false);
                 apply({ q: keyword.trim() });
               }}
             >
@@ -56,11 +73,73 @@ export function FilterSidebar({ locations, query }: FilterSidebarProps) {
               <input
                 aria-label="Từ khóa"
                 className="w-full border-0 bg-transparent p-0 text-sm leading-[1.4] text-new-title placeholder:text-new-paragraph focus:ring-0"
+                autoComplete="off"
+                onBlur={() => setHistoryOpen(false)}
                 onChange={(e) => setKeyword(e.target.value)}
-                placeholder="Tìm theo từ khóa"
+                onFocus={() => setHistoryOpen(true)}
+                placeholder="Mô tả chuyến đi bạn muốn..."
                 type="text"
                 value={keyword}
               />
+              {historyOpen && history.length > 0 && (
+                <div
+                  className="absolute left-0 right-0 top-full z-30 mt-1 max-h-80 overflow-y-auto rounded-lg border border-new-chip bg-white py-2 shadow-lg"
+                  // giữ focus ở ô nhập để click vào danh sách không đóng dropdown trước
+                  onMouseDown={(e) => e.preventDefault()}
+                >
+                  <div className="flex items-center justify-between px-4 pb-1.5">
+                    <span className="text-xs font-bold uppercase tracking-wide text-new-paragraph">
+                      Tìm kiếm gần đây
+                    </span>
+                    <button
+                      className="cursor-pointer text-xs font-medium text-new-teal-cta hover:underline"
+                      onClick={() => {
+                        setRemoved(
+                          new Set([...removed, ...history.map((h) => h.id)]),
+                        );
+                        startTransition(() => void clearSearchesAction());
+                      }}
+                      type="button"
+                    >
+                      Xóa tất cả
+                    </button>
+                  </div>
+                  <ul>
+                    {history.map((item) => (
+                      <li
+                        className="group flex items-center gap-2 px-4 transition-colors hover:bg-new-chip"
+                        key={item.id}
+                      >
+                        <Icon className="text-base text-new-paragraph" name="history" />
+                        <button
+                          className="min-w-0 flex-1 cursor-pointer truncate py-2 text-left text-sm text-new-title"
+                          onClick={() => {
+                            setKeyword(item.query);
+                            setHistoryOpen(false);
+                            apply({ q: item.query });
+                          }}
+                          type="button"
+                        >
+                          {item.query}
+                        </button>
+                        <button
+                          aria-label={`Xóa "${item.query}" khỏi lịch sử`}
+                          className="cursor-pointer text-new-paragraph opacity-60 transition-opacity hover:opacity-100"
+                          onClick={() => {
+                            setRemoved((prev) => new Set(prev).add(item.id));
+                            startTransition(
+                              () => void deleteSearchAction(item.id),
+                            );
+                          }}
+                          type="button"
+                        >
+                          <Icon className="text-base" name="close" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </form>
 
             <LocationPicker

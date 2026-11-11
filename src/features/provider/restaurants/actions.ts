@@ -7,6 +7,7 @@ import { Prisma, type ServiceStatus } from "@/generated/prisma/client";
 import { auth } from "@/lib/auth";
 import { deleteImage, uploadImage } from "@/lib/imagekit";
 import { embedText } from "@/lib/gemini";
+import { buildRestaurantEmbeddingText, parseMenu } from "@/shared/lib/embedding-text";
 import {
   deleteRestaurantEmbedding,
   setRestaurantEmbeddingStatus,
@@ -336,16 +337,7 @@ export async function createRestaurantAction(
     createdRestaurantId = restaurant.id;
 
     stage = "embedding";
-    const embeddingText = [
-      parsed.data.name,
-      parsed.data.description,
-      province.fullName,
-      parsed.data.address,
-      parsed.data.menu.map((item) => item.name).join(", "),
-      parsed.data.menu.map((item) => item.description).join(", "),
-    ]
-      .filter(Boolean)
-      .join("\n");
+    const embeddingText = buildRestaurantEmbeddingText(parsed.data, province.fullName);
 
     const vector = await embedText(embeddingText);
     embeddingUpsertAttempted = true;
@@ -447,17 +439,11 @@ export async function createRestaurantFromLinksAction(
     createdRestaurantId = restaurant.id;
 
     stage = "embedding";
-    const embeddingText = [
-      parsed.data.name,
-      parsed.data.description,
+    const embeddingText = buildRestaurantEmbeddingText(
+      parsed.data,
       province.fullName,
-      parsed.data.address,
-      tags.map((tag) => tag.name).join(", "),
-      parsed.data.menu.map((item) => item.name).join(", "),
-      parsed.data.menu.map((item) => item.description).join(", "),
-    ]
-      .filter(Boolean)
-      .join("\n");
+      tags,
+    );
 
     const vector = await embedText(embeddingText);
     embeddingUpsertAttempted = true;
@@ -647,16 +633,7 @@ export async function updateRestaurantAction(
     });
 
     try {
-      const embeddingText = [
-        parsed.data.name,
-        parsed.data.description,
-        province.fullName,
-        parsed.data.address,
-        parsed.data.menu.map((item) => item.name).join(", "),
-        parsed.data.menu.map((item) => item.description).join(", "),
-      ]
-        .filter(Boolean)
-        .join("\n");
+      const embeddingText = buildRestaurantEmbeddingText(parsed.data, province.fullName);
       const vector = await embedText(embeddingText);
       await upsertRestaurantEmbedding(updated.id, vector, {
         name: parsed.data.name,
@@ -875,19 +852,10 @@ export async function restoreRestaurantAction(
 
   // Embedding đã bị xóa khi dừng nhà hàng, tạo lại để nhà hàng xuất hiện trong tìm kiếm
   try {
-    const menu = Array.isArray(restaurant.menu)
-      ? (restaurant.menu as { name?: unknown; description?: unknown }[])
-      : [];
-    const embeddingText = [
-      restaurant.name,
-      restaurant.description,
+    const embeddingText = buildRestaurantEmbeddingText(
+      { ...restaurant, menu: parseMenu(restaurant.menu) },
       restaurant.province.fullName,
-      restaurant.address,
-      menu.map((item) => item.name).join(", "),
-      menu.map((item) => item.description).join(", "),
-    ]
-      .filter(Boolean)
-      .join("\n");
+    );
     const vector = await embedText(embeddingText);
     await upsertRestaurantEmbedding(restaurant.id, vector, {
       name: restaurant.name,

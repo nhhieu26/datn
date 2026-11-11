@@ -10,6 +10,7 @@ import {
   toTourItem,
 } from "./to-explore-item";
 import type { ExploreQuery } from "./search-params";
+import type { SemanticScores } from "./semantic";
 
 type Page = { items: ExploreItem[]; total: number };
 
@@ -18,9 +19,11 @@ async function loadKind(
   query: ExploreQuery,
   skip: number,
   take: number,
+  semantic: SemanticScores | null,
 ): Promise<Page> {
   const filter = {
     q: query.q || undefined,
+    semantic: query.q ? semantic?.[kind] : undefined,
     province: query.location || undefined,
     tag: query.tag,
     minPrice: query.minPrice,
@@ -67,16 +70,26 @@ async function loadKind(
   }
 }
 
-export async function loadExplore(query: ExploreQuery): Promise<Page> {
+/** `semantic`: điểm tìm kiếm ngữ nghĩa cho `query.q` (null khi không có từ khóa hoặc Pinecone lỗi). */
+export async function loadExplore(
+  query: ExploreQuery,
+  semantic: SemanticScores | null = null,
+): Promise<Page> {
   if (query.kind !== "all") {
-    return loadKind(query.kind, query, (query.page - 1) * PAGE_SIZE, PAGE_SIZE);
+    return loadKind(
+      query.kind,
+      query,
+      (query.page - 1) * PAGE_SIZE,
+      PAGE_SIZE,
+      semantic,
+    );
   }
 
   // Gộp 4 loại: lấy đủ (skip + take) mục đầu của từng loại rồi sắp xếp chung và cắt trang
   const skip = (query.page - 1) * PAGE_SIZE;
   const kinds: ExploreKind[] = ["tour", "hotel", "restaurant", "destination"];
   const pages = await Promise.all(
-    kinds.map((k) => loadKind(k, query, 0, skip + PAGE_SIZE)),
+    kinds.map((k) => loadKind(k, query, 0, skip + PAGE_SIZE, semantic)),
   );
   const merged = pages.flatMap((p) => p.items);
   const total = pages.reduce((sum, p) => sum + p.total, 0);
@@ -84,6 +97,10 @@ export async function loadExplore(query: ExploreQuery): Promise<Page> {
   const direction =
     query.sort === "price_asc" ? 1 : query.sort === "price_desc" ? -1 : 0;
   merged.sort((a, b) => {
+    if (query.sort === "relevance") {
+      const diff = (b.score ?? 0) - (a.score ?? 0);
+      if (diff) return diff;
+    }
     if (!direction && query.sort === "popular") {
       const diff = (b.bookingCount ?? 0) - (a.bookingCount ?? 0);
       if (diff) return diff;

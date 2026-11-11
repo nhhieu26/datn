@@ -7,6 +7,7 @@ import { Prisma, type ServiceStatus } from "@/generated/prisma/client";
 import { auth } from "@/lib/auth";
 import { deleteImage, uploadImage } from "@/lib/imagekit";
 import { embedText } from "@/lib/gemini";
+import { buildTourEmbeddingText } from "@/shared/lib/embedding-text";
 import {
   deleteTourEmbedding,
   setTourEmbeddingStatus,
@@ -94,26 +95,6 @@ function hasPastDeparture(
 }
 
 const PAST_DEPARTURE_ERROR = "Ngày khởi hành phải ở tương lai.";
-
-function buildEmbeddingText(
-  data: Pick<
-    CreateTourInput,
-    "title" | "description" | "itinerary" | "includeServices"
-  >,
-  provinceName: string,
-  tags: { name: string }[],
-): string {
-  return [
-    data.title,
-    data.description,
-    provinceName,
-    tags.map((tag) => tag.name).join(", "),
-    data.itinerary.map((day) => day.title).join(", "),
-    data.includeServices.join(", "),
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
 
 function isUniqueConstraintError(error: unknown): boolean {
   return (
@@ -353,7 +334,7 @@ export async function createTourAction(
 
     stage = "embedding";
     const vector = await embedText(
-      buildEmbeddingText(parsed.data, province.fullName, tags),
+      buildTourEmbeddingText(parsed.data, province.fullName, tags),
     );
     embeddingUpsertAttempted = true;
     await upsertTourEmbedding(tour.id, vector, {
@@ -444,7 +425,7 @@ export async function createTourFromLinksAction(
 
     stage = "embedding";
     const vector = await embedText(
-      buildEmbeddingText(parsed.data, province.fullName, tags),
+      buildTourEmbeddingText(parsed.data, province.fullName, tags),
     );
     embeddingUpsertAttempted = true;
     await upsertTourEmbedding(tour.id, vector, {
@@ -665,7 +646,7 @@ export async function updateTourAction(
 
     try {
       const vector = await embedText(
-        buildEmbeddingText(parsed.data, province.fullName, tags),
+        buildTourEmbeddingText(parsed.data, province.fullName, tags),
       );
       await upsertTourEmbedding(updatedTour.id, vector, {
         title: parsed.data.title,
@@ -870,7 +851,7 @@ export async function restoreTourAction(tourId: string): Promise<ActionState> {
   try {
     const tagIds = tour.tags.map((tourTag) => tourTag.tagId);
     const vector = await embedText(
-      buildEmbeddingText(
+      buildTourEmbeddingText(
         {
           title: tour.title,
           description: tour.description ?? "",

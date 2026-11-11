@@ -12,7 +12,9 @@ import {
   WhyChooseUsSection,
 } from "@/features/customer/landing";
 import { serializePackages } from "@/features/customer/landing/lib/serialize-packages";
+import { RecommendedSection } from "@/features/customer/recommendations";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 export const metadata: Metadata = {
   title: "Roamly — Khám Phá Nhiều Hơn Một Điểm Đến",
@@ -39,6 +41,10 @@ export default async function TrangChuPage() {
     <>
       <HeroSection locations={locations} />
       <WhyChooseUsSection />
+      {/* gọi Pinecone theo người dùng: stream riêng để không chặn phần còn lại của trang */}
+      <Suspense fallback={null}>
+        <RecommendedSection />
+      </Suspense>
       <PopularPackagesSection
         packages={serializePackages({
           tours,

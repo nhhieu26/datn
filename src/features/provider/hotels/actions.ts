@@ -7,6 +7,7 @@ import { Prisma, type ServiceStatus } from "@/generated/prisma/client";
 import { auth } from "@/lib/auth";
 import { deleteImage, uploadImage } from "@/lib/imagekit";
 import { embedText } from "@/lib/gemini";
+import { buildHotelEmbeddingText } from "@/shared/lib/embedding-text";
 import {
   deleteHotelEmbedding,
   setHotelEmbeddingStatus,
@@ -56,27 +57,6 @@ const STAGE_ERROR_MESSAGES: Record<CreationStage, string> = {
   embedding:
     "Không thể tạo dữ liệu tìm kiếm cho khách sạn. Các tài nguyên đã tạo sẽ được xóa.",
 };
-
-function buildEmbeddingText(
-  data: Pick<CreateHotelInput, "name" | "description" | "address" | "amenities"> & {
-    rooms: { name: string; description?: string | null }[];
-  },
-  provinceName: string,
-  tags: { name: string }[],
-): string {
-  return [
-    data.name,
-    data.description,
-    provinceName,
-    data.address,
-    tags.map((tag) => tag.name).join(", "),
-    data.amenities.join(", "),
-    data.rooms.map((room) => room.name).join(", "),
-    data.rooms.map((room) => room.description).join(", "),
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
 
 function parseJsonField<T>(formData: FormData, key: string, fallback: T): T {
   const raw = formData.get(key);
@@ -423,7 +403,7 @@ export async function createHotelAction(
 
     stage = "embedding";
     const vector = await embedText(
-      buildEmbeddingText(parsed.data, province.fullName, tags),
+      buildHotelEmbeddingText(parsed.data, province.fullName, tags),
     );
     embeddingUpsertAttempted = true;
     await upsertHotelEmbedding(hotel.id, vector, {
@@ -546,7 +526,7 @@ export async function createHotelFromLinksAction(
 
     stage = "embedding";
     const vector = await embedText(
-      buildEmbeddingText(parsed.data, province.fullName, tags),
+      buildHotelEmbeddingText(parsed.data, province.fullName, tags),
     );
     embeddingUpsertAttempted = true;
     await upsertHotelEmbedding(hotel.id, vector, {
@@ -876,7 +856,7 @@ export async function updateHotelAction(
 
     try {
       const vector = await embedText(
-        buildEmbeddingText(parsed.data, province.fullName, tags),
+        buildHotelEmbeddingText(parsed.data, province.fullName, tags),
       );
       await upsertHotelEmbedding(updatedHotel.id, vector, {
         name: parsed.data.name,
@@ -1094,7 +1074,7 @@ export async function restoreHotelAction(
   // Embedding đã bị xóa khi dừng khách sạn, tạo lại để khách sạn xuất hiện trong tìm kiếm
   try {
     const vector = await embedText(
-      buildEmbeddingText(
+      buildHotelEmbeddingText(
         { ...hotel, description: hotel.description ?? "" },
         hotel.province.fullName,
         hotel.tags.map((hotelTag) => hotelTag.tag),

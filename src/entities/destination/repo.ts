@@ -1,6 +1,12 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { type ListFilter, priceOrder, priceRange } from "../list-filter";
+import {
+  type ListFilter,
+  paginateByRelevance,
+  priceOrder,
+  priceRange,
+  searchWhere,
+} from "../list-filter";
 import type {
   CreateDestinationInput,
   Destination,
@@ -43,6 +49,14 @@ export function findRecent(take: number) {
     include: { province: true },
     orderBy: { createdAt: "desc" },
     take,
+  });
+}
+
+/** Điểm đến công khai theo danh sách id (cùng dữ liệu với findRecent), không giữ thứ tự. */
+export function findPublishedByIds(ids: string[]) {
+  return prisma.destination.findMany({
+    where: { id: { in: ids }, isPublished: true },
+    include: { province: true },
   });
 }
 
@@ -99,14 +113,24 @@ export async function findPaged(filter: ListFilter) {
     isPublished: true,
     ...(filter.province && { province: { name: filter.province } }),
     ...(filter.tag && { tags: { some: { tag: { name: filter.tag } } } }),
-    ...(filter.q && {
-      OR: [
-        { name: { contains: filter.q, mode: "insensitive" } },
-        { description: { contains: filter.q, mode: "insensitive" } },
-      ],
-    }),
+    ...searchWhere<Prisma.DestinationWhereInput>(filter, (q) => [
+      { name: { contains: q, mode: "insensitive" } },
+      { description: { contains: q, mode: "insensitive" } },
+    ]),
     ...(price && { ticketPrice: price }),
   };
+  if (filter.sort === "relevance") {
+    const all = await prisma.destination.findMany({
+      where,
+      include: { province: true },
+    });
+    return paginateByRelevance(
+      all,
+      (d) => d.name,
+      (d) => (d.ticketPrice == null ? undefined : Number(d.ticketPrice)),
+      filter,
+    );
+  }
   const order = priceOrder(filter.sort);
   const [items, total] = await Promise.all([
     prisma.destination.findMany({

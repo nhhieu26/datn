@@ -5,22 +5,42 @@ import { FadeIn } from "@/features/customer/components/motion";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { useState } from "react";
-import { PACKAGE_COPY, PACKAGE_TABS } from "../lib/package-copy";
+import {
+  PACKAGE_COPY,
+  PACKAGE_TABS,
+  type PackageCopy,
+} from "../lib/package-copy";
 import type { PackageKind, PackagesByKind } from "../lib/package-types";
+
+type PopularPackagesSectionProps = {
+  packages: PackagesByKind;
+  /** tiêu đề theo từng tab, mặc định là "phổ biến" */
+  copyByKind?: Record<PackageKind, PackageCopy>;
+  /** ẩn tab không có mục nào (dùng cho khu gợi ý) */
+  hideEmptyTabs?: boolean;
+  /** phân biệt hiệu ứng tab khi có nhiều section trên cùng trang */
+  id?: string;
+};
 
 export function PopularPackagesSection({
   packages,
-}: {
-  packages: PackagesByKind;
-}) {
-  const [activeKind, setActiveKind] = useState<PackageKind>("tour");
-  const copy = PACKAGE_COPY[activeKind];
+  copyByKind = PACKAGE_COPY,
+  hideEmptyTabs = false,
+  id = "popular-packages",
+}: PopularPackagesSectionProps) {
+  const tabs = hideEmptyTabs
+    ? PACKAGE_TABS.filter((tab) => packages[tab.kind].length > 0)
+    : PACKAGE_TABS;
+  const [activeKind, setActiveKind] = useState<PackageKind>(
+    tabs[0]?.kind ?? "tour",
+  );
+  const copy = copyByKind[activeKind];
   const itemCount = packages[activeKind].length;
 
   return (
     <section
       className="w-full relative z-20 py-16 page-x bg-white"
-      data-purpose="popular-packages"
+      data-purpose={id}
     >
       <div className="text-center">
         <FadeIn className="mb-8">
@@ -46,7 +66,7 @@ export function PopularPackagesSection({
           className="flex items-center justify-center flex-wrap gap-3 mb-12"
           delay={0.08}
         >
-          {PACKAGE_TABS.map((tab) => {
+          {tabs.map((tab) => {
             const active = tab.kind === activeKind;
             return (
               <button
@@ -64,7 +84,7 @@ export function PopularPackagesSection({
                   <motion.span
                     aria-hidden
                     className="absolute inset-0 rounded-lg bg-new-teal-active shadow-sm"
-                    layoutId="popular-package-tab"
+                    layoutId={`${id}-tab`}
                     transition={{ type: "spring", stiffness: 400, damping: 30 }}
                   />
                 )}

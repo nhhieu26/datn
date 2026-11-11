@@ -9,7 +9,9 @@ import {
   average,
   needsScan,
   paginateByPrice,
+  paginateByRelevance,
   ratingWhere,
+  searchWhere,
   type ListFilter,
 } from "../list-filter";
 import type {
@@ -287,6 +289,14 @@ export function findRecent(take: number) {
   });
 }
 
+/** Khách sạn đang bán theo danh sách id (cùng dữ liệu với findRecent), không giữ thứ tự. */
+export function findPublishedByIds(ids: string[]) {
+  return prisma.hotel.findMany({
+    where: { id: { in: ids }, status: "published", deletedAt: null },
+    include: { province: true, rooms: true },
+  });
+}
+
 export async function findPaged(filter: ListFilter) {
   const where: Prisma.HotelWhereInput = {
     status: "published",
@@ -294,15 +304,20 @@ export async function findPaged(filter: ListFilter) {
     ...ratingWhere(filter),
     ...(filter.province && { province: { name: filter.province } }),
     ...(filter.tag && { tags: { some: { tag: { name: filter.tag } } } }),
-    ...(filter.q && {
-      OR: [
-        { name: { contains: filter.q, mode: "insensitive" } },
-        { description: { contains: filter.q, mode: "insensitive" } },
-      ],
-    }),
+    ...searchWhere<Prisma.HotelWhereInput>(filter, (q) => [
+      { name: { contains: q, mode: "insensitive" } },
+      { description: { contains: q, mode: "insensitive" } },
+    ]),
   };
   const include = { province: true, rooms: true } as const;
   const orderBy = { createdAt: "desc" } as const;
+  const roomPrice = (h: { rooms: { basePrice: unknown }[] }) =>
+    average(h.rooms.map((r) => Number(r.basePrice)));
+
+  if (filter.sort === "relevance") {
+    const all = await prisma.hotel.findMany({ where, include });
+    return paginateByRelevance(all, (h) => h.name, roomPrice, filter);
+  }
 
   // giá khách sạn = giá phòng trung bình
   if (needsScan(filter)) {
@@ -310,12 +325,7 @@ export async function findPaged(filter: ListFilter) {
       prisma.hotel.findMany({ where, include, orderBy }),
       filter.sort === "popular" ? hotelBookingCounts() : undefined,
     ]);
-    return paginateByPrice(
-      all,
-      (h) => average(h.rooms.map((r) => Number(r.basePrice))),
-      filter,
-      counts,
-    );
+    return paginateByPrice(all, roomPrice, filter, counts);
   }
   const [items, total] = await Promise.all([
     prisma.hotel.findMany({

@@ -1,4 +1,10 @@
-export type ListSort = "popular" | "price_asc" | "price_desc" | "newest";
+export type ListSort =
+  | "popular"
+  | "price_asc"
+  | "price_desc"
+  | "newest"
+  /** theo điểm tìm kiếm ngữ nghĩa, chỉ dùng khi có từ khóa */
+  | "relevance";
 
 export type ListFilter = {
   q?: string;
@@ -8,6 +14,8 @@ export type ListFilter = {
   maxPrice?: number;
   /** chỉ lấy mục có ratingAvg >= minRating */
   minRating?: number;
+  /** điểm cosine id → score từ tìm kiếm ngữ nghĩa cho câu `q` (không có khi Pinecone lỗi) */
+  semantic?: Map<string, number>;
   sort: ListSort;
   skip: number;
   take: number;
@@ -65,14 +73,9 @@ export function paginateByPrice<T extends { id: string; createdAt: Date }>(
     price: getPrice(row),
     bookingCount: bookingCounts?.get(row.id) ?? 0,
   }));
-  const kept = priced.filter(({ price }) => {
-    if (!hasRange) return true;
-    if (price === undefined) return false;
-    return (
-      (filter.minPrice === undefined || price >= filter.minPrice) &&
-      (filter.maxPrice === undefined || price <= filter.maxPrice)
-    );
-  });
+  const kept = hasRange
+    ? priced.filter(({ price }) => inPriceRange(price, filter))
+    : priced;
   if (order) {
     const dir = order === "asc" ? 1 : -1;
     kept.sort((a, b) => {
@@ -104,4 +107,68 @@ export function needsScan(filter: ListFilter) {
     priceOrder(filter.sort) !== undefined ||
     filter.sort === "popular"
   );
+}
+
+function inPriceRange(
+  price: number | undefined,
+  filter: Pick<ListFilter, "minPrice" | "maxPrice">,
+) {
+  if (price === undefined) return false;
+  return (
+    (filter.minPrice === undefined || price >= filter.minPrice) &&
+    (filter.maxPrice === undefined || price <= filter.maxPrice)
+  );
+}
+
+/**
+ * Điều kiện tìm theo từ khóa: khớp chuỗi ở các trường `keyword(q)` HOẶC nằm trong
+ * kết quả tìm kiếm ngữ nghĩa (tìm kiếm lai — tên riêng vẫn khớp được bằng từ khóa).
+ */
+export function searchWhere<W>(
+  filter: Pick<ListFilter, "q" | "semantic">,
+  keyword: (q: string) => W[],
+): { OR?: W[] } {
+  if (!filter.q) return {};
+  const conditions = keyword(filter.q);
+  if (filter.semantic?.size) {
+    conditions.push({ id: { in: [...filter.semantic.keys()] } } as W);
+  }
+  return { OR: conditions };
+}
+
+/** Điểm cộng khi tên mục chứa nguyên cụm từ khóa. */
+const KEYWORD_BONUS = 0.1;
+
+/**
+ * Sắp xếp theo độ phù hợp: điểm cosine (0 nếu chỉ khớp từ khóa) + điểm cộng khi tên chứa từ khóa.
+ * Lọc giá trong bộ nhớ như paginateByPrice. Tập kết quả nhỏ (topK ngữ nghĩa + mục khớp từ khóa).
+ */
+export function paginateByRelevance<T extends { id: string; createdAt: Date }>(
+  rows: T[],
+  getTitle: (row: T) => string,
+  getPrice: (row: T) => number | undefined,
+  filter: ListFilter,
+) {
+  const hasRange =
+    filter.minPrice !== undefined || filter.maxPrice !== undefined;
+  const q = filter.q?.toLowerCase();
+  const scored = rows
+    .filter((row) => !hasRange || inPriceRange(getPrice(row), filter))
+    .map((row) => ({
+      row,
+      score:
+        (filter.semantic?.get(row.id) ?? 0) +
+        (q && getTitle(row).toLowerCase().includes(q) ? KEYWORD_BONUS : 0),
+    }));
+  scored.sort(
+    (a, b) =>
+      b.score - a.score ||
+      b.row.createdAt.getTime() - a.row.createdAt.getTime(),
+  );
+  return {
+    items: scored
+      .slice(filter.skip, filter.skip + filter.take)
+      .map(({ row, score }) => ({ ...row, score })),
+    total: scored.length,
+  };
 }
