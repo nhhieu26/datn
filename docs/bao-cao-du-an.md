@@ -786,3 +786,1086 @@ Nhằm đảm bảo hệ thống vận hành ổn định, an toàn và mang l�
 - **Khả năng đáp ứng đa thiết bị (Responsive Web Design):** Giao diện hệ thống được thiết kế linh hoạt, tự động tối ưu hóa bố cục hiển thị trên mọi kích thước màn hình phổ biến từ điện thoại thông minh (màn hình dọc từ 375px), máy tính bảng đến máy tính để bàn độ phân giải cao (Full HD, 2K, 4K).
 - **Tính thân thiện và trực quan:** Sử dụng hệ thống thiết kế hiện đại với bảng màu hài hòa, hỗ trợ chế độ tương phản tốt, tích hợp các thành phần giao diện thông minh từ Tailwind CSS và shadcn/ui. Các biểu đồ thống kê được trực quan hóa sinh động bằng ApexCharts, giúp người dùng nắm bắt thông tin nhanh chóng và thuận tiện nhất.
 
+
+---
+
+# CHƯƠNG 3: CÔNG NGHỆ SỬ DỤNG
+
+Chương này trình bày các công nghệ, nền tảng và dịch vụ được lựa chọn để hiện thực hóa hệ thống Roamly. Với mỗi công nghệ, báo cáo nêu khái quát đặc điểm, lý do lựa chọn so với các phương án thay thế và vai trò cụ thể của công nghệ đó trong hệ thống. Các công nghệ được tổ chức theo năm nhóm: (1) nền tảng phát triển ứng dụng web; (2) giao diện người dùng; (3) lưu trữ và quản lý dữ liệu; (4) Trí tuệ nhân tạo; (5) dịch vụ tích hợp bên ngoài, triển khai và giám sát.
+
+## 3.1. Tổng quan kiến trúc công nghệ
+
+Hệ thống được xây dựng theo mô hình ứng dụng Full-stack hợp nhất: cả giao diện người dùng lẫn logic nghiệp vụ phía máy chủ cùng nằm trong một dự án Next.js và được viết bằng một ngôn ngữ duy nhất là TypeScript. Cách tiếp cận này giúp chia sẻ kiểu dữ liệu và lược đồ kiểm tra dữ liệu (schema) giữa máy khách và máy chủ, giảm chi phí duy trì hai dự án tách biệt và rút ngắn thời gian phát triển — một yếu tố quan trọng trong khuôn khổ đồ án tốt nghiệp.
+
+Bảng dưới đây tổng hợp toàn bộ ngăn xếp công nghệ (technology stack) của hệ thống:
+
+| Nhóm | Công nghệ | Phiên bản | Vai trò chính |
+|---|---|:---:|---|
+| **Nền tảng** | Next.js (App Router, Server Actions) | 16.3 | Framework Full-stack: định tuyến, kết xuất giao diện, xử lý phía máy chủ |
+| | React | 19.2 | Thư viện xây dựng giao diện theo thành phần (component) |
+| | TypeScript | 5.x | Ngôn ngữ lập trình có kiểu tĩnh cho toàn bộ dự án |
+| | Bun | 1.3 | Trình quản lý gói và môi trường chạy các tập lệnh (seed, embed dữ liệu) |
+| **Giao diện** | Tailwind CSS | 4.x | Hệ thống định kiểu theo lớp tiện ích (utility-first) |
+| | shadcn/ui, Base UI, Preline | — | Bộ thành phần giao diện dựng sẵn, hỗ trợ khả năng truy cập |
+| | Leaflet | 1.9 | Hiển thị bản đồ tương tác, đánh dấu vị trí và vẽ lộ trình |
+| | ApexCharts | 4.7 | Biểu đồ thống kê doanh thu, đơn hàng |
+| | Tiptap | 3.x | Trình soạn thảo văn bản định dạng (rich text) cho bài viết |
+| | Swiper, Motion, Lucide | — | Trình chiếu ảnh, hiệu ứng chuyển động, bộ biểu tượng |
+| **Dữ liệu** | PostgreSQL | 16+ | Hệ quản trị CSDL quan hệ lưu dữ liệu nghiệp vụ |
+| | Prisma ORM (`@prisma/adapter-pg`) | 7.10 | Ánh xạ đối tượng – CSDL, quản lý migration, truy vấn an toàn kiểu |
+| | Pinecone | — | CSDL vector phục vụ tìm kiếm ngữ nghĩa và gợi ý |
+| | Zod | 4.x | Định nghĩa và kiểm tra lược đồ dữ liệu đầu vào |
+| **AI** | Vercel AI SDK (`ai`) | 7.x | Lớp trừu tượng gọi LLM: streaming, gọi công cụ, đầu ra có cấu trúc |
+| | Google Gemini 3 Flash trên Vertex AI | preview | LLM cho chatbot, lập lịch trình và kiểm duyệt nội dung |
+| | Gemini Embedding (`gemini-embedding-001`) | — | Mô hình nhúng văn bản thành vector 768 chiều |
+| **Tích hợp** | Google Places API (New), Google Routes API | — | Dữ liệu địa điểm thực tế; quãng đường, thời gian và ma trận di chuyển |
+| | PayPal REST API (Orders, Refunds, Payouts, Webhooks) | v2 | Thanh toán ký quỹ, hoàn tiền và chi trả doanh thu |
+| | ImageKit | 6.x | Lưu trữ, tối ưu và phân phối hình ảnh qua CDN |
+| | Auth.js (NextAuth v5) + bcryptjs | 5.0 beta | Xác thực người dùng, phiên JWT, băm mật khẩu |
+| | ExcelJS | 4.4 | Xuất báo cáo định dạng `.xlsx` |
+| **Vận hành** | Vercel (Hosting, Cron Jobs, OIDC) | — | Triển khai, tác vụ định kỳ, xác thực không dùng khóa tới Google Cloud |
+| | Langfuse + OpenTelemetry | 6.1 | Giám sát, truy vết các lời gọi mô hình AI |
+
+Về mặt tổ chức mã nguồn, dự án áp dụng cấu trúc phân tầng theo **thực thể – tính năng (Entity/Feature)**:
+
+```
+src/
+├── app/        # Tầng định tuyến (App Router): trang giao diện và route handler API
+├── features/   # Tầng tính năng theo vai trò: customer, provider, admin, trip-planner...
+├── entities/   # Tầng thực thể: lược đồ Zod, kiểu dữ liệu, repository truy cập Prisma
+├── shared/     # Thành phần giao diện và tiện ích dùng chung
+└── lib/        # Client các dịch vụ ngoài: prisma, pinecone, vertex, paypal, google-routes...
+```
+
+Nguyên tắc phụ thuộc một chiều `app → features → entities → lib` giúp mỗi tầng chỉ biết tới tầng bên dưới, nhờ đó logic nghiệp vụ không bị trộn lẫn với mã giao diện và việc thay thế một dịch vụ bên ngoài (ví dụ đổi nhà cung cấp mô hình AI) chỉ ảnh hưởng tới tầng `lib`.
+
+---
+
+## 3.2. Nền tảng phát triển ứng dụng web
+
+### 3.2.1. Next.js 16 và mô hình App Router
+
+**Giới thiệu.** Next.js là framework mã nguồn mở do Vercel phát triển, xây dựng trên nền React, cho phép phát triển ứng dụng web Full-stack với khả năng kết xuất phía máy chủ (SSR), tạo trang tĩnh, tái tạo trang tĩnh gia tăng (ISR) và xử lý API trong cùng một dự án. Phiên bản 16 sử dụng mô hình định tuyến **App Router** dựa trên cấu trúc thư mục, trong đó mỗi thư mục trong `src/app` tương ứng với một đường dẫn URL.
+
+**Các đặc điểm được khai thác trong hệ thống:**
+
+- **React Server Components (RSC):** Mặc định mọi thành phần đều được kết xuất trên máy chủ. Các trang danh sách tour, khách sạn, chi tiết dịch vụ hay bài viết truy vấn trực tiếp CSDL thông qua Prisma ngay trong thành phần, trả về HTML hoàn chỉnh cho trình duyệt. Điều này giảm lượng JavaScript gửi xuống máy khách, tăng tốc độ hiển thị lần đầu và có lợi cho SEO — điều kiện quan trọng với một website du lịch cần được công cụ tìm kiếm lập chỉ mục.
+- **Server Actions:** Các thao tác ghi dữ liệu (tạo đơn đặt chỗ, gửi đánh giá, duyệt hồ sơ nhà cung cấp, cập nhật cấu hình sàn...) được viết dưới dạng hàm bất đồng bộ đánh dấu `"use server"` và gọi trực tiếp từ biểu mẫu. Next.js tự động sinh điểm cuối HTTP, tích hợp sẵn cơ chế chống giả mạo yêu cầu (CSRF) và cho phép làm mới dữ liệu trang sau khi ghi (`revalidatePath`).
+- **Route Handlers:** Với các luồng cần giao tiếp kiểu REST hoặc truyền phát dữ liệu, hệ thống định nghĩa các điểm cuối trong `src/app/api`: `/api/chat` và `/api/trip-chat` (truyền phát câu trả lời AI), `/api/trip-route` (tính lộ trình), `/api/paypal/webhooks` (nhận sự kiện thanh toán), `/api/cron/*` (tác vụ định kỳ), `/api/admin/reports` (xuất Excel).
+- **Route Groups:** Các nhóm `(customer)`, `(account)`, `(auth)`, `(provider)`, `(admin)` cho phép mỗi phân hệ có bố cục (layout) riêng mà không ảnh hưởng tới URL.
+- **Proxy (tiền thân là Middleware):** Tệp `src/proxy.ts` chặn mọi yêu cầu tới `/admin/*`, kiểm tra phiên đăng nhập và vai trò trước khi trang được kết xuất, chuyển hướng người dùng không có quyền về trang đăng nhập quản trị.
+- **Hàm `after()`:** Cho phép thực thi công việc sau khi phản hồi đã gửi xong, được dùng để đẩy dữ liệu truy vết AI lên Langfuse mà không làm chậm câu trả lời của chatbot.
+
+**Lý do lựa chọn.** So với mô hình tách biệt giao diện (React/Vue) và máy chủ (Express, Spring Boot), Next.js giảm đáng kể khối lượng mã kết nối (API client, cấu hình CORS, đồng bộ kiểu dữ liệu). Khả năng kết xuất phía máy chủ đáp ứng yêu cầu hiệu năng và SEO nêu ở mục 2.4.1, đồng thời Next.js được Vercel hỗ trợ triển khai tối ưu và hệ sinh thái AI (Vercel AI SDK) tích hợp tự nhiên.
+
+### 3.2.2. React 19
+
+React là thư viện JavaScript xây dựng giao diện theo mô hình thành phần và cơ chế cập nhật khai báo. Phiên bản 19 bổ sung các tính năng hệ thống tận dụng trực tiếp:
+
+- **Server Components và Actions** là nền tảng cho App Router của Next.js nêu trên.
+- **Hook `useActionState` và `useFormStatus`** quản lý trạng thái gửi biểu mẫu, hiển thị lỗi kiểm tra theo từng trường và trạng thái đang xử lý mà không cần thư viện quản lý biểu mẫu bên ngoài.
+- **Hook `useOptimistic` và `useTransition`** giúp giao diện phản hồi tức thì (ví dụ đánh dấu đã đọc thông báo) trong khi thao tác thực sự đang được xử lý trên máy chủ.
+
+### 3.2.3. TypeScript
+
+TypeScript là tập mở rộng của JavaScript bổ sung hệ thống kiểu tĩnh, được biên dịch về JavaScript thuần. Trong hệ thống Roamly, TypeScript mang lại các lợi ích:
+
+- **An toàn kiểu xuyên suốt từ CSDL tới giao diện:** Prisma sinh kiểu dữ liệu từ lược đồ CSDL; Zod suy ra kiểu từ lược đồ kiểm tra; Vercel AI SDK suy ra kiểu tham số và kết quả của từng công cụ AI (`InferUITools`). Nhờ đó, khi thay đổi một trường trong lược đồ, trình biên dịch chỉ ra ngay mọi vị trí mã bị ảnh hưởng.
+- **Giảm lỗi khi chạy** đối với các luồng nghiệp vụ phức tạp như tính tiền đơn hàng, chuyển trạng thái đơn đặt hay quy đổi tiền tệ.
+
+### 3.2.4. Bun
+
+Bun là môi trường chạy JavaScript/TypeScript hiệu năng cao kiêm trình quản lý gói. Dự án dùng Bun để cài đặt thư viện và chạy trực tiếp các tập lệnh TypeScript không cần biên dịch trước: khởi tạo dữ liệu mẫu (`db:seed`), dọn dữ liệu (`db:clear`), và nhúng toàn bộ dữ liệu dịch vụ lên Pinecone (`db:embed`).
+
+---
+
+## 3.3. Công nghệ giao diện người dùng
+
+### 3.3.1. Tailwind CSS 4
+
+Tailwind CSS là framework định kiểu theo hướng **utility-first**: thay vì viết tệp định kiểu riêng, giao diện được dựng bằng cách kết hợp các lớp tiện ích nhỏ (`flex`, `gap-4`, `rounded-xl`, `md:grid-cols-3`...) trực tiếp trên phần tử. Phiên bản 4 có bộ máy biên dịch mới viết bằng Rust, cấu hình bằng CSS thuần (`@theme`) và tự động loại bỏ các lớp không dùng khi đóng gói.
+
+Trong hệ thống, Tailwind CSS đảm nhiệm toàn bộ việc định kiểu, đặc biệt là thiết kế đáp ứng đa thiết bị (Responsive Web Design) thông qua các tiền tố điểm ngắt `sm:`, `md:`, `lg:`, đáp ứng yêu cầu hiển thị từ màn hình 375px tới màn hình độ phân giải cao (mục 2.4.4). Plugin `@tailwindcss/forms` chuẩn hóa giao diện các trường nhập liệu.
+
+### 3.3.2. Bộ thành phần giao diện: shadcn/ui, Base UI và Preline
+
+- **shadcn/ui** không phải là một thư viện cài đặt theo cách truyền thống mà là tập hợp mã nguồn các thành phần (Button, Dialog, Select, Table, Tabs...) được sao chép trực tiếp vào dự án (`src/components/ui`). Cách tiếp cận này cho phép tùy biến hoàn toàn giao diện theo nhận diện thương hiệu Roamly.
+- **Base UI** cung cấp các thành phần "không định kiểu" (headless) xử lý sẵn hành vi phức tạp: điều hướng bàn phím, quản lý tiêu điểm, thuộc tính hỗ trợ truy cập (ARIA). shadcn/ui dùng Base UI làm nền tảng hành vi.
+- **Preline** bổ sung các mẫu bố cục dựng sẵn cho trang quản trị và trang giới thiệu.
+
+### 3.3.3. Leaflet — bản đồ tương tác
+
+Leaflet là thư viện bản đồ mã nguồn mở nhẹ (khoảng 42 KB), hỗ trợ hiển thị lớp bản đồ nền dạng ô (tile layer), đặt điểm đánh dấu (marker), cửa sổ thông tin (popup) và vẽ đường đa tuyến (polyline). Hệ thống sử dụng Leaflet để:
+
+- Hiển thị vị trí của tour, khách sạn, nhà hàng và điểm đến trên trang chi tiết.
+- Vẽ lộ trình di chuyển theo từng ngày trong phân hệ AI Trip Planner: chuỗi đường đi mã hóa (encoded polyline) do Google Routes API trả về được giải mã và vẽ lên bản đồ, kèm điểm đánh dấu đánh số thứ tự các điểm dừng.
+
+So với việc dùng trực tiếp Google Maps JavaScript API, Leaflet không phát sinh chi phí theo lượt tải bản đồ và cho phép linh hoạt chọn nguồn bản đồ nền; dữ liệu địa điểm và tuyến đường vẫn được lấy từ Google Maps Platform (mục 3.6.1).
+
+### 3.3.4. ApexCharts — trực quan hóa dữ liệu
+
+ApexCharts là thư viện biểu đồ dựa trên SVG, hỗ trợ biểu đồ đường, cột, miền, tròn với hiệu ứng tương tác (chú giải, thu phóng, chú thích khi rê chuột). Thư viện được dùng trong Dashboard quản trị và trang báo cáo của nhà cung cấp để trực quan hóa: tổng giá trị giao dịch (GMV), doanh thu hoa hồng của sàn, doanh thu theo tháng, tỷ lệ đơn theo loại dịch vụ và số người dùng mới (UC-12).
+
+### 3.3.5. Tiptap — trình soạn thảo bài viết
+
+Tiptap là framework soạn thảo văn bản định dạng xây dựng trên ProseMirror. Hệ thống dùng Tiptap với các phần mở rộng `StarterKit` (tiêu đề, danh sách, trích dẫn, định dạng chữ), `Image` (chèn ảnh tải lên ImageKit) và `Placeholder` để xây dựng trình soạn thảo bài viết cẩm nang du lịch cho Quản trị viên (UC-11). Nội dung HTML sinh ra được làm sạch bằng thư viện **sanitize-html** trước khi lưu và hiển thị nhằm ngăn chặn tấn công chèn mã kịch bản (Cross-Site Scripting).
+
+### 3.3.6. Các thư viện bổ trợ
+
+| Thư viện | Vai trò |
+|---|---|
+| **Swiper** | Trình chiếu ảnh dạng trượt cho thư viện ảnh dịch vụ và các khối nổi bật trên trang chủ |
+| **Motion** | Hiệu ứng chuyển động, chuyển cảnh mượt mà giữa các trạng thái giao diện |
+| **Lucide React** | Bộ biểu tượng dạng vector thống nhất cho toàn bộ giao diện |
+| **react-markdown** | Hiển thị câu trả lời dạng Markdown của chatbot AI (in đậm, danh sách, liên kết) |
+| **class-variance-authority** | Quản lý các biến thể định kiểu của thành phần (kích thước, màu sắc nút bấm) |
+
+---
+
+## 3.4. Công nghệ lưu trữ và quản lý dữ liệu
+
+### 3.4.1. Hệ quản trị CSDL PostgreSQL
+
+**Giới thiệu.** PostgreSQL là hệ quản trị CSDL quan hệ (RDBMS) mã nguồn mở, nổi tiếng về độ tin cậy, tuân thủ đầy đủ các tính chất giao dịch ACID (Atomicity – Consistency – Isolation – Durability) và hỗ trợ nhiều kiểu dữ liệu nâng cao như `JSON/JSONB`, mảng, kiểu số thập phân chính xác `DECIMAL`.
+
+**Vai trò trong hệ thống.** PostgreSQL là nơi lưu trữ toàn bộ dữ liệu nghiệp vụ, bao gồm các nhóm bảng chính:
+
+- **Người dùng và đối tác:** `User`, `ProviderProfile`.
+- **Danh mục dịch vụ:** `Tour`, `TourDeparture`, `Hotel`, `Room`, `Restaurant`, `RestaurantTimeSlot`, `Destination`, `Province`, `Tag`.
+- **Giao dịch:** `TourBooking`, `HotelBooking`, `RestaurantBooking`, `Payment`, `Refund`, `Payout`.
+- **Nội dung cộng đồng:** `Review`, `Article`, `ArticleComment`, `ModerationLog`.
+- **Dữ liệu phục vụ AI:** `SearchHistory` (lịch sử tìm kiếm kèm vector nhúng), `ExternalPlace`, `ExternalPlaceSearch` (bộ nhớ đệm kết quả Google Places).
+- **Hệ thống:** `SystemSetting`, `Notification`.
+
+**Lý do lựa chọn.** Nghiệp vụ đặt chỗ và thanh toán đòi hỏi tính toàn vẹn dữ liệu nghiêm ngặt: việc giảm số chỗ trống của một lịch khởi hành, tạo đơn đặt và ghi nhận thanh toán phải diễn ra trong cùng một giao dịch để tránh bán vượt số chỗ (overbooking) khi nhiều khách đặt đồng thời. Các CSDL phi quan hệ (MongoDB, Firestore) linh hoạt về lược đồ nhưng yếu hơn về ràng buộc khóa ngoại và giao dịch đa bảng. Kiểu `DECIMAL(12,2)` của PostgreSQL đảm bảo tính chính xác tuyệt đối cho các phép tính tiền tệ (tổng tiền, hoa hồng sàn, số tiền chi trả cho nhà cung cấp), tránh sai số làm tròn của kiểu số thực dấu phẩy động.
+
+Hệ thống sử dụng dịch vụ PostgreSQL đám mây không máy chủ (serverless), phù hợp với mô hình triển khai trên Vercel nơi mỗi yêu cầu có thể chạy trên một phiên bản hàm độc lập.
+
+### 3.4.2. Prisma ORM 7
+
+**Giới thiệu.** Prisma là bộ công cụ ORM thế hệ mới cho Node.js/TypeScript, gồm ba thành phần: **Prisma Schema** (ngôn ngữ khai báo mô hình dữ liệu), **Prisma Migrate** (quản lý phiên bản lược đồ CSDL) và **Prisma Client** (thư viện truy vấn được sinh tự động, an toàn kiểu). Phiên bản 7 chuyển sang kiến trúc trình điều khiển viết bằng TypeScript thông qua các bộ chuyển đổi (driver adapter), thay cho bộ máy truy vấn nhị phân trước đây.
+
+**Vai trò trong hệ thống:**
+
+- Toàn bộ mô hình dữ liệu được khai báo tập trung trong `prisma/schema.prisma`; mọi thay đổi lược đồ được ghi lại thành các tệp migration trong `prisma/migrations`, cho phép tái tạo CSDL nhất quán giữa môi trường phát triển và môi trường triển khai.
+- Hệ thống dùng bộ chuyển đổi `@prisma/adapter-pg` kết nối qua trình điều khiển `pg`, giảm kích thước gói triển khai và tương thích tốt với môi trường hàm không máy chủ.
+- Các truy vấn được đóng gói trong tầng repository (`src/entities/*/repo.ts`). Giao dịch tương tác `prisma.$transaction` đảm bảo các thao tác đặt chỗ, hủy đơn, hoàn tiền thực hiện nguyên tử.
+- Prisma Client sử dụng truy vấn tham số hóa, loại bỏ nguy cơ tấn công chèn mã SQL (SQL Injection).
+
+### 3.4.3. Pinecone — CSDL vector
+
+**Giới thiệu.** Pinecone là CSDL vector được quản lý hoàn toàn trên đám mây, chuyên lưu trữ và truy vấn các vector nhiều chiều theo độ tương đồng. Thay vì tìm kiếm khớp chính xác như CSDL quan hệ, Pinecone tìm *k* vector gần nhất với vector truy vấn (k-Nearest Neighbors) bằng các cấu trúc chỉ mục xấp xỉ, cho tốc độ truy vấn tính bằng mili giây trên hàng triệu bản ghi.
+
+**Độ đo tương đồng.** Hệ thống dùng độ tương đồng Cosine giữa vector truy vấn $\mathbf{q}$ và vector tài liệu $\mathbf{d}$:
+
+$$\text{cosine}(\mathbf{q}, \mathbf{d}) = \frac{\mathbf{q} \cdot \mathbf{d}}{\|\mathbf{q}\| \, \|\mathbf{d}\|} = \frac{\sum_{i=1}^{n} q_i d_i}{\sqrt{\sum_{i=1}^{n} q_i^2} \sqrt{\sum_{i=1}^{n} d_i^2}}$$
+
+Giá trị càng gần 1 thể hiện hai văn bản càng gần nhau về ngữ nghĩa, bất kể chúng có dùng chung từ khóa hay không.
+
+**Tổ chức dữ liệu.** Một chỉ mục (index) 768 chiều được chia thành bốn không gian tên (namespace) độc lập: `tours`, `hotels`, `restaurants`, `destinations`. Mỗi bản ghi gồm khóa trùng với khóa chính trong PostgreSQL, vector nhúng của phần mô tả dịch vụ và siêu dữ liệu (metadata) như `provinceId`, `status`/`isPublished`. Siêu dữ liệu cho phép lọc ngay trong lúc tìm kiếm vector — ví dụ chỉ lấy dịch vụ đang mở bán tại Ninh Bình — thay vì lọc sau, giúp kết quả luôn đủ số lượng.
+
+**Đồng bộ dữ liệu.** Khi nhà cung cấp tạo hoặc sửa dịch vụ, hệ thống sinh lại vector và ghi đè (upsert) lên Pinecone; khi tạm dừng hoặc xóa dịch vụ, hệ thống chỉ cập nhật trường `status` trong siêu dữ liệu mà không cần tính lại vector, tiết kiệm chi phí gọi mô hình nhúng.
+
+**Vai trò trong hệ thống.** Pinecone là nền tảng cho ba chức năng AI: tìm kiếm ngữ nghĩa trên trang Khám phá (UC-01), công cụ `searchTours` của chatbot (UC-02) và hệ thống gợi ý cá nhân hóa (mục 3.5.5).
+
+**Lý do lựa chọn.** Phương án thay thế là phần mở rộng `pgvector` của PostgreSQL. Tuy nhiên Pinecone được chọn vì không cần tự vận hành và tinh chỉnh chỉ mục, hỗ trợ lọc theo siêu dữ liệu và phân tách namespace sẵn có, đồng thời gói miễn phí đủ đáp ứng quy mô dữ liệu của đồ án.
+
+### 3.4.4. Zod — kiểm tra dữ liệu theo lược đồ
+
+Zod là thư viện khai báo lược đồ dữ liệu ưu tiên TypeScript: một lược đồ vừa dùng để kiểm tra dữ liệu lúc chạy, vừa suy ra kiểu tĩnh tương ứng. Trong hệ thống, Zod được dùng ở ba vị trí then chốt:
+
+1. **Kiểm tra dữ liệu đầu vào của Server Actions** (biểu mẫu đặt chỗ, tạo dịch vụ, gửi đánh giá...): dữ liệu không hợp lệ bị từ chối kèm thông báo lỗi theo từng trường trước khi chạm tới CSDL.
+2. **Định nghĩa tham số đầu vào của các công cụ AI**: mô hình ngôn ngữ chỉ được gọi công cụ với tham số đúng lược đồ (ví dụ `searchTours` nhận `province`, `maxPrice`, `query`).
+3. **Ràng buộc đầu ra có cấu trúc của mô hình AI**: kết quả kiểm duyệt nội dung (`verdict`, `categories`, `confidence`, `reason`) và lịch trình du lịch được mô hình sinh ra đúng định dạng JSON đã khai báo, thay vì văn bản tự do khó xử lý.
+
+---
+
+## 3.5. Công nghệ Trí tuệ nhân tạo
+
+### 3.5.1. Mô hình ngôn ngữ lớn Google Gemini trên Vertex AI
+
+**Giới thiệu.** Gemini là họ mô hình ngôn ngữ lớn đa phương thức do Google DeepMind phát triển. Hệ thống sử dụng mô hình **Gemini 3 Flash** (`gemini-3-flash-preview`) — phiên bản được tối ưu cho tốc độ phản hồi và chi phí thấp nhưng vẫn có năng lực suy luận, gọi công cụ và sinh đầu ra có cấu trúc tốt. Mô hình được truy cập qua **Google Cloud Vertex AI**, nền tảng học máy cấp doanh nghiệp của Google Cloud.
+
+**Vai trò trong hệ thống.** Một mô hình duy nhất phục vụ ba phân hệ AI với ba cách khai thác khác nhau:
+
+| Phân hệ | Cách khai thác | Đặc điểm |
+|---|---|---|
+| **Trợ lý ảo Roamly AI** (`/api/chat`) | `streamText` + gọi công cụ | Truyền phát câu trả lời, tối đa 4 bước suy luận – gọi công cụ |
+| **AI Trip Planner** (`/api/trip-chat`) | `streamText` + gọi công cụ | Hội thoại nhiều lượt, tối đa 10 bước, kết thúc bằng công cụ `setItinerary` ghi lịch trình |
+| **Kiểm duyệt nội dung** | `generateText` + `Output.object` | Đầu ra JSON theo lược đồ Zod, giới hạn thời gian 10 giây |
+
+**Lý do lựa chọn:**
+
+- **Hỗ trợ tiếng Việt tốt**, hiểu cả từ lóng và cách viết tắt phổ biến — yếu tố bắt buộc với chatbot tư vấn và bộ lọc kiểm duyệt.
+- **Cửa sổ ngữ cảnh lớn** cho phép đưa nhiều kết quả công cụ (danh sách tour, địa điểm) vào cùng một lượt suy luận.
+- **Tích hợp sẵn công cụ Google Search Grounding** trên Vertex AI, cho phép mô hình tra cứu web khi dữ liệu nội bộ và Google Places không đủ.
+- **Xác thực không dùng khóa API:** Vertex AI cho phép xác thực bằng tài khoản dịch vụ thay vì khóa API tĩnh. Trên môi trường Vercel, hệ thống dùng cơ chế **Workload Identity Federation**: mã thông báo OIDC do Vercel cấp cho mỗi lần triển khai được đổi lấy quyền truy cập tạm thời của tài khoản dịch vụ Google Cloud (thư viện `google-auth-library` và `@vercel/oidc`). Trên máy phát triển, hệ thống dùng Application Default Credentials. Nhờ vậy không có bí mật dài hạn nào phải lưu trong biến môi trường, giảm rủi ro lộ khóa.
+
+### 3.5.2. Vercel AI SDK
+
+**Giới thiệu.** Vercel AI SDK là bộ thư viện TypeScript mã nguồn mở cung cấp giao diện lập trình thống nhất để làm việc với nhiều nhà cung cấp mô hình AI (Google, OpenAI, Anthropic...). Bộ thư viện gồm phần lõi (`ai`) chạy phía máy chủ, các gói nhà cung cấp (`@ai-sdk/google`, `@ai-sdk/google-vertex`) và phần giao diện (`@ai-sdk/react`).
+
+**Các năng lực được khai thác:**
+
+- **Truyền phát dữ liệu (Streaming):** Hàm `streamText` trả về từng phần câu trả lời ngay khi mô hình sinh ra; phía giao diện, hook `useChat` nhận luồng dữ liệu và hiển thị dần từng chữ. Người dùng thấy phản hồi gần như tức thì thay vì chờ toàn bộ câu trả lời, đáp ứng yêu cầu độ trễ nêu ở mục 2.4.1.
+- **Gọi công cụ (Tool Calling):** Mỗi công cụ được khai báo bằng hàm `tool()` gồm mô tả, lược đồ tham số Zod và hàm thực thi. Mô hình tự quyết định gọi công cụ nào; SDK thực thi hàm, đưa kết quả trở lại mô hình và lặp lại cho tới khi đạt điều kiện dừng (`stopWhen: isStepCount(n)`). Đây chính là cơ chế hiện thực kiến trúc RAG có neo dữ liệu (Grounded RAG) đã trình bày ở mục 1.3.2.
+- **Đầu ra có cấu trúc:** `Output.object({ schema })` buộc mô hình trả về JSON đúng lược đồ, được dùng cho kiểm duyệt nội dung.
+- **Thông điệp giao diện có kiểu (Typed UI Messages):** Kết quả của từng công cụ được truyền xuống giao diện cùng kiểu dữ liệu, cho phép hiển thị thẻ dịch vụ (UI Cards) với ảnh, giá, số sao và nút đặt chỗ ngay trong khung hội thoại.
+- **Đo đạc (Telemetry):** Mỗi lời gọi được gắn `functionId` và phát sinh dữ liệu theo chuẩn OpenTelemetry, làm đầu vào cho Langfuse (mục 3.7.3).
+
+Danh sách công cụ được cung cấp cho mô hình trong hai phân hệ hội thoại:
+
+| Công cụ | Phân hệ | Chức năng | Nguồn dữ liệu |
+|---|---|---|---|
+| `searchTours` | Chatbot | Tìm tour đang mở bán theo tỉnh, giá, mô tả ngữ nghĩa | Pinecone + PostgreSQL |
+| `searchPlaces` | Chatbot, Trip Planner | Tìm nhà hàng, khách sạn, điểm tham quan thực tế | Google Places API (có bộ nhớ đệm) |
+| `searchWeb` | Trip Planner | Tra cứu thông tin web khi các nguồn trên không đủ | Google Search Grounding |
+| `askUser` | Chatbot, Trip Planner | Hỏi lại một câu khi yêu cầu còn mơ hồ | — |
+| `openTripPlanner` | Chatbot | Chuyển người dùng sang trang lập lịch trình | — |
+| `setItinerary` | Trip Planner | Ghi lịch trình đã kiểm tra hợp lệ và tính lộ trình | Google Routes API |
+
+**Lý do lựa chọn.** So với LangChain, Vercel AI SDK gọn nhẹ hơn, có kiểu dữ liệu TypeScript chặt chẽ và được thiết kế riêng cho Next.js (truyền phát qua Route Handler, hook React đi kèm). Việc trừu tượng hóa nhà cung cấp cũng cho phép đổi mô hình chỉ bằng một dòng cấu hình.
+
+### 3.5.3. Mô hình nhúng văn bản Gemini Embedding
+
+**Giới thiệu.** Mô hình nhúng (embedding model) ánh xạ một đoạn văn bản thành một vector số thực có số chiều cố định sao cho các văn bản gần nghĩa có vector gần nhau trong không gian. Hệ thống dùng mô hình **`gemini-embedding-001`** của Google với số chiều đầu ra được rút gọn còn **768** (tham số `outputDimensionality`), cân bằng giữa độ chính xác và chi phí lưu trữ, truy vấn.
+
+**Vai trò trong hệ thống:**
+
+- **Nhúng dữ liệu dịch vụ:** Tên, mô tả, điểm nổi bật, thẻ phân loại và địa điểm của mỗi tour, khách sạn, nhà hàng, điểm đến được ghép thành một đoạn văn bản và nhúng thành vector lưu trên Pinecone.
+- **Nhúng câu truy vấn:** Câu tìm kiếm tự nhiên của người dùng (ví dụ *"chùa cổ tâm linh"*, *"hải sản tươi"*) được nhúng cùng mô hình để so khớp.
+- **Bộ nhớ đệm vector:** Vector của câu truy vấn được lưu cùng lịch sử tìm kiếm trong bảng `SearchHistory`; lần tìm lại cùng câu sẽ dùng vector đã lưu, không gọi lại mô hình.
+
+### 3.5.4. Tìm kiếm ngữ nghĩa kết hợp (Hybrid Search)
+
+Trên trang Khám phá, hệ thống kết hợp hai cơ chế: **lọc thuộc tính và từ khóa** trên PostgreSQL (tỉnh/thành, khoảng giá, thẻ, số sao) và **tìm kiếm ngữ nghĩa** trên Pinecone. Do điểm Cosine tuyệt đối của mô hình nhúng dao động theo từng câu truy vấn, hệ thống áp dụng **ngưỡng tương đối**: chỉ giữ các kết quả có điểm không thấp hơn điểm cao nhất trừ đi một biên độ (0,07) và không thấp hơn một ngưỡng sàn (0,60) đã được đo đạc trên dữ liệu thực. Cách làm này loại bỏ các kết quả kém liên quan mà vẫn giữ lại đầy đủ các mục đúng nhu cầu. Nếu Pinecone gặp sự cố, hệ thống tự động quay về tìm kiếm theo từ khóa để đảm bảo tính sẵn sàng.
+
+### 3.5.5. Gợi ý cá nhân hóa dựa trên vector hồ sơ người dùng
+
+Hệ thống gợi ý áp dụng phương pháp **lọc theo nội dung (Content-based Filtering)** trên không gian vector đã có sẵn:
+
+1. **Xây dựng vector hồ sơ:** Lấy trung bình các vector của lịch sử tìm kiếm và của các dịch vụ người dùng đã đặt (bỏ qua các đơn đã hủy, hết hạn), sau đó chuẩn hóa L2. Vector này biểu diễn "sở thích" của người dùng trong cùng không gian ngữ nghĩa với dịch vụ.
+2. **Truy xuất ứng viên:** Truy vấn Pinecone lấy 20 ứng viên gần nhất cho mỗi loại dịch vụ, loại trừ các mục đã đặt.
+3. **Xếp hạng lại:** Mỗi ứng viên được chấm điểm theo công thức kết hợp độ tương đồng sở thích và mức độ phù hợp ngân sách:
+
+$$\text{Score} = 0{,}7 \times \text{Similarity}_{\text{cosine}} + 0{,}3 \times \text{PriceFit}$$
+
+trong đó $\text{PriceFit}$ phản ánh độ gần giữa giá ứng viên và mức giá trung bình người dùng từng chi trả cho loại dịch vụ đó. Bốn mục điểm cao nhất mỗi loại được hiển thị trên trang chủ.
+
+Ưu điểm của phương pháp này là không cần huấn luyện mô hình riêng và hoạt động ngay cả khi số lượng người dùng còn ít — hạn chế lớn của phương pháp lọc cộng tác (Collaborative Filtering) trong giai đoạn đầu vận hành.
+
+### 3.5.6. Kiểm duyệt nội dung hai tầng
+
+Chức năng kiểm duyệt đánh giá và bình luận (UC-06) kết hợp hai kỹ thuật:
+
+- **Tầng 1 – Lọc từ khóa:** Văn bản được chuẩn hóa (bỏ dấu, chữ thường, gộp ký tự lặp, nhận diện cách viết lách luật) rồi so khớp với danh sách từ ngữ vi phạm. Nội dung thô tục rõ ràng bị chặn ngay mà không cần gọi AI, tiết kiệm chi phí và thời gian.
+- **Tầng 2 – Phân tích ngữ nghĩa bằng LLM:** Gemini nhận nội dung cùng ngữ cảnh (loại nội dung, đối tượng được đánh giá, số sao, gợi ý từ tầng 1) và trả về kết quả có cấu trúc gồm phán quyết (`approve` / `review` / `reject`), danh mục vi phạm, độ tin cậy và lý do. Nội dung bị đánh giá vi phạm với độ tin cậy từ 0,8 trở lên được ẩn tự động; các trường hợp không chắc chắn hoặc khi AI gặp lỗi được chuyển vào hàng chờ Quản trị viên duyệt. Câu lệnh hệ thống được thiết kế để chống tấn công chèn chỉ dẫn (prompt injection): nội dung người dùng được đặt trong thẻ phân cách và mô hình được yêu cầu coi đó là dữ liệu, không phải mệnh lệnh.
+
+Mọi quyết định ở cả hai tầng được ghi vào bảng `ModerationLog` (giai đoạn, phán quyết, độ tin cậy, độ trễ) phục vụ thống kê và đánh giá chất lượng kiểm duyệt.
+
+---
+
+## 3.6. Dịch vụ tích hợp bên ngoài
+
+### 3.6.1. Google Maps Platform: Places API (New) và Routes API
+
+**Google Places API (New)** cung cấp thông tin về hàng trăm triệu địa điểm trên toàn cầu: tên, địa chỉ, tọa độ, loại hình, giờ mở cửa, điểm đánh giá, ảnh. Hệ thống dùng chức năng tìm kiếm theo văn bản (Text Search) để chatbot và Trip Planner gợi ý nhà hàng, điểm tham quan có thật ngoài danh mục của sàn. Để giảm chi phí và độ trễ, kết quả được lưu đệm trong PostgreSQL (`ExternalPlace`, `ExternalPlaceSearch`) kèm thời hạn sử dụng; ảnh địa điểm được phục vụ qua điểm cuối trung gian `/api/place-photo/[placeId]` nhằm không để lộ khóa API ra trình duyệt.
+
+**Google Routes API** cung cấp hai chức năng được hệ thống sử dụng:
+
+- **Compute Routes:** tính quãng đường (mét), thời gian di chuyển (giây) và chuỗi đường đi mã hóa giữa hai điểm liên tiếp theo phương tiện ô tô (`DRIVE`), xe máy (`TWO_WHEELER`) hoặc đi bộ (`WALK`). Hỗ trợ xe máy là điểm phù hợp đặc biệt với thói quen di chuyển tại Việt Nam.
+- **Compute Route Matrix:** tính ma trận thời gian di chuyển giữa mọi cặp điểm trong một ngày, làm đầu vào cho thuật toán sắp xếp thứ tự tham quan.
+
+**Thuật toán tối ưu thứ tự tham quan.** Dựa trên ma trận thời gian, hệ thống giải bài toán tìm đường đi ngắn nhất qua các điểm (biến thể của bài toán Người du lịch – Travelling Salesman Problem): với số điểm nhỏ, hệ thống duyệt toàn bộ hoán vị để tìm lời giải tối ưu; với số điểm lớn hơn, hệ thống dùng heuristic **láng giềng gần nhất (Nearest Neighbor)** để dựng lời giải ban đầu rồi cải thiện bằng thuật toán **2-opt** (đảo ngược từng đoạn đường nếu làm giảm tổng thời gian). Các bữa ăn và nơi lưu trú được giữ cố định theo khung giờ, chỉ các điểm tham quan giữa hai mốc liền kề được hoán đổi, nhờ đó lộ trình vừa ngắn vừa hợp lý về sinh hoạt.
+
+Kết quả từ Routes API được lưu đệm trong bộ nhớ (tối đa 500 mục) theo tọa độ làm tròn, tránh gọi lặp khi người dùng chỉnh sửa lịch trình.
+
+### 3.6.2. Cổng thanh toán PayPal REST API
+
+PayPal cung cấp bộ giao diện lập trình REST cho thanh toán trực tuyến quốc tế. Hệ thống tích hợp bốn nhóm chức năng, tương ứng với mô hình ký quỹ đã phân tích ở mục 1.3.5 và 2.1.3:
+
+| Chức năng | API PayPal | Sử dụng trong hệ thống |
+|---|---|---|
+| Thu tiền | **Orders API v2** (create, capture) | Khởi tạo giao dịch sau khi quy đổi giá trị đơn từ VND sang USD; xác nhận thanh toán khi khách hàng phê duyệt |
+| Hoàn tiền | **Payments API – Refund** | Hoàn tiền tự động khi khách hủy đơn hợp lệ |
+| Chi trả | **Payouts API** | Chuyển doanh thu thực nhận (sau hoa hồng) tới tài khoản PayPal của nhà cung cấp khi đơn hoàn thành |
+| Thông báo | **Webhooks** | Nhận sự kiện bất đồng bộ (thanh toán thành công, hoàn tiền, chi trả); xác minh chữ ký sự kiện và xử lý lũy đẳng (idempotent) |
+| Liên kết tài khoản | **Log in with PayPal (OAuth 2.0)** | Nhà cung cấp đăng nhập PayPal để xác minh tài khoản nhận tiền |
+
+Toàn bộ thông tin thẻ được nhập trên giao diện của PayPal, hệ thống không lưu trữ dữ liệu thẻ, giảm phạm vi trách nhiệm bảo mật dữ liệu thanh toán. Môi trường thử nghiệm (Sandbox) và môi trường thật được chuyển đổi qua biến cấu hình `PAYPAL_MODE`.
+
+### 3.6.3. ImageKit — lưu trữ và phân phối hình ảnh
+
+ImageKit là dịch vụ lưu trữ hình ảnh kèm CDN và khả năng biến đổi ảnh theo thời gian thực qua tham số URL (thay đổi kích thước, cắt, nén, chuyển định dạng WebP/AVIF). Hệ thống dùng ImageKit lưu ảnh dịch vụ, ảnh điểm đến, ảnh bài viết, ảnh đại diện và chữ ký nhà cung cấp. Ảnh được tải lên từ máy chủ bằng khóa bí mật (không để lộ khóa ra trình duyệt) và được phân phối tới người dùng qua mạng CDN của ImageKit, giảm tải cho máy chủ ứng dụng và rút ngắn thời gian tải ảnh. Khả năng biến đổi ảnh theo URL của ImageKit cũng mở ra hướng tối ưu dung lượng ảnh theo từng thiết bị trong tương lai.
+
+### 3.6.4. Auth.js (NextAuth v5) và bcryptjs — xác thực và phân quyền
+
+**Auth.js** là thư viện xác thực mã nguồn mở dành cho Next.js. Hệ thống cấu hình:
+
+- **Nhà cung cấp Credentials:** đăng nhập bằng email và mật khẩu.
+- **Chiến lược phiên JWT:** thông tin phiên (mã người dùng, vai trò `customer` / `provider` / `admin`) được ký và lưu trong cookie `HttpOnly`, không cần bảng phiên trong CSDL, phù hợp với môi trường không máy chủ.
+- **Phân quyền nhiều lớp (RBAC):** kiểm tra vai trò tại `proxy.ts` cho khu vực quản trị, tại layout của từng nhóm route và lặp lại trong từng Server Action trước khi thực hiện thao tác ghi, đảm bảo người dùng không thể vượt quyền bằng cách gọi trực tiếp điểm cuối.
+
+**bcryptjs** băm mật khẩu một chiều bằng thuật toán Bcrypt có muối (salt) ngẫu nhiên, đảm bảo mật khẩu không thể khôi phục ngay cả khi CSDL bị lộ.
+
+### 3.6.5. ExcelJS — xuất báo cáo
+
+ExcelJS là thư viện đọc ghi tệp Microsoft Excel. Hệ thống dùng thư viện để sinh tệp `.xlsx` từ dữ liệu đơn đặt, doanh thu cho Quản trị viên và Nhà cung cấp, có định dạng tiêu đề, độ rộng cột và định dạng số tiền, phục vụ đối soát và lưu trữ ngoài hệ thống.
+
+---
+
+## 3.7. Triển khai, vận hành và giám sát
+
+### 3.7.1. Vercel — nền tảng triển khai
+
+Vercel là nền tảng đám mây chuyên triển khai ứng dụng web giao diện và Next.js. Hệ thống được triển khai tại Vercel với các đặc điểm:
+
+- **Triển khai liên tục:** mỗi lần đẩy mã lên kho GitHub, Vercel tự động biên dịch và tạo bản triển khai mới; mỗi nhánh tính năng có bản xem trước riêng.
+- **Hàm không máy chủ (Serverless Functions):** các trang kết xuất động, Server Actions và Route Handlers chạy dưới dạng hàm tự co giãn theo lưu lượng. Các điểm cuối AI được cấu hình thời gian chạy tối đa 60 giây (`maxDuration`) để đủ cho nhiều bước gọi công cụ.
+- **Mạng phân phối biên:** tài nguyên tĩnh và trang tĩnh được lưu đệm tại các máy chủ biên gần người dùng.
+- **Vercel OIDC:** cấp mã định danh cho từng bản triển khai, làm nền tảng cho xác thực không khóa tới Vertex AI (mục 3.5.1).
+
+### 3.7.2. Vercel Cron Jobs — tác vụ định kỳ
+
+Cron Jobs được khai báo trong `vercel.json`, gọi các điểm cuối `/api/cron/purge-stopped-tours`, `/api/cron/purge-stopped-hotels`, `/api/cron/purge-stopped-restaurants` vào 17:00 UTC (00:00 giờ Việt Nam) hằng ngày để xóa mềm các dịch vụ đã tạm dừng quá 30 ngày. Mỗi yêu cầu phải mang mã bí mật `CRON_SECRET` trong tiêu đề xác thực, ngăn bên ngoài kích hoạt tác vụ.
+
+### 3.7.3. Langfuse và OpenTelemetry — giám sát mô hình AI
+
+**OpenTelemetry** là tiêu chuẩn mở về thu thập dữ liệu quan sát (trace, metric, log) cho phần mềm. **Langfuse** là nền tảng mã nguồn mở chuyên quan sát các ứng dụng LLM, tiếp nhận dữ liệu theo chuẩn OpenTelemetry.
+
+Hệ thống đăng ký bộ xử lý `LangfuseSpanProcessor` trong tệp `src/instrumentation.ts` (được Next.js tự động nạp khi khởi động máy chủ). Mỗi phiên hội thoại được bọc trong một trace mang mã phiên và mã người dùng; bên trong ghi lại chi tiết từng bước: câu lệnh gửi mô hình, công cụ được gọi kèm tham số và kết quả, số token đầu vào/đầu ra, độ trễ của từng bước. Dữ liệu được đẩy lên Langfuse sau khi phản hồi kết thúc (qua `after()`), không ảnh hưởng tới thời gian phản hồi người dùng.
+
+Nhờ Langfuse, nhóm phát triển có thể: phát hiện các trường hợp mô hình gọi sai công cụ hoặc trả lời không neo dữ liệu; đo chi phí token theo từng chức năng (`chat`, `trip-chat`, `moderate-content`); và so sánh hiệu quả trước – sau khi tinh chỉnh câu lệnh hệ thống. Đây là cơ sở cho phần đánh giá chất lượng AI ở Chương 5.
+
+---
+
+## 3.8. Tổng kết chương
+
+Chương 3 đã trình bày toàn bộ các công nghệ được sử dụng để xây dựng hệ thống Roamly. Việc lựa chọn công nghệ dựa trên ba tiêu chí chính:
+
+1. **Thống nhất và hiệu quả phát triển:** Next.js, React và TypeScript cho phép xây dựng toàn bộ hệ thống trong một dự án, một ngôn ngữ, với kiểu dữ liệu xuyên suốt từ CSDL (Prisma) qua kiểm tra dữ liệu (Zod) tới mô hình AI (Vercel AI SDK).
+2. **Tin cậy cho nghiệp vụ giao dịch:** PostgreSQL với giao dịch ACID và kiểu số thập phân chính xác, kết hợp PayPal với Orders, Refunds, Payouts và Webhooks, đảm bảo luồng tiền ký quỹ – hoàn tiền – chi trả chính xác và an toàn.
+3. **Năng lực AI hiện đại có kiểm soát:** Gemini trên Vertex AI kết hợp Pinecone và Gemini Embedding hiện thực các kỹ thuật RAG, tìm kiếm ngữ nghĩa, gợi ý cá nhân hóa và kiểm duyệt nội dung; Google Places và Routes API neo câu trả lời của AI vào dữ liệu địa lý thực tế; Langfuse giúp quan sát và đánh giá chất lượng các thành phần AI.
+
+Trên nền tảng công nghệ này, chương tiếp theo sẽ trình bày chi tiết thiết kế kiến trúc hệ thống và cơ sở dữ liệu.
+
+---
+
+# CHƯƠNG 4: PHÁT TRIỂN VÀ TRIỂN KHAI ỨNG DỤNG
+
+Trên cơ sở các yêu cầu đã phân tích ở Chương 2 và nền tảng công nghệ đã lựa chọn ở Chương 3, chương này trình bày quá trình hiện thực hóa hệ thống Roamly: thiết kế kiến trúc tổng thể, thiết kế CSDL, cách phát triển các luồng nghiệp vụ cốt lõi và các phân hệ Trí tuệ nhân tạo, kết quả xây dựng giao diện và quy trình triển khai hệ thống lên môi trường thực tế.
+
+## 4.1. Thiết kế kiến trúc tổng thể
+
+### 4.1.1. Mô hình kiến trúc phân tầng
+
+Hệ thống được tổ chức thành bốn tầng logic, mỗi tầng chỉ phụ thuộc vào tầng ngay bên dưới:
+
+```mermaid
+flowchart TB
+    subgraph Client["TRÌNH DUYỆT NGƯỜI DÙNG"]
+        UI["Giao diện React 19<br/>(Server Components + Client Components)"]
+    end
+
+    subgraph Vercel["MÁY CHỦ NEXT.JS 16 TRÊN VERCEL"]
+        direction TB
+        subgraph L1["Tầng trình bày & định tuyến — src/app"]
+            Pages["Trang (page.tsx, layout.tsx)<br/>Route Groups theo vai trò"]
+            API["Route Handlers<br/>/api/chat, /api/trip-chat, /api/paypal/*, /api/cron/*"]
+            Proxy["proxy.ts<br/>(chặn /admin/*)"]
+        end
+        subgraph L2["Tầng tính năng — src/features"]
+            Actions["Server Actions<br/>(kiểm tra quyền + Zod)"]
+            FeatureLib["Logic nghiệp vụ<br/>chat tools, trip planner, recommend, explore"]
+        end
+        subgraph L3["Tầng thực thể — src/entities"]
+            Repo["Repository (Prisma)<br/>tour, hotel, booking, review, setting..."]
+            Schema["Lược đồ Zod & kiểu dữ liệu"]
+        end
+        subgraph L4["Tầng tích hợp — src/lib"]
+            Clients["prisma · pinecone · vertex · gemini<br/>paypal · google-routes · imagekit · moderation · telemetry"]
+        end
+    end
+
+    subgraph External["DỊCH VỤ BÊN NGOÀI"]
+        PG[("PostgreSQL")]
+        PC[("Pinecone")]
+        VX["Vertex AI (Gemini)"]
+        GM["Google Places / Routes"]
+        PP["PayPal"]
+        IK["ImageKit CDN"]
+        LF["Langfuse"]
+    end
+
+    UI --> Pages
+    UI --> API
+    UI --> Actions
+    Pages --> FeatureLib
+    API --> FeatureLib
+    Actions --> FeatureLib
+    FeatureLib --> Repo
+    Actions --> Repo
+    Repo --> Clients
+    FeatureLib --> Clients
+    Clients --> PG & PC & VX & GM & PP & IK & LF
+```
+
+- **Tầng trình bày và định tuyến (`src/app`)** chỉ làm nhiệm vụ nhận yêu cầu, gọi tầng tính năng và kết xuất giao diện. Các nhóm route `(customer)`, `(account)`, `(auth)`, `(provider)`, `(admin)` có bố cục và cơ chế bảo vệ riêng.
+- **Tầng tính năng (`src/features`)** chứa các Server Action và logic nghiệp vụ được nhóm theo vai trò (`customer`, `provider`, `admin`) và theo phân hệ lớn (`trip-planner`, `notification`, `invoice`). Mỗi Server Action đều thực hiện ba bước cố định: xác thực vai trò → kiểm tra dữ liệu bằng Zod → gọi repository.
+- **Tầng thực thể (`src/entities`)** gói toàn bộ truy vấn CSDL theo từng thực thể nghiệp vụ. Không có mã nào ngoài tầng này gọi trực tiếp Prisma cho dữ liệu nghiệp vụ, nhờ đó các quy tắc toàn vẹn (giữ chỗ, chuyển trạng thái đơn) được tập trung tại một chỗ.
+- **Tầng tích hợp (`src/lib`)** là các client mỏng bọc dịch vụ ngoài; thay đổi nhà cung cấp chỉ ảnh hưởng tới tầng này.
+
+### 4.1.2. Cơ chế xử lý một yêu cầu
+
+Hệ thống sử dụng ba kiểu giao tiếp giữa trình duyệt và máy chủ, mỗi kiểu phù hợp với một loại tác vụ:
+
+| Kiểu giao tiếp | Dùng cho | Ví dụ trong hệ thống |
+|---|---|---|
+| **Server Components** (đọc dữ liệu khi kết xuất) | Hiển thị trang danh sách, chi tiết, dashboard | `/explore`, `/tours/[slug]`, `/admin/reports` |
+| **Server Actions** (gọi hàm máy chủ từ biểu mẫu) | Mọi thao tác ghi dữ liệu | Tạo đơn đặt, gửi đánh giá, duyệt hồ sơ, cập nhật cấu hình |
+| **Route Handlers** (điểm cuối HTTP) | Truyền phát dữ liệu, nhận gọi từ hệ thống ngoài | `/api/chat` (stream), `/api/paypal/webhooks`, `/api/cron/*` |
+
+Các lỗi nghiệp vụ được chuẩn hóa thành các lớp `ValidationError`, `NotFoundError`, `ConflictError` và được hàm bao `runAction` chuyển thành kết quả có cấu trúc `{ status, formError, fieldErrors }` trả về giao diện, giúp biểu mẫu hiển thị lỗi theo từng trường mà không làm sập trang.
+
+---
+
+## 4.2. Thiết kế cơ sở dữ liệu
+
+### 4.2.1. Sơ đồ quan hệ thực thể (ERD)
+
+CSDL gồm khoảng 30 bảng, được chia thành sáu nhóm. Sơ đồ dưới đây thể hiện các thực thể chính và quan hệ giữa chúng (lược bỏ bớt thuộc tính để dễ theo dõi):
+
+```mermaid
+erDiagram
+    User ||--o{ ProviderProfile : "sở hữu"
+    User ||--o{ TourBooking : "đặt"
+    User ||--o{ HotelBooking : "đặt"
+    User ||--o{ RestaurantBooking : "đặt"
+    User ||--o{ Review : "viết"
+    User ||--o{ SearchHistory : "tìm kiếm"
+    User ||--o{ Notification : "nhận"
+
+    Province ||--o{ Tour : "thuộc"
+    Province ||--o{ Hotel : "thuộc"
+    Province ||--o{ Restaurant : "thuộc"
+    Province ||--o{ Destination : "thuộc"
+
+    ProviderProfile ||--o{ Tour : "cung cấp"
+    ProviderProfile ||--o{ Hotel : "cung cấp"
+    ProviderProfile ||--o{ Restaurant : "cung cấp"
+    ProviderProfile ||--o{ Payout : "nhận"
+
+    Tour ||--o{ TourDeparture : "có lịch"
+    TourDeparture ||--o{ TourBooking : "được đặt"
+    Hotel ||--o{ Room : "có phòng"
+    Room ||--o{ HotelBooking : "được đặt"
+    Restaurant ||--o{ RestaurantTimeSlot : "có khung giờ"
+    RestaurantTimeSlot ||--o{ RestaurantBooking : "được đặt"
+
+    TourBooking ||--o{ Payment : "thanh toán"
+    HotelBooking ||--o{ Payment : "thanh toán"
+    Payment ||--o{ Refund : "hoàn tiền"
+    TourBooking ||--o{ Refund : "có"
+    TourBooking ||--o| Payout : "chi trả"
+    HotelBooking ||--o| Payout : "chi trả"
+
+    TourBooking ||--o| Review : "được đánh giá"
+    HotelBooking ||--o| Review : "được đánh giá"
+    RestaurantBooking ||--o| Review : "được đánh giá"
+
+    Article ||--o{ ArticleComment : "có"
+    Tag }o--o{ Tour : "gắn thẻ"
+
+    User {
+        string id PK
+        string email UK
+        string phone UK
+        string password "băm bcrypt"
+        Role role
+        UserStatus status
+    }
+    ProviderProfile {
+        string id PK
+        string userId FK
+        BusinessType businessType
+        ApprovalStatus approvalStatus
+        string paypalPayerId
+    }
+    TourDeparture {
+        string id PK
+        string tourId FK
+        datetime departureDate
+        int totalSlots
+        int bookedSlots
+        decimal price
+    }
+    TourBooking {
+        string id PK
+        string code UK
+        BookingStatus status
+        int guests
+        decimal totalAmount
+        decimal commissionRate
+        decimal platformFee
+        decimal providerAmount
+        datetime expiresAt
+    }
+    Payment {
+        string id PK
+        string gatewayOrderId UK
+        string gatewayCaptureId
+        TransactionStatus status
+        decimal chargedAmount
+    }
+```
+
+### 4.2.2. Mô tả các nhóm bảng
+
+| Nhóm | Bảng | Ghi chú thiết kế |
+|---|---|---|
+| **Người dùng** | `User`, `ProviderProfile` | Một người dùng vai trò `provider` có thể có tối đa một hồ sơ doanh nghiệp cho mỗi loại hình (`tour` / `hotel` / `restaurant`, ràng buộc duy nhất `userId + businessType`). Hồ sơ lưu mã tài khoản PayPal đã xác minh (`paypalPayerId`), ảnh chữ ký và trải qua quy trình duyệt `not_submitted → pending → approved / rejected`. |
+| **Danh mục dịch vụ** | `Tour`, `TourDeparture`, `Hotel`, `Room`, `Restaurant`, `RestaurantTimeSlot`, `Destination`, `Province`, `Tag` và các bảng nối `*Tag` | Dịch vụ có trạng thái `published` / `paused` và trường `deletedAt` cho xóa mềm. Số chỗ được theo dõi trực tiếp bằng cặp `totalSlots` / `bookedSlots` trên từng lịch khởi hành. |
+| **Giao dịch** | `TourBooking`, `HotelBooking`, `RestaurantBooking`, `Payment`, `Refund`, `Payout` | Đơn đặt **chụp lại** tên dịch vụ, đơn giá, tỷ lệ hoa hồng tại thời điểm đặt (`tourTitle`, `unitPrice`, `commissionRate`), nên khi nhà cung cấp đổi giá hoặc quản trị viên đổi hoa hồng, đơn cũ không bị ảnh hưởng. |
+| **Nội dung cộng đồng** | `Review`, `Article`, `ArticleComment`, `ModerationLog` | Đánh giá và bình luận có trạng thái kiểm duyệt (`approved` / `pending` / `rejected`) và nguồn quyết định (`keyword` / `ai` / quản trị viên). |
+| **Dữ liệu AI** | `SearchHistory`, `ExternalPlace`, `ExternalPlaceSearch` | `SearchHistory` lưu câu truy vấn đã chuẩn hóa kèm vector 768 chiều (kiểu `Float[]`), giữ tối đa 20 lượt gần nhất mỗi người. Hai bảng `ExternalPlace*` là bộ nhớ đệm kết quả tra cứu địa điểm ngoài. |
+| **Hệ thống** | `SystemSetting`, `Notification` | `SystemSetting` là bảng một dòng chứa các tham số vận hành có thể chỉnh trên giao diện quản trị. |
+
+Các tham số vận hành mặc định trong bảng `SystemSetting`:
+
+| Tham số | Mặc định | Ý nghĩa |
+|---|:---:|---|
+| `commissionRate` | 0,1 | Tỷ lệ hoa hồng sàn (10%) |
+| `usdRate` | 25.000 | Tỷ giá quy đổi VND → USD cho PayPal |
+| `bookingHoldMinutes` | 10 | Thời gian giữ chỗ chờ thanh toán (phút) |
+| `customerCancelCutoffHours` | 24 | Hạn chót khách được hủy tour/khách sạn trước giờ sử dụng (giờ) |
+| `restaurantCancelCutoffHours` | 2 | Hạn chót hủy đặt bàn nhà hàng (giờ) |
+| `serviceDeleteGraceDays` | 30 | Số ngày dịch vụ tạm dừng trước khi bị xóa mềm tự động |
+
+**Quy tắc kiểu dữ liệu tiền tệ.** Mọi trường tiền dùng kiểu `DECIMAL(12,2)`, tỷ lệ dùng `DECIMAL(5,4)`; phép tính được thực hiện bằng đối tượng `Decimal` của Prisma (`mul`, `sub`, `toDecimalPlaces`) thay vì số thực JavaScript để tránh sai số làm tròn.
+
+### 4.2.3. Vòng đời trạng thái đơn đặt chỗ
+
+Trạng thái đơn đặt (`BookingStatus`) được thiết kế như một máy trạng thái hữu hạn; mọi chuyển trạng thái đều được kiểm tra điều kiện trong repository:
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending_payment : Khách tạo đơn tour/khách sạn<br/>(giữ chỗ bookingHoldMinutes)
+    [*] --> pending_confirmation : Khách đặt bàn nhà hàng
+
+    pending_payment --> paid : PayPal capture thành công
+    pending_payment --> expired : Hết thời gian giữ chỗ<br/>(nhả chỗ)
+
+    pending_confirmation --> confirmed : Nhà hàng xác nhận
+    pending_confirmation --> cancelled : Nhà hàng từ chối / khách hủy
+
+    paid --> confirmed : Nhà cung cấp xác nhận
+    paid --> cancelled : Khách hủy đúng hạn / NCC hủy<br/>→ Refund
+    confirmed --> cancelled : Hủy → Refund
+    confirmed --> completed : NCC đánh dấu hoàn thành<br/>→ Payout
+    paid --> completed : NCC đánh dấu hoàn thành<br/>→ Payout
+
+    completed --> [*]
+    cancelled --> [*]
+    expired --> [*]
+```
+
+---
+
+## 4.3. Phát triển các chức năng nghiệp vụ cốt lõi
+
+### 4.3.1. Xác thực và phân quyền
+
+Chức năng xác thực được cấu hình trong `src/lib/auth.ts` với Auth.js:
+
+1. **Đăng ký:** dữ liệu biểu mẫu được kiểm tra bằng Zod (định dạng email, số điện thoại, độ dài mật khẩu), mật khẩu được băm bằng bcrypt rồi lưu vào bảng `User` với vai trò `customer` hoặc `provider`.
+2. **Đăng nhập:** nhà cung cấp `Credentials` tìm người dùng theo email và so khớp mật khẩu nhập vào với giá trị băm bằng `bcrypt.compare`.
+3. **Phiên làm việc:** chiến lược `jwt` lưu `id` và `role` trong mã thông báo đã ký; hàm callback đưa hai giá trị này vào đối tượng `session` để mọi Server Component và Server Action đều đọc được.
+4. **Phân quyền nhiều lớp:**
+   - `proxy.ts` chuyển hướng mọi truy cập `/admin/*` không phải quản trị viên về `/admin/sign-in`;
+   - layout của nhóm `(provider)` và `(account)` kiểm tra vai trò trước khi kết xuất;
+   - mỗi Server Action gọi các hàm `requireCustomerId()`, `requireTourProviderId()`... và chỉ thao tác trên bản ghi thuộc sở hữu của chính người gọi (ví dụ truy vấn đơn đặt luôn kèm điều kiện `providerProfileId`), chống tấn công truy cập trực tiếp đối tượng không được phép.
+
+### 4.3.2. Quản lý dịch vụ và đồng bộ dữ liệu vector
+
+Khi nhà cung cấp tạo hoặc cập nhật tour, khách sạn, nhà hàng (UC-08), Server Action thực hiện tuần tự:
+
+1. Kiểm tra hồ sơ doanh nghiệp đã được duyệt và đúng loại hình.
+2. Kiểm tra dữ liệu bằng Zod; tải ảnh lên ImageKit và lưu URL trả về.
+3. Ghi dữ liệu vào PostgreSQL (dịch vụ, lịch khởi hành / phòng / khung giờ, thẻ phân loại).
+4. Ghép văn bản đại diện của dịch vụ bằng các hàm `build*EmbeddingText` (tên, mô tả, điểm nổi bật, tỉnh/thành, thẻ), gọi `embedText()` để sinh vector 768 chiều và `upsert` lên namespace tương ứng của Pinecone, kèm siêu dữ liệu `provinceId`, `status`.
+5. Nếu bước đồng bộ vector thất bại, dữ liệu chính vẫn được lưu; hệ thống ghi nhận lỗi và có thể đồng bộ lại toàn bộ bằng tập lệnh `bun run db:embed`.
+
+Khi tạm dừng dịch vụ, hệ thống chỉ cập nhật trường `status` trong siêu dữ liệu Pinecone (hàm `set*EmbeddingStatus`) để dịch vụ biến mất khỏi kết quả tìm kiếm ngay lập tức mà không cần tính lại vector. Dịch vụ tạm dừng quá `serviceDeleteGraceDays` ngày sẽ bị Cron Job xóa mềm.
+
+### 4.3.3. Đặt chỗ và cơ chế giữ chỗ chống bán vượt
+
+Bài toán khó nhất của luồng đặt chỗ là **tranh chấp đồng thời**: hai khách cùng đặt chỗ cuối cùng của một lịch khởi hành tại cùng thời điểm. Hệ thống giải quyết bằng ba kỹ thuật trên PostgreSQL, thực hiện trong một giao dịch duy nhất (`createHeld` trong `entities/tour-booking/repo.ts`):
+
+**(1) Cập nhật có điều kiện mang tính nguyên tử.** Thay vì "đọc số chỗ trống → kiểm tra → ghi" (dễ xảy ra tranh chấp giữa bước đọc và bước ghi), hệ thống dùng một câu lệnh duy nhất:
+
+```sql
+UPDATE "TourDeparture"
+SET "bookedSlots" = "bookedSlots" + :guests
+WHERE "id" = :departureId
+  AND "status" = 'scheduled'
+  AND "departureDate" > now()
+  AND "bookedSlots" + :guests <= "totalSlots";
+```
+
+Nếu số dòng bị ảnh hưởng bằng 0, nghĩa là không đủ chỗ, giao dịch bị hủy và người dùng nhận thông báo *"Không đủ chỗ trống cho số khách đã chọn"*. PostgreSQL đảm bảo hai câu lệnh `UPDATE` trên cùng một dòng được tuần tự hóa, nên không thể có hai đơn cùng chiếm chỗ cuối.
+
+**(2) Giữ chỗ có thời hạn.** Đơn mới được tạo ở trạng thái `pending_payment` với `expiresAt = now + bookingHoldMinutes`. Giao diện hiển thị đồng hồ đếm ngược thời gian còn lại để thanh toán.
+
+**(3) Nhả chỗ lười (lazy release) không cần tiến trình nền.** Trước mỗi lần tạo đơn hoặc đọc số chỗ trống, hệ thống chạy hàm `releaseExpired()`: một câu lệnh SQL dùng biểu thức bảng chung (CTE) chuyển các đơn quá hạn sang `expired` và trả lại số chỗ cho lịch khởi hành. Mệnh đề `FOR UPDATE SKIP LOCKED` bỏ qua các đơn đang bị giao dịch khác khóa, và điều kiện loại trừ các đơn có thanh toán đang ở trạng thái `processing` đảm bảo không nhả chỗ của khách đang trong quá trình xác nhận thanh toán.
+
+**(4) Tính giá phía máy chủ.** Đơn giá luôn được đọc lại từ CSDL; tổng tiền, phí sàn và số tiền nhà cung cấp nhận được tính ngay khi tạo đơn:
+
+$$\text{platformFee} = \text{round}(\text{totalAmount} \times \text{commissionRate},\ 2), \qquad \text{providerAmount} = \text{totalAmount} - \text{platformFee}$$
+
+Dữ liệu giá từ trình duyệt không bao giờ được tin cậy. Luồng đặt phòng khách sạn áp dụng cùng cơ chế theo khoảng ngày nhận/trả phòng; luồng đặt bàn nhà hàng không thu tiền trước mà tạo đơn ở trạng thái `pending_confirmation` chờ nhà hàng xác nhận theo sức chứa khung giờ.
+
+### 4.3.4. Thanh toán ký quỹ, hoàn tiền và chi trả doanh thu qua PayPal
+
+Toàn bộ dòng tiền đi qua tài khoản PayPal của sàn theo mô hình ký quỹ. Sơ đồ tuần tự dưới đây mô tả vòng đời đầy đủ của một đơn tour:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor C as Khách hàng
+    participant W as Roamly (Next.js)
+    participant DB as PostgreSQL
+    participant PP as PayPal
+    actor P as Nhà cung cấp
+
+    C->>W: Chọn lịch khởi hành, số khách, thông tin liên hệ
+    W->>DB: createHeld(): giữ chỗ + tạo TourBooking (pending_payment)
+    C->>W: Nhấn "Thanh toán"
+    W->>W: Quy đổi VND → USD theo usdRate
+    W->>PP: Orders API: createOrder(amountUsd)
+    PP-->>W: orderId + đường dẫn phê duyệt
+    W->>DB: Tạo Payment (pending, gatewayOrderId)
+    W-->>C: Chuyển hướng tới PayPal
+    C->>PP: Đăng nhập ví / nhập thẻ, phê duyệt
+    PP-->>W: Quay về /api/paypal/orders/return?token=orderId
+    W->>DB: markPaymentProcessing(): khóa đơn (FOR UPDATE),<br/>chỉ tiếp tục nếu còn trong hạn giữ chỗ
+    W->>PP: captureOrder(orderId)
+    PP-->>W: captureId, COMPLETED
+    W->>DB: markPaid(): Payment succeeded, TourBooking paid
+    W-->>C: Trang hoàn tất + hóa đơn
+
+    Note over C,P: ... Ngày diễn ra dịch vụ ...
+
+    alt Dịch vụ hoàn tất
+        P->>W: Đánh dấu "Hoàn thành"
+        W->>DB: completeForProvider(): completed + tạo Payout
+        W->>PP: Payouts API: createPayout(providerAmount → PayPal NCC)
+        PP-->>W: batchId (pending)
+        PP-)W: Webhook PAYMENT.PAYOUTS-ITEM.SUCCEEDED
+        W->>DB: Cập nhật Payout succeeded
+    else Khách / NCC hủy
+        C->>W: Yêu cầu hủy (trước customerCancelCutoffHours)
+        W->>DB: cancelled + tạo Refund + nhả chỗ
+        W->>PP: refundCapture(captureId, amountUsd)
+        PP-)W: Webhook PAYMENT.CAPTURE.REFUNDED
+        W->>DB: Cập nhật Refund succeeded
+    end
+```
+
+Các điểm kỹ thuật đáng chú ý:
+
+- **Chống thanh toán cho đơn đã hết hạn:** bước `markPaymentProcessing` khóa dòng đơn đặt bằng `SELECT ... FOR UPDATE` và chỉ chuyển thanh toán sang `processing` khi đơn vẫn còn `pending_payment` và chưa quá `expiresAt`. Đồng thời, hàm nhả chỗ bỏ qua đơn có thanh toán `processing`, nên hai tiến trình "nhả chỗ" và "xác nhận thanh toán" không bao giờ xung đột.
+- **Xử lý kết quả chuyển tiền thống nhất:** hàm `settleTransfer` bao lời gọi Refund/Payout, ghi kết quả (`pending` / `succeeded` / `failed`) vào bảng `Refund` hoặc `Payout`. Nếu thất bại, hệ thống tạo thông báo `transfer_failed` cho quản trị viên để xử lý thủ công.
+- **Webhook an toàn và lũy đẳng:** điểm cuối `/api/paypal/webhooks` đọc nguyên văn thân yêu cầu, gọi API `verify-webhook-signature` của PayPal để xác thực chữ ký trước khi xử lý; sự kiện không hợp lệ bị trả mã 400. Mọi cập nhật đều có điều kiện theo trạng thái hiện tại, nên PayPal gửi lại một sự kiện nhiều lần cũng không gây cập nhật trùng. Khi lỗi CSDL, điểm cuối trả mã 500 để PayPal tự động gửi lại.
+- **Liên kết tài khoản nhận tiền:** nhà cung cấp đăng nhập PayPal qua OAuth 2.0 (`/api/paypal/connect` → `/api/paypal/callback`); hệ thống lấy thông tin danh tính đã xác minh từ API `userinfo` và lưu vào hồ sơ, tránh việc nhập sai email nhận tiền.
+
+### 4.3.5. Thông báo, hóa đơn và báo cáo
+
+- **Thông báo trong ứng dụng:** mỗi sự kiện nghiệp vụ (đơn mới, đã thanh toán, đã xác nhận, đã hủy, hoàn thành, có đánh giá mới, hồ sơ được duyệt/từ chối, chuyển tiền thất bại) tạo một bản ghi `Notification` cho người liên quan. Biểu tượng chuông trên thanh điều hướng truy vấn `/api/notifications` định kỳ 30 giây một lần để cập nhật số thông báo chưa đọc.
+- **Hóa đơn điện tử:** trang `/bookings/[code]/invoice` (và các trang tương ứng cho nhà cung cấp, quản trị viên) kết xuất hóa đơn gồm thông tin đơn, chi tiết thanh toán, mã giao dịch PayPal và chữ ký của nhà cung cấp, định dạng sẵn cho chức năng in của trình duyệt.
+- **Báo cáo thống kê:** trang báo cáo của quản trị viên và nhà cung cấp tổng hợp dữ liệu bằng các truy vấn gom nhóm trên PostgreSQL, hiển thị bằng ApexCharts; điểm cuối `/api/admin/reports` và `/api/provider/bookings` dùng ExcelJS sinh tệp `.xlsx` theo khoảng thời gian được chọn.
+
+---
+
+## 4.4. Phát triển các phân hệ Trí tuệ nhân tạo
+
+### 4.4.1. Trợ lý ảo Roamly AI (RAG kết hợp gọi công cụ)
+
+**Kiến trúc xử lý.** Điểm cuối `/api/chat` nhận toàn bộ lịch sử hội thoại, chuyển đổi sang định dạng thông điệp của mô hình và gọi `streamText` với mô hình Gemini, câu lệnh hệ thống `CHAT_INSTRUCTIONS` và tập công cụ `chatTools`. Điều kiện dừng `isStepCount(4)` giới hạn tối đa bốn bước suy luận – gọi công cụ cho mỗi câu hỏi, đủ cho luồng "gọi công cụ → hỏi lại nếu địa danh trùng tên → trả lời" và chừa một bước dự phòng, đồng thời ngăn mô hình gọi công cụ vô hạn gây tốn chi phí.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Người dùng
+    participant UI as Giao diện chat (useChat)
+    participant API as /api/chat
+    participant LLM as Gemini (Vertex AI)
+    participant T as Công cụ
+    participant D as Pinecone / PostgreSQL / Google Places
+    participant LF as Langfuse
+
+    U->>UI: "Quán lẩu ngon ở Cát Bà?"
+    UI->>API: POST messages
+    API->>LLM: streamText(instructions, tools, messages)
+    LLM-->>API: tool_call searchPlaces(kind=restaurant, keyword="lẩu", location="Cát Bà")
+    API->>T: Thực thi searchPlaces
+    T->>D: Tra bộ nhớ đệm → Google Places Text Search
+    D-->>T: Danh sách địa điểm thực tế
+    T-->>API: { status: "ok", area, places[] }
+    API->>LLM: Kết quả công cụ
+    LLM-->>API: Văn bản trả lời (stream từng phần)
+    API-->>UI: UI Message Stream (văn bản + kết quả công cụ)
+    UI-->>U: Câu trả lời Markdown + thẻ địa điểm có ảnh, đánh giá, bản đồ
+    API-)LF: after(): flush trace (token, độ trễ, tham số công cụ)
+```
+
+**Thiết kế câu lệnh hệ thống (Prompt Engineering).** Câu lệnh hệ thống được xây dựng thành các nhóm quy tắc rõ ràng:
+
+- *Quy tắc neo dữ liệu:* "Chỉ nêu tên địa điểm/tour có trong kết quả công cụ. Không bịa tên, địa chỉ, giá" — biện pháp chính chống hiện tượng ảo tưởng.
+- *Quy tắc chọn công cụ:* `searchTours` chỉ dùng khi người dùng hỏi tour; `searchPlaces` dùng cho chỗ ở, ăn uống, tham quan; yêu cầu lập lịch trình được chuyển sang Trip Planner qua `openTripPlanner` thay vì để chatbot tự lập.
+- *Quy tắc xử lý mơ hồ:* khi công cụ trả về `status: "ambiguous"` (địa danh trùng tên ở nhiều tỉnh, ví dụ "Tân Phú"), mô hình bắt buộc gọi `askUser` với các lựa chọn công cụ đưa ra; khi `not_found`, mô hình hỏi lại thay vì tự đoán.
+- *Quy tắc hiệu năng:* gọi song song mọi công cụ cần thiết trong một bước, không gọi lại công cụ trừ khi người dùng vừa chọn địa điểm.
+- *Quy tắc phạm vi:* từ chối lịch sự các yêu cầu không liên quan tới du lịch.
+
+**Hiển thị kết quả có cấu trúc.** Nhờ kiểu thông điệp `ChatMessage` được suy ra từ `InferUITools<typeof chatTools>`, giao diện biết chính xác kiểu kết quả của từng công cụ và hiển thị thành phần tương ứng: thẻ tour có giá và nút đặt chỗ, thẻ địa điểm có ảnh (qua `/api/place-photo`), nhóm nút lựa chọn cho `askUser`, nút chuyển trang cho `openTripPlanner`.
+
+### 4.4.2. Phân hệ Lập lịch trình thông minh (AI Trip Planner)
+
+Phân hệ Trip Planner kết hợp năng lực ngôn ngữ của mô hình với các ràng buộc kiểm tra bằng mã và dữ liệu bản đồ thực tế, theo mô hình **"AI đề xuất – mã kiểm tra – AI tự sửa"**:
+
+```mermaid
+flowchart TD
+    A["Người dùng mô tả chuyến đi<br/>(điểm đến, số ngày, phương tiện, sở thích)"] --> B["/api/trip-chat<br/>streamText, tối đa 10 bước"]
+    B --> C{"Đủ thông tin?"}
+    C -- Chưa --> Q["askUser: hỏi thêm một câu"] --> A
+    C -- Đủ --> S["searchPlaces / searchWeb<br/>lấy điểm tham quan, quán ăn, khách sạn có placeId"]
+    S --> I["Mô hình gọi setItinerary<br/>(các ngày, điểm dừng, khung giờ, placeId)"]
+    I --> V["buildItinerary(strict)<br/>• placeId phải tồn tại<br/>• ≤ 25 điểm/ngày<br/>• hai bữa ăn cách nhau đủ giờ"]
+    V -- "invalid + danh sách lỗi" --> I
+    V -- hợp lệ --> M["Routes API: Compute Route Matrix<br/>ma trận thời gian di chuyển"]
+    M --> O["optimizeDay(): giữ cố định bữa ăn & khách sạn<br/>sắp lại điểm tham quan<br/>(hoán vị / láng giềng gần nhất + 2-opt)"]
+    O --> R["Routes API: Compute Routes<br/>quãng đường, thời gian, polyline từng chặng"]
+    R --> UI["Giao diện: lịch trình theo ngày + bản đồ Leaflet<br/>lưu vào localStorage"]
+    UI -- "Người dùng xóa/sửa điểm" --> V2["buildItinerary(non-strict)<br/>chỉ cảnh báo"] --> UI
+```
+
+Các quyết định thiết kế quan trọng:
+
+1. **Mô hình chỉ được chọn địa điểm có thật.** Lịch trình tham chiếu địa điểm bằng `placeId` lấy từ kết quả công cụ tìm kiếm; tọa độ được đọc lại từ CSDL chứ không lấy từ văn bản của mô hình. Mã định danh không tồn tại bị trả về như một lỗi.
+2. **Vòng phản hồi tự sửa.** Ở chế độ `strict`, mọi vi phạm quy tắc (ví dụ *"Ngày 2: bữa trưa và bữa tối chỉ cách nhau 90 phút"*) được trả lại cho mô hình dưới dạng kết quả công cụ; mô hình đọc lỗi và gọi lại `setItinerary` với phương án đã sửa trong giới hạn 10 bước.
+3. **Phân công hợp lý giữa AI và thuật toán.** Mô hình quyết định *đi đâu, ăn gì, ở đâu, khung giờ nào* (bài toán ngữ nghĩa); thuật toán quyết định *thứ tự đi* dựa trên thời gian di chuyển thực tế (bài toán tối ưu). Bữa ăn và nơi lưu trú được giữ cố định theo giờ, chỉ các điểm tham quan giữa hai mốc liền kề được hoán đổi.
+4. **Phương tiện di chuyển phù hợp Việt Nam:** ô tô, xe máy hoặc đi bộ, ánh xạ sang `DRIVE`, `TWO_WHEELER`, `WALK` của Routes API.
+5. **Lưu trữ phía trình duyệt.** Lịch trình và lịch sử hội thoại được lưu trong `localStorage` (khóa `roamly:trips`), cho phép cả khách vãng lai dùng chức năng mà không cần đăng nhập; mỗi lịch trình có đường dẫn riêng `/trip-planner/[id]`. Hệ thống ghi nhớ mã lời gọi `setItinerary` đã áp dụng để không ghi đè các chỉnh sửa tay của người dùng.
+
+### 4.4.3. Tìm kiếm ngữ nghĩa và lưu lịch sử tìm kiếm
+
+Luồng xử lý một câu tìm kiếm trên trang Khám phá:
+
+1. Chuẩn hóa câu truy vấn (cắt khoảng trắng thừa, chuyển chữ thường).
+2. Tra bảng `SearchHistory`: nếu câu này đã từng được tìm, dùng lại vector đã lưu; nếu chưa, gọi `gemini-embedding-001`.
+3. Truy vấn Pinecone song song cả bốn namespace (tour, khách sạn, nhà hàng, điểm đến), mỗi loại lấy 50 kết quả gần nhất kèm điểm Cosine. Việc truy vấn cả bốn loại giúp xác định điểm cao nhất chung — nếu người dùng tìm "hải sản" trong tab Khách sạn, các khách sạn kém liên quan sẽ không lấp đầy kết quả.
+4. Lọc theo ngưỡng tương đối (≥ điểm cao nhất − 0,07 và ≥ 0,60), sau đó giao với các bộ lọc thuộc tính (tỉnh, giá, thẻ, số sao) trên PostgreSQL và sắp xếp theo điểm ngữ nghĩa.
+5. Với người dùng đã đăng nhập, câu truy vấn và vector được lưu (`upsert`) vào `SearchHistory`; các lượt cũ vượt quá 20 bị xóa trong cùng giao dịch.
+6. Nếu Pinecone hoặc mô hình nhúng lỗi, hệ thống quay về tìm theo từ khóa.
+
+### 4.4.4. Gợi ý cá nhân hóa trên trang chủ
+
+Hàm `buildUserProfile` tổng hợp vector hồ sơ từ lịch sử tìm kiếm và tối đa 20 đơn gần nhất mỗi loại có ý nghĩa nhu cầu (`pending_confirmation`, `paid`, `confirmed`, `completed`), đồng thời tính giá trung bình người dùng đã chi trả theo từng loại dịch vụ. Hàm `recommend` lấy 20 ứng viên mỗi loại từ Pinecone, loại các mục đã đặt, chấm điểm lại theo công thức $0{,}7 \times \text{cosine} + 0{,}3 \times \text{PriceFit}$ và hiển thị 4 mục tốt nhất mỗi loại trong khối "Dành cho bạn" trên trang chủ. Khối này chỉ xuất hiện với khách hàng đã đăng nhập và đã có lịch sử tìm kiếm hoặc đặt chỗ; các trường hợp còn lại (khách vãng lai, người dùng mới, Pinecone lỗi) trang chủ vẫn hiển thị khối gói dịch vụ phổ biến như bình thường.
+
+### 4.4.5. Kiểm duyệt nội dung tự động
+
+Hàm `moderateContent` (`src/lib/moderation/index.ts`) được gọi trong Server Action gửi đánh giá (`features/customer/reviews`) và gửi bình luận bài viết (`features/customer/articles`):
+
+```mermaid
+flowchart TD
+    In["Nội dung đánh giá / bình luận"] --> N["Chuẩn hóa văn bản<br/>bỏ dấu · chữ thường · gộp ký tự lặp<br/>thay số bằng chữ · ghép chữ bị tách 'đ.m.m'"]
+    N --> K{"Tầng 1: Lọc từ khóa"}
+    K -- "Vi phạm rõ ràng" --> B["Chặn ngay, không lưu<br/>yêu cầu người dùng sửa"]
+    K -- "Sạch / nghi vấn (gợi ý)" --> AI["Tầng 2: Gemini + Output.object<br/>ngữ cảnh: loại nội dung, đối tượng, số sao, gợi ý tầng 1<br/>giới hạn 10 giây"]
+    AI -- "approve" --> OK["Lưu & hiển thị công khai<br/>cập nhật điểm trung bình"]
+    AI -- "reject, confidence ≥ 0,8" --> RJ["Lưu nhưng ẩn (rejected)"]
+    AI -- "review / reject < 0,8" --> PD["Lưu, chờ quản trị viên duyệt (pending)"]
+    AI -. "Lỗi / quá thời gian" .-> PD
+    B & OK & RJ & PD --> LOG[("ModerationLog<br/>stage · verdict · categories<br/>confidence · latencyMs")]
+    PD --> ADM["/admin/moderation<br/>Quản trị viên duyệt / từ chối"]
+```
+
+Nguyên tắc thiết kế: **AI không bao giờ tự quyết trong trường hợp không chắc chắn**. Chỉ những vi phạm có độ tin cậy cao mới bị ẩn tự động; khi mô hình gặp lỗi, nội dung được chuyển cho con người thay vì tự động duyệt hoặc tự động từ chối. Câu lệnh kiểm duyệt nhấn mạnh rằng phê bình tiêu cực (kể cả đánh giá 1 sao gay gắt) là quyền của khách hàng và không bị coi là vi phạm, nhằm bảo vệ tính khách quan của hệ thống đánh giá.
+
+### 4.4.6. Giám sát các thành phần AI
+
+Tệp `src/instrumentation.ts` khởi tạo `NodeTracerProvider` của OpenTelemetry với `LangfuseSpanProcessor` khi máy chủ khởi động (nếu có cấu hình khóa Langfuse). Hàm `withTrace` bao mỗi lời gọi chatbot và Trip Planner trong một trace có tên, mã phiên và mã người dùng; lời gọi kiểm duyệt được gắn `functionId: "moderate-content"`. Sau khi phản hồi kết thúc, `after(flushTelemetry)` đẩy dữ liệu lên Langfuse trước khi hàm không máy chủ bị thu hồi. Dữ liệu này được sử dụng để đánh giá độ trễ, chi phí token và độ chính xác gọi công cụ ở Chương 5.
+
+---
+
+## 4.5. Kết quả xây dựng giao diện
+
+Hệ thống gồm khoảng 60 trang, chia theo ba phân hệ. Bảng dưới đây liệt kê các màn hình chính:
+
+**Phân hệ Khách hàng và Khách vãng lai**
+
+| Đường dẫn | Màn hình | Chức năng chính |
+|---|---|---|
+| `/` | Trang chủ | Khối tìm kiếm nhanh, gợi ý cá nhân hóa, điểm đến nổi bật, bài viết mới |
+| `/explore` | Khám phá | Tìm kiếm ngữ nghĩa, lọc theo loại dịch vụ, tỉnh, giá, thẻ, số sao |
+| `/tours/[slug]`, `/hotels/[slug]`, `/restaurants/[slug]`, `/destinations/[slug]` | Chi tiết dịch vụ / điểm đến | Thư viện ảnh, mô tả, lịch khởi hành / phòng / khung giờ, bản đồ, đánh giá |
+| `/booking/[kind]/[slug]` | Đặt chỗ | Quy trình nhiều bước: chọn lịch → thông tin liên hệ → thanh toán (đếm ngược giữ chỗ) → hoàn tất |
+| `/bookings/[code]`, `/bookings/[code]/invoice` | Chi tiết đơn, hóa đơn | Trạng thái đơn, hủy đơn, in hóa đơn |
+| `/chat` | Roamly AI | Hội thoại với trợ lý ảo, thẻ tour / địa điểm trong khung chat |
+| `/trip-planner`, `/trip-planner/[id]` | Lập lịch trình AI | Hội thoại lập lịch trình, lịch trình theo ngày, bản đồ lộ trình |
+| `/articles`, `/articles/[slug]` | Cẩm nang du lịch | Danh sách bài viết theo danh mục, đọc bài, bình luận |
+| `/dashboard`, `/my-bookings`, `/my-hotel-bookings`, `/my-restaurant-bookings`, `/profile` | Tài khoản | Tổng quan, quản lý đơn theo loại, viết đánh giá, cập nhật hồ sơ |
+
+![Hình 4.1: Trang chủ hệ thống Roamly](images/chuong-4/hinh-4-01-trang-chu.jpg)
+
+*Hình 4.1: Trang chủ hệ thống Roamly*
+
+![Hình 4.2: Khối gợi ý cá nhân hóa "Dành cho bạn" trên trang chủ](images/chuong-4/hinh-4-02-goi-y-ca-nhan-hoa.jpg)
+
+*Hình 4.2: Khối gợi ý cá nhân hóa "Dành cho bạn" trên trang chủ*
+
+![Hình 4.3: Tìm kiếm ngữ nghĩa trên trang Khám phá với truy vấn "chùa cổ tâm linh"](images/chuong-4/hinh-4-03-kham-pha-tim-kiem-ngu-nghia.jpg)
+
+*Hình 4.3: Tìm kiếm ngữ nghĩa trên trang Khám phá với truy vấn "chùa cổ tâm linh"*
+
+![Hình 4.4: Trang chi tiết tour và khung chọn ngày, số khách](images/chuong-4/hinh-4-04-chi-tiet-tour.jpg)
+
+*Hình 4.4: Trang chi tiết tour và khung chọn ngày, số khách*
+
+![Hình 4.5: Bước nhập thông tin liên hệ trong quy trình đặt chỗ](images/chuong-4/hinh-4-05-dat-cho.jpg)
+
+*Hình 4.5: Bước nhập thông tin liên hệ trong quy trình đặt chỗ*
+
+![Hình 4.6: Danh sách đơn đặt tour của khách hàng](images/chuong-4/hinh-4-06-don-dat-cua-toi.jpg)
+
+*Hình 4.6: Danh sách đơn đặt tour của khách hàng*
+
+![Hình 4.7: Hóa đơn điện tử kèm thông tin giao dịch PayPal và chữ ký nhà cung cấp](images/chuong-4/hinh-4-07-hoa-don.jpg)
+
+*Hình 4.7: Hóa đơn điện tử kèm thông tin giao dịch PayPal và chữ ký nhà cung cấp*
+
+![Hình 4.8: Trang bài viết cẩm nang du lịch](images/chuong-4/hinh-4-08-bai-viet.jpg)
+
+*Hình 4.8: Trang bài viết cẩm nang du lịch*
+
+![Hình 4.9: Trợ lý ảo Roamly AI trả lời câu hỏi tìm tour](images/chuong-4/hinh-4-09-roamly-ai-hoi-thoai.jpg)
+
+*Hình 4.9: Trợ lý ảo Roamly AI trả lời câu hỏi tìm tour*
+
+![Hình 4.10: Thẻ tour do công cụ searchTours trả về trong khung hội thoại](images/chuong-4/hinh-4-10-roamly-ai-the-tour.jpg)
+
+*Hình 4.10: Thẻ tour do công cụ searchTours trả về trong khung hội thoại*
+
+![Hình 4.11: AI Trip Planner trong quá trình gọi công cụ tìm địa điểm và tự điều chỉnh lộ trình](images/chuong-4/hinh-4-11-trip-planner-dang-lap.jpg)
+
+*Hình 4.11: AI Trip Planner trong quá trình gọi công cụ tìm địa điểm và tự điều chỉnh lộ trình*
+
+![Hình 4.12: Lịch trình hoàn chỉnh kèm lộ trình trên bản đồ, quãng đường và thời gian di chuyển](images/chuong-4/hinh-4-12-trip-planner-ket-qua.jpg)
+
+*Hình 4.12: Lịch trình hoàn chỉnh kèm lộ trình trên bản đồ, quãng đường và thời gian di chuyển*
+
+
+**Phân hệ Nhà cung cấp (`/provider`)**
+
+| Đường dẫn | Màn hình | Chức năng chính |
+|---|---|---|
+| `/provider` | Dashboard | Doanh thu, số đơn, đơn gần đây |
+| `/provider/profiles` | Hồ sơ doanh nghiệp | Tạo / sửa hồ sơ, liên kết PayPal, chữ ký điện tử, theo dõi trạng thái duyệt |
+| `/provider/tours`, `/provider/hotels`, `/provider/restaurants` | Quản lý dịch vụ | Danh sách, tạo mới, chỉnh sửa, tạm dừng / mở bán |
+| `/provider/bookings/{tours,hotels,restaurants}` | Quản lý đơn | Xác nhận, hủy (hoàn tiền), đánh dấu hoàn thành (chi trả), hóa đơn |
+| `/provider/calendar/[service]` | Lịch phục vụ | Lịch tháng hiển thị đơn theo ngày |
+| `/provider/reviews/*` | Đánh giá | Xem đánh giá của khách theo từng loại dịch vụ |
+| `/provider/reports` | Báo cáo | Biểu đồ doanh thu, xuất Excel |
+
+![Hình 4.13: Bảng điều khiển của nhà cung cấp](images/chuong-4/hinh-4-13-ncc-dashboard.jpg)
+
+*Hình 4.13: Bảng điều khiển của nhà cung cấp*
+
+![Hình 4.14: Chi tiết hồ sơ doanh nghiệp, tài khoản PayPal nhận tiền và chữ ký hóa đơn](images/chuong-4/hinh-4-14-ncc-ho-so-doanh-nghiep.jpg)
+
+*Hình 4.14: Chi tiết hồ sơ doanh nghiệp, tài khoản PayPal nhận tiền và chữ ký hóa đơn*
+
+![Hình 4.15: Quản lý danh sách tour](images/chuong-4/hinh-4-15-ncc-quan-ly-tour.jpg)
+
+*Hình 4.15: Quản lý danh sách tour*
+
+![Hình 4.16: Biểu mẫu tạo tour mới theo từng bước](images/chuong-4/hinh-4-16-ncc-tao-tour.jpg)
+
+*Hình 4.16: Biểu mẫu tạo tour mới theo từng bước*
+
+![Hình 4.17: Danh sách đơn đặt tour của nhà cung cấp](images/chuong-4/hinh-4-17-ncc-don-dat.jpg)
+
+*Hình 4.17: Danh sách đơn đặt tour của nhà cung cấp*
+
+![Hình 4.18: Chi tiết đơn đặt và tổng quan tài chính (phí sàn, số tiền thực nhận)](images/chuong-4/hinh-4-18-ncc-chi-tiet-don.jpg)
+
+*Hình 4.18: Chi tiết đơn đặt và tổng quan tài chính (phí sàn, số tiền thực nhận)*
+
+![Hình 4.19: Lịch đặt chỗ theo tháng](images/chuong-4/hinh-4-19-ncc-lich.jpg)
+
+*Hình 4.19: Lịch đặt chỗ theo tháng*
+
+![Hình 4.20: Thống kê và danh sách đánh giá của khách hàng](images/chuong-4/hinh-4-20-ncc-danh-gia.jpg)
+
+*Hình 4.20: Thống kê và danh sách đánh giá của khách hàng*
+
+![Hình 4.21: Báo cáo và thống kê doanh thu của nhà cung cấp](images/chuong-4/hinh-4-21-ncc-bao-cao.jpg)
+
+*Hình 4.21: Báo cáo và thống kê doanh thu của nhà cung cấp*
+
+
+**Phân hệ Quản trị viên (`/admin`)**
+
+| Đường dẫn | Màn hình | Chức năng chính |
+|---|---|---|
+| `/admin` | Dashboard | GMV, doanh thu hoa hồng, người dùng mới, biểu đồ tổng quan |
+| `/admin/profile-approval` | Duyệt hồ sơ | Danh sách hồ sơ chờ duyệt, xem chi tiết, phê duyệt / từ chối kèm lý do |
+| `/admin/users` | Người dùng | Tìm kiếm, xem chi tiết, khóa / mở khóa tài khoản |
+| `/admin/destinations` | Điểm đến | Thêm / sửa điểm đến, tọa độ, ảnh, xuất bản |
+| `/admin/articles` | Bài viết | Trình soạn thảo Tiptap, nháp / xuất bản, quản lý bình luận |
+| `/admin/moderation` | Kiểm duyệt | Hàng chờ nội dung `pending`, lý do và độ tin cậy của AI, thống kê kiểm duyệt |
+| `/admin/reports` | Báo cáo | Thống kê theo thời gian, xuất Excel |
+| `/admin/settings` | Cấu hình | Hoa hồng, tỷ giá, thời gian giữ chỗ, hạn hủy, thông tin trang giới thiệu |
+
+![Hình 4.22: Bảng điều khiển quản trị: GMV, hoa hồng, tỷ trọng đơn theo dịch vụ](images/chuong-4/hinh-4-22-admin-dashboard.jpg)
+
+*Hình 4.22: Bảng điều khiển quản trị: GMV, hoa hồng, tỷ trọng đơn theo dịch vụ*
+
+![Hình 4.23: Danh sách hồ sơ đối tác chờ duyệt](images/chuong-4/hinh-4-23-admin-duyet-ho-so.jpg)
+
+*Hình 4.23: Danh sách hồ sơ đối tác chờ duyệt*
+
+![Hình 4.24: Chi tiết hồ sơ đối tác và thao tác duyệt / từ chối](images/chuong-4/hinh-4-24-admin-chi-tiet-ho-so.jpg)
+
+*Hình 4.24: Chi tiết hồ sơ đối tác và thao tác duyệt / từ chối*
+
+![Hình 4.25: Màn hình kiểm duyệt nội dung với phán quyết, danh mục vi phạm và lý do của AI](images/chuong-4/hinh-4-25-admin-kiem-duyet.jpg)
+
+*Hình 4.25: Màn hình kiểm duyệt nội dung với phán quyết, danh mục vi phạm và lý do của AI*
+
+![Hình 4.26: Quản lý bài viết cẩm nang](images/chuong-4/hinh-4-26-admin-bai-viet.jpg)
+
+*Hình 4.26: Quản lý bài viết cẩm nang*
+
+![Hình 4.27: Trình soạn thảo bài viết (Tiptap)](images/chuong-4/hinh-4-27-admin-soan-bai-viet.jpg)
+
+*Hình 4.27: Trình soạn thảo bài viết (Tiptap)*
+
+![Hình 4.28: Quản lý điểm đến du lịch](images/chuong-4/hinh-4-28-admin-dia-diem.jpg)
+
+*Hình 4.28: Quản lý điểm đến du lịch*
+
+![Hình 4.29: Quản lý người dùng](images/chuong-4/hinh-4-29-admin-nguoi-dung.jpg)
+
+*Hình 4.29: Quản lý người dùng*
+
+![Hình 4.30: Báo cáo và thống kê toàn sàn](images/chuong-4/hinh-4-30-admin-bao-cao.jpg)
+
+*Hình 4.30: Báo cáo và thống kê toàn sàn*
+
+![Hình 4.31: Cấu hình tham số vận hành: hoa hồng, tỷ giá, thời gian giữ chỗ, hạn hủy](images/chuong-4/hinh-4-31-admin-cau-hinh.jpg)
+
+*Hình 4.31: Cấu hình tham số vận hành: hoa hồng, tỷ giá, thời gian giữ chỗ, hạn hủy*
+
+Toàn bộ giao diện được xây dựng theo hướng đáp ứng đa thiết bị bằng các điểm ngắt của Tailwind CSS: bố cục lưới, thanh điều hướng và bảng dữ liệu tự điều chỉnh theo độ rộng màn hình từ điện thoại tới máy tính để bàn.
+
+---
+
+## 4.6. Triển khai hệ thống
+
+### 4.6.1. Mô hình triển khai
+
+```mermaid
+flowchart LR
+    Dev["Máy phát triển<br/>bun run dev :2612"] -- git push --> GH["GitHub<br/>(main + nhánh tính năng)"]
+    GH -- "tự động build & deploy" --> V
+
+    subgraph V["Vercel"]
+        Edge["Mạng biên<br/>tài nguyên tĩnh"]
+        Fn["Hàm không máy chủ<br/>Next.js (SSR, Actions, API)"]
+        Cron["Cron Jobs<br/>00:00 giờ VN hằng ngày"]
+        OIDC["Vercel OIDC"]
+    end
+
+    User(["Người dùng"]) -- HTTPS --> Edge --> Fn
+    Cron -- "Bearer CRON_SECRET" --> Fn
+
+    Fn --> PG[("PostgreSQL đám mây<br/>serverless")]
+    Fn --> PC[("Pinecone<br/>index 768 chiều, 4 namespace")]
+    Fn --> IK["ImageKit CDN"]
+    Fn --> PP["PayPal REST API"]
+    PP -- "Webhooks" --> Fn
+    Fn --> GM["Google Maps Platform<br/>Places (New) + Routes"]
+    OIDC -- "Workload Identity Federation" --> GCP["Google Cloud<br/>Vertex AI (Gemini)"]
+    Fn --> GCP
+    Fn --> LF["Langfuse Cloud"]
+```
+
+Phiên bản triển khai của hệ thống được công khai tại địa chỉ **https://datn-eta-one.vercel.app**.
+
+### 4.6.2. Cấu hình môi trường
+
+Toàn bộ thông tin kết nối và bí mật được cấu hình qua biến môi trường (mẫu tại `.env.example`), không ghi trong mã nguồn:
+
+| Nhóm | Biến môi trường | Ghi chú |
+|---|---|---|
+| CSDL | `DATABASE_URL` | Chuỗi kết nối PostgreSQL |
+| Xác thực | `AUTH_SECRET`, `AUTH_TRUST_HOST` | Khóa ký JWT (sinh bằng `openssl rand -base64 32`) |
+| Vector | `PINECONE_API_KEY`, `PINECONE_INDEX`, `PINECONE_NAMESPACE_*` | Index 768 chiều, độ đo cosine |
+| Mô hình nhúng | `GOOGLE_GENERATIVE_AI_API_KEY` | Gọi `gemini-embedding-001` |
+| Vertex AI | `GOOGLE_VERTEX_PROJECT`, `GOOGLE_VERTEX_LOCATION`, `GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT_EMAIL` | Location `global` cho mô hình Gemini 3 bản preview |
+| Bản đồ | `GOOGLE_MAPS_API_KEY` | Bật Places API (New) và Routes API |
+| Thanh toán | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_MODE`, `PAYPAL_WEBHOOK_ID`, `PAYPAL_REDIRECT_URI` | `PAYPAL_MODE = sandbox` khi thử nghiệm |
+| Ảnh | `IMAGEKIT_PUBLIC_KEY`, `IMAGEKIT_PRIVATE_KEY`, `IMAGEKIT_URL_ENDPOINT` | |
+| Vận hành | `CRON_SECRET`, `APP_URL` | |
+| Giám sát | `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_BASE_URL` | Để trống thì tắt giám sát |
+
+### 4.6.3. Quy trình triển khai
+
+**Bước 1 – Chuẩn bị các dịch vụ đám mây**
+
+1. Tạo CSDL PostgreSQL đám mây, lấy chuỗi kết nối.
+2. Tạo index Pinecone 768 chiều, độ đo `cosine`.
+3. Trên Google Cloud: bật Vertex AI API, Places API (New), Routes API; tạo khóa API Google Maps có giới hạn API được phép gọi; tạo tài khoản dịch vụ có quyền *Vertex AI User*.
+4. Cấu hình **Workload Identity Federation**: tạo Workload Identity Pool và Provider kiểu OIDC tin cậy nhà phát hành `https://oidc.vercel.com/<team>`, cấp quyền mạo danh tài khoản dịch vụ cho danh tính từ dự án Vercel.
+5. Trên PayPal Developer: tạo ứng dụng (Sandbox / Live), bật *Payouts* và *Log in with PayPal*; đăng ký URL webhook `https://<domain>/api/paypal/webhooks` với các sự kiện `PAYMENT.PAYOUTS-ITEM.*`, `PAYMENT.PAYOUTSBATCH.DENIED`, `PAYMENT.CAPTURE.REFUNDED`, `PAYMENT.REFUND.PENDING`, `PAYMENT.REFUND.FAILED`; lưu Webhook ID.
+6. Tạo tài khoản ImageKit và Langfuse, lấy khóa truy cập.
+
+**Bước 2 – Khởi tạo CSDL và dữ liệu**
+
+```bash
+bun install                    # cài đặt thư viện
+bunx prisma migrate deploy     # áp dụng toàn bộ migration, tạo bảng
+bun run db:seed                # dữ liệu mẫu Ninh Bình, Hải Phòng + tài khoản quản trị
+bun run db:embed               # sinh vector cho toàn bộ dịch vụ, điểm đến và đẩy lên Pinecone
+```
+
+**Bước 3 – Triển khai lên Vercel**
+
+1. Kết nối kho mã GitHub với một dự án Vercel; Vercel tự nhận diện Next.js và dùng lệnh `bun run build` (gồm `prisma generate && next build`).
+2. Khai báo các biến môi trường ở mục 4.6.2 cho môi trường Production và Preview.
+3. Bật *OIDC Federation* trong cài đặt bảo mật của dự án Vercel để hàm máy chủ nhận được mã thông báo OIDC.
+4. Mỗi lần hợp nhất mã vào nhánh `main`, Vercel tự động build và cập nhật bản Production; các nhánh tính năng có URL xem trước riêng để kiểm tra trước khi hợp nhất.
+5. Vercel đọc `vercel.json` và đăng ký ba Cron Job dọn dữ liệu chạy lúc `0 17 * * *` (UTC).
+
+**Bước 4 – Kiểm tra sau triển khai**
+
+- Đăng nhập tài khoản quản trị, kiểm tra cấu hình hệ thống.
+- Thực hiện một luồng đặt tour và thanh toán bằng tài khoản PayPal Sandbox, kiểm tra trạng thái đơn và sự kiện webhook.
+- Gửi câu hỏi tới Roamly AI, lập thử một lịch trình và kiểm tra trace tương ứng trên Langfuse.
+
+### 4.6.4. Quy trình phát triển và quản lý mã nguồn
+
+Mã nguồn được quản lý bằng Git trên GitHub theo quy trình nhánh tính năng (feature branch): mỗi chức năng lớn (bài viết, kiểm duyệt nội dung, tìm kiếm ngữ nghĩa và gợi ý...) được phát triển trên một nhánh riêng, mở Pull Request và hợp nhất vào `main` sau khi kiểm tra trên bản xem trước của Vercel. Thông điệp commit tuân theo quy ước *Conventional Commits* (`feat:`, `fix:`, `docs:`...). Thay đổi lược đồ CSDL luôn đi kèm tệp migration của Prisma trong cùng commit để đảm bảo CSDL của mọi môi trường đồng bộ với mã nguồn. Công cụ ESLint (cấu hình `eslint-config-next`) và trình biên dịch TypeScript được dùng để kiểm tra chất lượng mã trước khi hợp nhất.
+
+---
+
+## 4.7. Tổng kết chương
+
+Chương 4 đã trình bày toàn bộ quá trình phát triển và triển khai hệ thống Roamly:
+
+- **Về kiến trúc:** hệ thống được tổ chức thành bốn tầng `app → features → entities → lib` với quy tắc phụ thuộc một chiều, tách biệt rõ giao diện, nghiệp vụ, truy cập dữ liệu và tích hợp dịch vụ ngoài.
+- **Về dữ liệu và nghiệp vụ:** CSDL quan hệ khoảng 30 bảng với máy trạng thái đơn đặt rõ ràng; cơ chế giữ chỗ bằng cập nhật có điều kiện, nhả chỗ lười với `FOR UPDATE SKIP LOCKED` loại bỏ hoàn toàn tình trạng bán vượt; luồng tiền ký quỹ – hoàn tiền – chi trả qua PayPal được bảo vệ bằng khóa dòng, xác thực chữ ký webhook và xử lý lũy đẳng.
+- **Về Trí tuệ nhân tạo:** chatbot RAG với các công cụ neo dữ liệu thực tế và quy tắc chống ảo tưởng; Trip Planner theo mô hình "AI đề xuất – mã kiểm tra – AI tự sửa" kết hợp thuật toán tối ưu lộ trình trên ma trận thời gian thực tế; tìm kiếm ngữ nghĩa có ngưỡng tương đối; gợi ý cá nhân hóa theo vector hồ sơ; kiểm duyệt hai tầng với nguyên tắc chuyển con người quyết định khi AI không chắc chắn; toàn bộ được giám sát qua Langfuse.
+- **Về triển khai:** hệ thống chạy trên Vercel kết nối các dịch vụ đám mây, xác thực tới Vertex AI không dùng khóa tĩnh, triển khai liên tục từ GitHub và đã được công khai trên Internet.
+
+Chương tiếp theo sẽ trình bày kết quả kiểm thử và đánh giá hệ thống, bao gồm kiểm thử chức năng, hiệu năng và chất lượng của các thành phần AI.
