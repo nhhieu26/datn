@@ -226,6 +226,11 @@ export function LocationPicker({
   const [searching, setSearching] = useState(false);
   const skipSearchRef = useRef(false);
   const didAutoLocateRef = useRef(false);
+  // Giá trị mới nhất: vị trí GPS về trễ không được ghi đè vị trí đã chọn (VD: tự điền từ Google Maps)
+  const valueRef = useRef(value);
+  useEffect(() => {
+    valueRef.current = value;
+  });
 
   useEffect(() => {
     if (value || didAutoLocateRef.current) return;
@@ -233,6 +238,7 @@ export function LocationPicker({
     didAutoLocateRef.current = true;
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        if (valueRef.current) return;
         onChange({ lat: position.coords.latitude, lng: position.coords.longitude });
       },
       () => {
