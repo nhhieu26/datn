@@ -18,7 +18,9 @@ import {
   createTourAction,
   updateTourAction,
 } from "@/features/provider/tours/actions";
+import type { TourStop } from "@/entities/tour/schema";
 import { TourDetailPreview } from "./tour-detail-preview";
+import { TourStopPicker } from "./tour-stop-picker";
 import { TourIcon } from "./tour-icon";
 
 const INITIAL_ACTION_STATE = { status: "idle" as const };
@@ -37,6 +39,9 @@ const steps: StepDefinition[] = [
 export type ItineraryDay = {
   title: string;
   description: string;
+  stops: TourStop[];
+  /** Địa điểm dạng chữ của dữ liệu cũ, giữ nguyên khi lưu */
+  location?: string;
 };
 
 export type TourDepartureDraft = {
@@ -121,7 +126,7 @@ function createInitialState(provinces: Province[]): TourFormState {
     includeServices: [],
     excludeServices: [],
     photos: [],
-    itinerary: [{ title: "", description: "" }],
+    itinerary: [{ title: "", description: "", stops: [] }],
     basePrice: "",
     departures: [
       { departureDate: "", returnDate: "", price: "", totalSlots: "" },
@@ -276,7 +281,7 @@ export function TourForm({
   };
 
   const addItineraryDay = () =>
-    update("itinerary", [...form.itinerary, { title: "", description: "" }]);
+    update("itinerary", [...form.itinerary, { title: "", description: "", stops: [] }]);
   const removeItineraryDay = (index: number) =>
     update(
       "itinerary",
@@ -284,7 +289,7 @@ export function TourForm({
     );
   const updateItineraryDay = (
     index: number,
-    field: keyof ItineraryDay,
+    field: "title" | "description",
     value: string
   ) =>
     update(
@@ -292,6 +297,11 @@ export function TourForm({
       form.itinerary.map((day, i) =>
         i === index ? { ...day, [field]: value } : day
       )
+    );
+  const updateItineraryStops = (index: number, stops: TourStop[]) =>
+    update(
+      "itinerary",
+      form.itinerary.map((day, i) => (i === index ? { ...day, stops } : day))
     );
 
   const addDeparture = () =>
@@ -696,6 +706,18 @@ export function TourForm({
                         placeholder="VD: Khởi hành - Tham quan trung tâm thành phố"
                         type="text"
                         value={day.title}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>
+                        Các điểm tham quan (hiển thị trên bản đồ)
+                      </label>
+                      <TourStopPicker
+                        dayLabel={`Ngày ${index + 1}`}
+                        legacyLocation={day.location}
+                        onChange={(stops) => updateItineraryStops(index, stops)}
+                        provinceName={selectedProvince?.name}
+                        stops={day.stops}
                       />
                     </div>
                     <div>

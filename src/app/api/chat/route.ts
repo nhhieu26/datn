@@ -10,7 +10,7 @@ import { chatTools } from "@/features/customer/chat/lib/ai-tools";
 import { CHAT_INSTRUCTIONS, CHAT_MODEL } from "@/features/customer/chat/lib/prompt";
 import { vertex } from "@/lib/vertex";
 
-// locatePlaces gọi Omkar (vài giây/truy vấn, song song) trước khi tổng hợp câu trả lời
+// locatePlaces gọi Google Places API (song song) trước khi tổng hợp câu trả lời
 export const maxDuration = 300;
 
 export async function POST(req: Request) {

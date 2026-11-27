@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { prisma } from "../src/lib/prisma";
 import { createTourFromLinksAction } from "@/features/provider/tours/actions";
+import type { TourStop } from "../src/entities/tour/schema";
 
 const IMAGES = [
   "https://picsum.photos/1200/800",
@@ -8,7 +9,278 @@ const IMAGES = [
   "https://picsum.photos/1200/800",
 ];
 
-type ItineraryDay = { title: string; description: string };
+type ItineraryDay = { title: string; description: string; stops: TourStop[] };
+
+// Điểm tham quan lấy từ Google Places API (New) — placeId và tọa độ thật để vẽ lộ trình
+// Tra lại bằng Text Search nếu Google đổi dữ liệu.
+const PLACES = {
+  baiDinh: {
+    placeId: "ChIJU42tIrB-NjERhcIxUnHsSIs",
+    name: "Chùa Bái Đính",
+    address: "Xóm 6, Tây Hoa Lư, Ninh Bình",
+    latitude: 20.267871,
+    longitude: 105.855517,
+  },
+  trangAn: {
+    placeId: "ChIJL9TQ1GJ5NjERctWf-ezAU2Q",
+    name: "Khu du lịch sinh thái Tràng An",
+    address: "6 Tràng An, Hoa Lư, Ninh Bình",
+    latitude: 20.252785,
+    longitude: 105.918304,
+  },
+  hangMua: {
+    placeId: "ChIJMX5C2E56NjER6H1rqsmxX2M",
+    name: "Hang Múa",
+    address: "Hang Múa, Nam Hoa Lư, Ninh Bình",
+    latitude: 20.228706,
+    longitude: 105.931709,
+  },
+  denDinh: {
+    placeId: "ChIJJT2dq2t5NjERbv_Df5ge_5U",
+    name: "Đền thờ Đinh Tiên Hoàng",
+    address: "7WM5+P8H, Tây Hoa Lư, Ninh Bình",
+    latitude: 20.284537,
+    longitude: 105.90524,
+  },
+  denLe: {
+    placeId: "ChIJey43YxN5NjERvIg7uA-az6s",
+    name: "Đền thờ Vua Lê Đại Hành",
+    address: "7WP4+C9M, Tây Hoa Lư, Ninh Bình",
+    latitude: 20.286099,
+    longitude: 105.905908,
+  },
+  tamCoc: {
+    placeId: "ChIJpWmYell6NjERCt9I1i9QHxU",
+    name: "Tam Cốc - Bích Động",
+    address: "Ninh Hải, Hoa Lư, Ninh Bình",
+    latitude: 20.216324,
+    longitude: 105.937466,
+  },
+  bichDong: {
+    placeId: "ChIJn60YcKl7NjERHlwGKcFB5Nk",
+    name: "Chùa Bích Động",
+    address: "6W99+C23, Nam Hoa Lư, Ninh Bình 430000",
+    latitude: 20.217578,
+    longitude: 105.915658,
+  },
+  linhTruong: {
+    placeId: "ChIJscgukO2GNjERrc0nPu1Kjbo",
+    name: "Trung Tâm Cứu Hộ Linh Trưởng Cúc Phương",
+    address: "6PW8+Q42, đường rừng Cúc Phương, Cúc Phương, Ninh Bình",
+    latitude: 20.246899,
+    longitude: 105.715261,
+  },
+  cayCho: {
+    placeId: "ChIJy7DDw7WCNjERtaZ_eKkrapQ",
+    name: "Cây Chò ngàn năm",
+    address: "9H6X+4M3, đường lên cây Ngàn Năm, Cúc Phương, Ninh Bình",
+    latitude: 20.360264,
+    longitude: 105.599164,
+  },
+  dongNguoiXua: {
+    placeId: "ChIJVVVVVYWDNjERM-v8Z-LmWlo",
+    name: "Động Người Xưa",
+    address: "vườn quốc gia, Cúc Phương, Ninh Bình",
+    latitude: 20.295703,
+    longitude: 105.652983,
+  },
+  vanLong: {
+    placeId: "ChIJlw1rMATWNTERuya5CFiiugQ",
+    name: "Khu bảo tồn thiên nhiên Vân Long",
+    address: "Gia Viễn, Ninh Bình",
+    latitude: 20.372506,
+    longitude: 105.88274,
+  },
+  thungNham: {
+    placeId: "ChIJE00Dh5x7NjERJnIicVFMXNY",
+    name: "Khu du lịch sinh thái Thung Nham - Ninh Bình",
+    address: "Thung Nham, Thôn Hải Nham, Nam Hoa Lư, Ninh Bình",
+    latitude: 20.218127,
+    longitude: 105.893282,
+  },
+  choRong: {
+    placeId: "ChIJLdRQXAB3NjERjjhXDtz9hGs",
+    name: "Chợ Rồng Ninh Bình",
+    address: "7X4G+9X4, Vân Giang, Hoa Lư, Ninh Bình",
+    latitude: 20.25588,
+    longitude: 105.977438,
+  },
+  coDoHoaLu: {
+    placeId: "ChIJb0Y7QRN5NjER5x5tV30Zcws",
+    name: "Cố đô Hoa Lư",
+    address: "Tây Hoa Lư, Ninh Bình",
+    latitude: 20.284315,
+    longitude: 105.908361,
+  },
+  nemYenMac: {
+    placeId: "ChIJi5ZzSAdvNjER5NRPDOBTIkE",
+    name: "Nem chua Yên Mạc - Hưng Luyên",
+    address: "Xóm 4 Đông Sơn - chợ Bút, Yên Mạc, Ninh Bình 08000",
+    latitude: 20.113746,
+    longitude: 106.019525,
+  },
+  phatDiem: {
+    placeId: "ChIJMYWCaDpsNjERPClRT20O4IM",
+    name: "Nhà Thờ Chính Tòa Phát Diệm",
+    address: "75 Phố Phát Diệm Đông, Phát Diệm, Ninh Bình 430000",
+    latitude: 20.093011,
+    longitude: 106.079508,
+  },
+  nguyenCongTru: {
+    placeId: "ChIJd0UDuFNsNjERWQR4LbqllIs",
+    name: "Đền thờ Nguyễn Công Trứ",
+    address: "34X3+Q5P, QL10, Quang Thiện, Ninh Bình",
+    latitude: 20.099473,
+    longitude: 106.102949,
+  },
+  catCo1: {
+    placeId: "ChIJLfPxyzJESjERAP9jVgPkmd4",
+    name: "Bãi tắm Cát Cò 1",
+    address: "Bãi tắm Cát Cò 1, Hải Phòng",
+    latitude: 20.717777,
+    longitude: 107.052744,
+  },
+  choDemCatBa: {
+    placeId: "ChIJLeATTDRESjERjby-EDXYN1A",
+    name: "Chợ đêm Cát Bà",
+    address: "P2FX+RX8, Cát Hải, Hải Phòng",
+    latitude: 20.724526,
+    longitude: 107.049947,
+  },
+  thanCong: {
+    placeId: "ChIJh4Z73DJESjER52JooBFTjlM",
+    name: "Pháo đài Thần Công Cát Bà",
+    address: "P3F3+8Q4, Cát Hải, Hải Phòng",
+    latitude: 20.723254,
+    longitude: 107.054465,
+  },
+  benBeo: {
+    placeId: "ChIJO6ThBLRFSjERAEK4ywMcrF8",
+    name: "Bến Bèo - làng chài Cái Bèo",
+    address: "Cái Bèo, Cát Hải, Hải Phòng",
+    latitude: 20.73193,
+    longitude: 107.059342,
+  },
+  lanHa: {
+    placeId: "ChIJEZua0rVFSjERqYbX2ij51E0",
+    name: "Vịnh Lan Hạ",
+    address: null,
+    latitude: 20.723721,
+    longitude: 107.046561,
+  },
+  banhDaCua: {
+    placeId: "ChIJ3eHmnY16SjERnc4v4U_SVvE",
+    name: "Bánh đa cua Hải Phòng (280 Lê Lợi)",
+    address: "Haiphong City, 11/280 Lê Lợi, Gia Viên, Hải Phòng 84033",
+    latitude: 20.85376,
+    longitude: 106.686703,
+  },
+  banhMiCay: {
+    placeId: "ChIJLVcBfOx6SjER0VTjfTkDPYE",
+    name: "Bánh Mỳ Cay Bà Già Lợi",
+    address: "57 Lê Lợi, Gia Viên, Hải Phòng",
+    latitude: 20.858732,
+    longitude: 106.693028,
+  },
+  tamBac: {
+    placeId: "ChIJubPzLLh7SjERCNiPR6o9ZWM",
+    name: "Phố đi bộ Hải Phòng",
+    address: "Phố P. Tam Bạc, Hồng Bàng, Hải Phòng",
+    latitude: 20.855875,
+    longitude: 106.670334,
+  },
+  doSon: {
+    placeId: "ChIJveqPi2BsSjERwnl2fvLL8Fs",
+    name: "Bãi biển Đồ Sơn",
+    address: "Bãi biển Đồ Sơn, Khu du lịch Đồ Sơn, Đồ Sơn, Hải Phòng",
+    latitude: 20.687277,
+    longitude: 106.795479,
+  },
+  denBaDe: {
+    placeId: "ChIJofXHwhtsSjERhU9ITF46-4I",
+    name: "Đền Bà Đế",
+    address: "Bà Đế, Đồ Sơn, Hải Phòng 180000",
+    latitude: 20.722736,
+    longitude: 106.80088,
+  },
+  honDau: {
+    placeId: "ChIJvcqeup1sSjERpifZddCQZDc",
+    name: "Đảo Hòn Dấu",
+    address: "Hòn Dáu, Hải Phòng",
+    latitude: 20.666907,
+    longitude: 106.815625,
+  },
+  caiVieng: {
+    placeId: "ChIJD0wsP1ZdSjERbIounsF__Rs",
+    name: "Bến phà Cái Viềng",
+    address: "356, Cát Hải, Hải Phòng",
+    latitude: 20.818298,
+    longitude: 106.913575,
+  },
+  vqgCatBa: {
+    placeId: "ChIJ_____0pESjERjwipLDA-kV4",
+    name: "Vườn Quốc gia Cát Bà",
+    address: "Cát Hải, Hải Phòng 05418",
+    latitude: 20.793506,
+    longitude: 106.990064,
+  },
+  nguLam: {
+    placeId: "ChIJ6abvkD1DSjERFnLfwbztjU8",
+    name: "Đỉnh Ngự Lâm",
+    address: "Cát Hải, Hải Phòng",
+    latitude: 20.793393,
+    longitude: 106.998965,
+  },
+  trungTrang: {
+    placeId: "ChIJm-2cOgBDSjER5jkHe0Vh_hc",
+    name: "Động Trung Trang",
+    address: "Động Trung Trang, Cat Hai, Hai Phong 05418",
+    latitude: 20.7888,
+    longitude: 106.997417,
+  },
+  nhaHat: {
+    placeId: "ChIJQZlVpBV7SjERollTfrTT6qo",
+    name: "Nhà hát Thành phố Hải Phòng",
+    address: "28 P. Trần Hưng Đạo, Hồng Bàng, Hải Phòng",
+    latitude: 20.857311,
+    longitude: 106.681815,
+  },
+  baoTang: {
+    placeId: "ChIJGS908PN6SjERsdu-MK9mRAo",
+    name: "Bảo tàng Hải Phòng",
+    address: "66 P.Điện Biên Phủ, Hồng Bàng, Hải Phòng",
+    latitude: 20.861816,
+    longitude: 106.682704,
+  },
+  duHang: {
+    placeId: "ChIJZ7i4zol6SjERmBsyugFTGes",
+    name: "Chùa Dư Hàng",
+    address: "121 P. Dư Hàng, Lê Chân, Hải Phòng 180000",
+    latitude: 20.847555,
+    longitude: 106.676061,
+  },
+  cangHaLong: {
+    placeId: "ChIJoW38HABZSjERTmSknxaexi0",
+    name: "Cảng tàu khách Quốc tế Hạ Long",
+    address: "9, đường Hạ Long, Bãi Cháy, Quảng Ninh",
+    latitude: 20.953557,
+    longitude: 107.055503,
+  },
+  sungSot: {
+    placeId: "ChIJDTA7m91YSjERWAgRa_kCbyw",
+    name: "Hang Sửng Sốt",
+    address: null,
+    latitude: 20.874384,
+    longitude: 107.072869,
+  },
+  choHaiSan: {
+    placeId: "ChIJV0YN9LNFSjERULgrWk4HxMU",
+    name: "Chợ đầu mối Cát Bà",
+    address: "11 Tùng Dinh, Cát Hải, Hải Phòng 180000",
+    latitude: 20.727631,
+    longitude: 107.046721,
+  },
+} satisfies Record<string, TourStop>;
 
 type TourSeed = {
   title: string;
@@ -26,7 +298,7 @@ type TourSeed = {
   totalSlots: number;
 };
 
-const TOURS: TourSeed[] = [
+export const TOURS: TourSeed[] = [
   {
     title: "Hà Nội - Tràng An - Bái Đính - Hang Múa 1 ngày",
     provinceName: "Ninh Bình",
@@ -58,6 +330,7 @@ const TOURS: TourSeed[] = [
         title: "Ngày 1: Hà Nội - Bái Đính - Tràng An - Hang Múa - Hà Nội",
         description:
           "07h00 xe đón tại khu phố cổ Hà Nội, 09h30 đến chùa Bái Đính tham quan chùa mới, bảo tháp và hành lang La Hán. 11h30 dùng bữa trưa đặc sản. 13h00 đi thuyền nan qua các hang Tràng An. 15h30 leo Hang Múa ngắm toàn cảnh Tam Cốc. 17h00 khởi hành về Hà Nội, kết thúc tour khoảng 19h30.",
+        stops: [PLACES.baiDinh, PLACES.trangAn, PLACES.hangMua],
       },
     ],
     departureStartDays: 3,
@@ -91,11 +364,13 @@ const TOURS: TourSeed[] = [
         title: "Ngày 1: Hà Nội - Hoa Lư - Tràng An",
         description:
           "07h30 xe đón khởi hành, 10h00 tham quan cố đô Hoa Lư, đền vua Đinh và vua Lê. 12h00 ăn trưa đặc sản dê núi. Chiều đi thuyền nan Tràng An xuyên các hang động. Tối nhận phòng homestay và thưởng thức bữa tối đồng quê.",
+        stops: [PLACES.denDinh, PLACES.denLe, PLACES.trangAn],
       },
       {
         title: "Ngày 2: Hang Múa - Tam Cốc - Hà Nội",
         description:
           "05h30 dậy sớm ngắm bình minh, leo Hang Múa. 08h00 ăn sáng, đi thuyền Tam Cốc và ghé chùa Bích Động. 11h30 ăn trưa, 13h00 xe đưa đoàn về Hà Nội, kết thúc tour khoảng 16h30.",
+        stops: [PLACES.hangMua, PLACES.tamCoc, PLACES.bichDong],
       },
     ],
     departureStartDays: 5,
@@ -128,11 +403,13 @@ const TOURS: TourSeed[] = [
         title: "Ngày 1: Hà Nội - Cúc Phương - Cây chò ngàn năm",
         description:
           "07h00 khởi hành, 10h00 đến Cúc Phương, tham quan trung tâm cứu hộ linh trưởng. Chiều trekking 5km đến cây chò ngàn năm tuổi, về nghỉ nhà sàn, dùng bữa tối BBQ ngoài trời.",
+        stops: [PLACES.linhTruong, PLACES.cayCho],
       },
       {
         title: "Ngày 2: Động Người Xưa - Hà Nội",
         description:
           "07h00 ăn sáng, leo bậc đá đến động Người Xưa, quan sát bướm và chim rừng. 11h00 ăn trưa, 13h00 về Hà Nội, kết thúc tour khoảng 17h30.",
+        stops: [PLACES.dongNguoiXua],
       },
     ],
     departureStartDays: 6,
@@ -164,6 +441,7 @@ const TOURS: TourSeed[] = [
         title: "Ngày 1: Hà Nội - Vân Long - Thung Nham - Hà Nội",
         description:
           "07h00 khởi hành, 09h30 đi thuyền Vân Long qua hang Chợ Mơ. 12h00 ăn trưa tại nhà hàng bên đầm. 14h00 tham quan Thung Nham và vườn chim. 17h00 ngắm đàn chim về tổ, 17h30 xe về Hà Nội.",
+        stops: [PLACES.vanLong, PLACES.thungNham],
       },
     ],
     departureStartDays: 4,
@@ -200,6 +478,7 @@ const TOURS: TourSeed[] = [
         title: "Ngày 1: Hà Nội - Ninh Bình food tour",
         description:
           "07h00 xe đón từ Hà Nội. 09h30 ăn sáng miến lươn, tham quan chợ. 11h00 thăm cố đô Hoa Lư. 12h30 thưởng thức dê núi, cơm cháy. 15h00 ốc núi và nem Yên Mạc. 17h30 về Hà Nội.",
+        stops: [PLACES.choRong, PLACES.coDoHoaLu, PLACES.nemYenMac],
       },
     ],
     departureStartDays: 2,
@@ -230,6 +509,7 @@ const TOURS: TourSeed[] = [
         title: "Ngày 1: Hà Nội - Phát Diệm - Kim Sơn - Hà Nội",
         description:
           "07h00 khởi hành, 09h30 tham quan nhà thờ đá Phát Diệm, dạo hồ và các nhà nguyện. 11h30 ăn trưa hải sản. 14h00 thăm đền Nguyễn Công Trứ và vùng cửa biển. 17h00 về Hà Nội.",
+        stops: [PLACES.phatDiem, PLACES.nguyenCongTru],
       },
     ],
     departureStartDays: 3,
@@ -262,16 +542,19 @@ const TOURS: TourSeed[] = [
         title: "Ngày 1: Hà Nội - Ninh Bình - Tràng An",
         description:
           "08h00 xe riêng đón, 10h30 nhận phòng resort. Chiều đi thuyền Tràng An, tối bữa tối riêng bên hồ sen.",
+        stops: [PLACES.trangAn],
       },
       {
         title: "Ngày 2: Hang Múa - Tam Cốc - Spa",
         description:
           "Sáng sớm ngắm bình minh Hang Múa, ăn sáng tại resort. Đi thuyền Tam Cốc, chiều spa thư giãn 60 phút.",
+        stops: [PLACES.hangMua, PLACES.tamCoc],
       },
       {
         title: "Ngày 3: Cố đô Hoa Lư - Hà Nội",
         description:
           "Sáng tự do thư giãn, 10h00 thăm cố đô Hoa Lư, 12h00 ăn trưa, 14h00 về Hà Nội.",
+        stops: [PLACES.coDoHoaLu],
       },
     ],
     departureStartDays: 7,
@@ -302,6 +585,7 @@ const TOURS: TourSeed[] = [
         title: "Ngày 1: Hà Nội - Bái Đính - Hoa Lư - Tràng An",
         description:
           "06h30 khởi hành, 09h00 thăm chùa Bái Đính. 11h30 dùng cơm chay. 13h30 tham quan cố đô Hoa Lư. 15h30 đi thuyền Tràng An. 17h30 về Hà Nội.",
+        stops: [PLACES.baiDinh, PLACES.coDoHoaLu, PLACES.trangAn],
       },
     ],
     departureStartDays: 4,
@@ -333,11 +617,13 @@ const TOURS: TourSeed[] = [
         title: "Ngày 1: Hà Nội - Cát Bà - Cát Cò",
         description:
           "06h30 xe đón khởi hành, 09h30 lên tàu cao tốc sang Cát Bà. 11h30 nhận phòng, ăn trưa hải sản. Chiều tắm biển Cát Cò. Tối tự do dạo chợ đêm.",
+        stops: [PLACES.catCo1, PLACES.choDemCatBa],
       },
       {
         title: "Ngày 2: Pháo đài Thần Công - Hà Nội",
         description:
           "Sáng thăm pháo đài Thần Công, 10h00 ăn sáng muộn, trả phòng. 13h00 tàu về đất liền, 17h00 về Hà Nội.",
+        stops: [PLACES.thanCong],
       },
     ],
     departureStartDays: 5,
@@ -375,6 +661,7 @@ const TOURS: TourSeed[] = [
         title: "Ngày 1: Cát Bà - Lan Hạ - Cát Bà",
         description:
           "08h30 xuống du thuyền tại cảng Cát Bà. 09h30 chèo kayak qua hang. 12h00 ăn trưa trên tàu. 14h00 tắm biển, câu cá. 16h30 về cảng.",
+        stops: [PLACES.benBeo, PLACES.lanHa],
       },
     ],
     departureStartDays: 3,
@@ -410,6 +697,7 @@ const TOURS: TourSeed[] = [
         title: "Ngày 1: Hà Nội - Hải Phòng food tour",
         description:
           "07h30 xe đón khởi hành, 09h30 ăn bánh đa cua. 11h30 nem cua bể, chả mực. 14h00 bánh mì cay và cà phê trứng. 16h30 ốc Tam Bạc, 18h00 về Hà Nội.",
+        stops: [PLACES.banhDaCua, PLACES.banhMiCay, PLACES.tamBac],
       },
     ],
     departureStartDays: 2,
@@ -440,6 +728,7 @@ const TOURS: TourSeed[] = [
         title: "Ngày 1: Hà Nội - Đồ Sơn - Hòn Dấu",
         description:
           "07h00 khởi hành, 09h30 tắm biển Đồ Sơn. 11h30 ăn trưa hải sản. 13h30 thăm đền Bà Đế và đảo Hòn Dấu. 16h30 về Hà Nội.",
+        stops: [PLACES.doSon, PLACES.denBaDe, PLACES.honDau],
       },
     ],
     departureStartDays: 3,
@@ -471,16 +760,19 @@ const TOURS: TourSeed[] = [
         title: "Ngày 1: Hà Nội - Cát Bà",
         description:
           "08h00 xuất phát, 11h00 sang đảo bằng tàu cao tốc, nhận phòng resort. Chiều tự do tắm biển, tối thưởng thức hải sản.",
+        stops: [PLACES.caiVieng, PLACES.catCo1],
       },
       {
         title: "Ngày 2: Vịnh Lan Hạ",
         description:
           "Cả ngày đi du thuyền Lan Hạ, chèo kayak, tắm biển. Tối BBQ ngoài trời.",
+        stops: [PLACES.lanHa],
       },
       {
         title: "Ngày 3: Spa - Hà Nội",
         description:
           "Sáng spa thư giãn, trả phòng, 13h00 tàu về đất liền, 17h00 về Hà Nội.",
+        stops: [PLACES.caiVieng],
       },
     ],
     departureStartDays: 7,
@@ -513,11 +805,13 @@ const TOURS: TourSeed[] = [
         title: "Ngày 1: Hà Nội - Cát Bà - Trekking Ngự Lâm",
         description:
           "07h00 khởi hành, 10h30 đến Cát Bà. Chiều trekking lên đỉnh Ngự Lâm. Tối nghỉ homestay làng chài.",
+        stops: [PLACES.vqgCatBa, PLACES.nguLam, PLACES.benBeo],
       },
       {
         title: "Ngày 2: Hang Trung Trang - Hà Nội",
         description:
           "Sáng thăm hang Trung Trang, 11h00 ăn trưa, 13h00 về đất liền, 17h00 về Hà Nội.",
+        stops: [PLACES.trungTrang],
       },
     ],
     departureStartDays: 6,
@@ -554,6 +848,7 @@ const TOURS: TourSeed[] = [
         title: "Ngày 1: Hà Nội - Hải Phòng city tour",
         description:
           "07h30 khởi hành, 09h30 thăm Nhà hát lớn và phố cổ Pháp. 10h30 tham quan Bảo tàng Hải Phòng. 12h00 ăn trưa bánh đa cua. 14h00 thăm chùa Dư Hàng. 16h00 về Hà Nội.",
+        stops: [PLACES.nhaHat, PLACES.baoTang, PLACES.banhDaCua, PLACES.duHang],
       },
     ],
     departureStartDays: 3,
@@ -585,16 +880,19 @@ const TOURS: TourSeed[] = [
         title: "Ngày 1: Hà Nội - Hạ Long",
         description:
           "07h00 khởi hành, 11h30 lên du thuyền Hạ Long, tham quan hang động và chèo kayak. Đêm nghỉ trên du thuyền.",
+        stops: [PLACES.cangHaLong, PLACES.sungSot],
       },
       {
         title: "Ngày 2: Lan Hạ - Cát Bà",
         description:
           "Sáng tàu đưa đoàn qua Lan Hạ, tắm biển. Chiều đến Cát Bà, nhận phòng khách sạn.",
+        stops: [PLACES.lanHa, PLACES.benBeo],
       },
       {
         title: "Ngày 3: Cát Bà - Hà Nội",
         description:
           "Sáng dạo bãi Cát Cò và chợ hải sản, 13h00 tàu về đất liền, 17h30 về Hà Nội.",
+        stops: [PLACES.catCo1, PLACES.choHaiSan],
       },
     ],
     departureStartDays: 6,

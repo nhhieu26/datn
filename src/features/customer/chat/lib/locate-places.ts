@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import {
   type GooglePlace,
   searchGoogleMapsBatch,
-} from "@/lib/gmaps-omkar";
+} from "@/lib/google-maps-places";
 import {
   type Extra,
   type ExternalPlaceResult,
@@ -13,7 +13,7 @@ import {
 } from "./external-places";
 import { truncate } from "./format";
 
-// Omkar giới hạn 1.000 request/tháng (gói free) → cache rất lâu; kết quả rỗng cũng cache (cache âm)
+// Google Places tính phí theo request → cache rất lâu; kết quả rỗng cũng cache (cache âm)
 const SERP_CACHE_TTL_MS = 180 * 24 * 60 * 60 * 1000;
 const SERP_EMPTY_CACHE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 const GOOGLE_SOURCE = "google"; // giá trị osmType cho địa điểm lấy từ Google Maps
@@ -101,7 +101,7 @@ function nameScore(query: string, candidate: string, province: string): number {
   return matched / queryTokens.length;
 }
 
-// ───────────────────────── Cache + Omkar ─────────────────────────
+// ───────────────────────── Cache + Google Places ─────────────────────────
 
 type Lookup = {
   // true: địa điểm đầu tiên là khớp chắc chắn (Google trả place_results)
@@ -127,7 +127,7 @@ async function storeGooglePlaces(
   const stored = await prisma.$transaction(
     places.map((place) => {
       const extra: Extra = {
-        source: "omkar",
+        source: "google-places",
         placeId: place.placeId,
         ...(place.rating != null ? { rating: place.rating } : {}),
         ...(place.reviews != null ? { reviews: place.reviews } : {}),
@@ -203,7 +203,7 @@ async function lookupCached(
 }
 
 // Mọi truy vấn phát sinh trong một khoảng ngắn (kể cả từ nhiều lần gọi locatePlaces song song:
-// hotel/restaurant/destination) được dồn thành một lô: kiểm soát số request (Omkar giới hạn 5/giây).
+// hotel/restaurant/destination) được dồn thành một lô: kiểm soát số request (Google Places tính phí theo request).
 const BATCH_WINDOW_MS = 250;
 
 type PendingScrape = {
@@ -367,7 +367,7 @@ function resolve(province: string, name: string, lookup: Lookup): Resolution {
 
 /**
  * Định vị các địa điểm mà model đã tìm được bằng google_search.
- * Nguồn duy nhất: Google Maps qua Omkar (cache DB nhiều tầng), không fallback.
+ * Nguồn duy nhất: Google Maps qua Places API (cache DB nhiều tầng), không fallback.
  */
 export async function locatePlaces({
   kind,

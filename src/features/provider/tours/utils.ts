@@ -79,7 +79,12 @@ export function mapTourToFormValues(tour: TourWithRelations): TourFormState {
     ? (tour.images as { url?: unknown; fileId?: unknown }[])
     : [];
   const itinerary = Array.isArray(tour.itinerary)
-    ? (tour.itinerary as ItineraryDay[])
+    ? (tour.itinerary as Partial<ItineraryDay>[]).map((day) => ({
+        title: day.title ?? "",
+        description: day.description ?? "",
+        stops: Array.isArray(day.stops) ? day.stops : [],
+        location: day.location ?? "",
+      }))
     : [];
 
   return {
@@ -97,7 +102,9 @@ export function mapTourToFormValues(tour: TourWithRelations): TourFormState {
         : [],
     ),
     itinerary:
-      itinerary.length > 0 ? itinerary : [{ title: "", description: "" }],
+      itinerary.length > 0
+        ? itinerary
+        : [{ title: "", description: "", stops: [] }],
     basePrice: String(Number(tour.basePrice)),
     // Đợt đã diễn ra không hiện trong form; server giữ nguyên
     departures: tour.departures
