@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "langfuse": {
+      "type": "http",
+      "url": "https://jp.cloud.langfuse.com/api/public/mcp",
+      "headersHelper": "bash scripts/langfuse-mcp-headers.sh"
+    }
+  }
+}

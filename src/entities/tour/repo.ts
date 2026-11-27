@@ -1,12 +1,18 @@
-import type { BookingStatus, Prisma } from "@/generated/prisma/client";
+import type {
+  BookingStatus,
+  Prisma,
+  ServiceStatus,
+} from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { tourBookingCounts } from "../booking-counts";
 import {
   type ListFilter,
   paginateByPrice,
+  paginateByRelevance,
   priceOrder,
   priceRange,
   ratingWhere,
+  searchWhere,
 } from "../list-filter";
 import type {
   CreateTourInput,
@@ -39,6 +45,15 @@ export function findPublishedDetailBySlug(slug: string) {
         orderBy: { departureDate: "asc" },
       },
     },
+  });
+}
+
+/** Danh sách gọn (id, tên) cho bộ chọn dịch vụ trên lịch của provider. */
+export function findOptionsByProviderProfileId(providerProfileId: string) {
+  return prisma.tour.findMany({
+    where: { providerProfileId, deletedAt: null },
+    select: { id: true, title: true },
+    orderBy: { createdAt: "desc" },
   });
 }
 
@@ -176,17 +191,48 @@ export function remove(id: string): Promise<Tour> {
   return prisma.tour.delete({ where: { id } });
 }
 
-/** Dừng bán tour và hẹn ngày xóa. Trả về số tour bị ảnh hưởng (0 nếu không tìm thấy hoặc đã dừng). */
-export async function scheduleDeletion(
-  id: string,
+/**
+ * Dừng bán nhiều tour và hẹn ngày xóa. Bỏ qua tour không thuộc provider hoặc đã dừng trước đó.
+ * Trả về các tour thực sự được hẹn xóa.
+ */
+export function scheduleDeletionMany(
+  ids: string[],
   providerProfileId: string,
   deleteAt: Date
-): Promise<number> {
-  const { count } = await prisma.tour.updateMany({
-    where: { id, providerProfileId, deletedAt: null, deleteScheduledAt: null },
+): Promise<{ id: string; slug: string }[]> {
+  return prisma.tour.updateManyAndReturn({
+    where: {
+      id: { in: ids },
+      providerProfileId,
+      deletedAt: null,
+      deleteScheduledAt: null,
+    },
     data: { status: "paused", deleteScheduledAt: deleteAt },
+    select: { id: true, slug: true },
   });
-  return count;
+}
+
+/**
+ * Đổi trạng thái mở bán / tạm dừng cho nhiều tour của một provider.
+ * Bỏ qua tour đã dừng (đang chờ xóa) hoặc đã ở sẵn trạng thái đích.
+ * Trả về các tour thực sự được đổi.
+ */
+export function setStatusMany(
+  ids: string[],
+  providerProfileId: string,
+  status: ServiceStatus
+): Promise<{ id: string; slug: string }[]> {
+  return prisma.tour.updateManyAndReturn({
+    where: {
+      id: { in: ids },
+      providerProfileId,
+      deletedAt: null,
+      deleteScheduledAt: null,
+      status: { not: status },
+    },
+    data: { status },
+    select: { id: true, slug: true },
+  });
 }
 
 /** Hủy lịch xóa, mở bán lại tour đã dừng. Trả về 0 nếu tour không ở trạng thái đã dừng. */
@@ -241,6 +287,23 @@ export function findRecent(take: number) {
   });
 }
 
+/** Tour đang bán theo danh sách id (cùng dữ liệu với findRecent), không giữ thứ tự. */
+export function findPublishedByIds(ids: string[]) {
+  return prisma.tour.findMany({
+    where: { id: { in: ids }, status: "published", deletedAt: null },
+    include: {
+      province: true,
+      _count: {
+        select: {
+          departures: {
+            where: { status: "scheduled", departureDate: { gt: new Date() } },
+          },
+        },
+      },
+    },
+  });
+}
+
 export async function findPaged(
   filter: ListFilter & { from?: Date; to?: Date }
 ) {
@@ -253,12 +316,10 @@ export async function findPaged(
     ...ratingWhere(filter),
     ...(filter.province && { province: { name: filter.province } }),
     ...(filter.tag && { tags: { some: { tag: { name: filter.tag } } } }),
-    ...(filter.q && {
-      OR: [
-        { title: { contains: filter.q, mode: "insensitive" } },
-        { description: { contains: filter.q, mode: "insensitive" } },
-      ],
-    }),
+    ...searchWhere<Prisma.TourWhereInput>(filter, (q) => [
+      { title: { contains: q, mode: "insensitive" } },
+      { description: { contains: q, mode: "insensitive" } },
+    ]),
     ...(price && { basePrice: price }),
     ...(hasDate && {
       departures: {
@@ -281,6 +342,10 @@ export async function findPaged(
     },
   } satisfies Prisma.TourInclude;
 
+  if (filter.sort === "relevance") {
+    const all = await prisma.tour.findMany({ where, include });
+    return paginateByRelevance(all, (t) => t.title, (t) => Number(t.basePrice), filter);
+  }
   // "Phổ biến": lượt đặt không orderBy được bằng Prisma → quét hết rồi sort trong bộ nhớ
   if (!order && filter.sort === "popular") {
     const [all, counts] = await Promise.all([

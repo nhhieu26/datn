@@ -21,7 +21,7 @@ export function TourGallerySlider({
     <div className="relative px-5 lg:px-0">
       <Swiper
         autoplay={{ delay: 6000, disableOnInteraction: false }}
-        breakpoints={{ 992: { slidesPerView: 2 } }}
+        breakpoints={{ 1024: { slidesPerView: "auto" } }}
         centeredSlides
         loop
         modules={[Navigation, Autoplay]}

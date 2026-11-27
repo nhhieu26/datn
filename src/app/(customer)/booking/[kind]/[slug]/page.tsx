@@ -1,6 +1,7 @@
 import { hotelRepo } from "@/entities/hotel";
 import { hotelBookingRepo } from "@/entities/hotel-booking";
 import { restaurantRepo } from "@/entities/restaurant";
+import { systemSettingRepo, type SystemSettings } from "@/entities/system-setting";
 import { tourRepo } from "@/entities/tour";
 import { tourBookingRepo } from "@/entities/tour-booking";
 import { userRepo } from "@/entities/user";
@@ -14,7 +15,6 @@ import {
 } from "@/features/customer/booking";
 import { toHotelDetail } from "@/features/customer/hotel-detail/lib/to-hotel-detail";
 import { toRestaurantDetail } from "@/features/customer/restaurant-detail/lib/to-restaurant-detail";
-import { USD_RATE } from "@/features/customer/booking/lib/exchange-rate";
 import { toTourDetail } from "@/features/customer/tour-detail/lib/to-tour-detail";
 import { auth } from "@/lib/auth";
 import type { Metadata } from "next";
@@ -31,6 +31,7 @@ async function loadSummary(
   kind: string,
   slug: string,
   query: BookingQuery,
+  settings: SystemSettings,
 ): Promise<{ summary: BookingSummary | null; backHref: string }> {
   switch (kind) {
     case "tour": {
@@ -38,7 +39,11 @@ async function loadSummary(
       const row = await tourRepo.findPublishedDetailBySlug(slug);
       if (!row) notFound();
       return {
-        summary: tourSummary(toTourDetail(row, 0), query),
+        summary: tourSummary(
+          toTourDetail(row, 0),
+          query,
+          settings.customerCancelCutoffHours,
+        ),
         backHref: `/tours/${slug}`,
       };
     }
@@ -47,7 +52,11 @@ async function loadSummary(
       const row = await hotelRepo.findPublishedDetailBySlug(slug);
       if (!row) notFound();
       return {
-        summary: hotelSummary(toHotelDetail(row), query),
+        summary: hotelSummary(
+          toHotelDetail(row),
+          query,
+          settings.customerCancelCutoffHours,
+        ),
         backHref: `/hotels/${slug}`,
       };
     }
@@ -55,7 +64,11 @@ async function loadSummary(
       const row = await restaurantRepo.findPublishedDetailBySlug(slug);
       if (!row) notFound();
       return {
-        summary: restaurantSummary(toRestaurantDetail(row), query),
+        summary: restaurantSummary(
+          toRestaurantDetail(row),
+          query,
+          settings.restaurantCancelCutoffHours,
+        ),
         backHref: `/restaurants/${slug}`,
       };
     }
@@ -71,7 +84,8 @@ export default async function BookingPage({ params, searchParams }: Props) {
   const session = await auth();
   if (!session?.user) redirect("/sign-in");
 
-  const { summary, backHref } = await loadSummary(kind, slug, query);
+  const settings = await systemSettingRepo.getSettings();
+  const { summary, backHref } = await loadSummary(kind, slug, query, settings);
   // Lựa chọn trên query thiếu/không hợp lệ → quay lại trang chi tiết để chọn lại
   if (!summary) redirect(backHref);
 
@@ -87,7 +101,7 @@ export default async function BookingPage({ params, searchParams }: Props) {
           note: "",
         }}
         summary={summary}
-        usdRate={USD_RATE}
+        usdRate={settings.usdRate}
       />
     </main>
   );

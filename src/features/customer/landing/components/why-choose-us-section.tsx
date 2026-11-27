@@ -1,3 +1,9 @@
+import {
+  FadeIn,
+  StaggerContainer,
+  StaggerItem,
+} from "@/features/customer/components/motion";
+
 const REASONS = [
   {
     title: "Đặt chỗ nhanh chóng",
@@ -23,32 +29,36 @@ export function WhyChooseUsSection() {
       data-purpose="why-choose-us"
     >
       <div>
-        <div className="relative flex items-center justify-center my-6">
-          <div className="w-full border-t border-gray-300/80" />
-          <span className="absolute px-6 text-base md:text-lg font-bold text-gray-900 tracking-tight bg-white">
-            Vì sao chọn chúng tôi
-          </span>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 mt-10">
+        <FadeIn y={14}>
+          <div className="relative flex items-center justify-center my-6">
+            <div className="w-full border-t border-gray-300/80" />
+            <span className="absolute px-6 text-base md:text-lg font-bold text-gray-900 tracking-tight bg-white">
+              Vì sao chọn chúng tôi
+            </span>
+          </div>
+        </FadeIn>
+        <StaggerContainer
+          className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 mt-10"
+          stagger={0.12}
+        >
           {REASONS.map((reason) => (
-            <div
-              key={reason.title}
-              className="why-card-bg rounded-2xl p-6 sm:p-7 flex items-start gap-4 border-t border-x border-white/80"
-            >
-              <div className="w-12 h-12 shrink-0 bg-new-teal text-white rounded-xl flex items-center justify-center font-bold text-xl shadow-sm">
-                $
+            <StaggerItem key={reason.title}>
+              <div className="why-card-bg h-full rounded-2xl p-6 sm:p-7 flex items-start gap-4 border-t border-x border-white/80 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lg">
+                <div className="w-12 h-12 shrink-0 bg-new-teal text-white rounded-xl flex items-center justify-center font-bold text-xl shadow-sm">
+                  $
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-lg font-bold text-gray-900 leading-snug">
+                    {reason.title}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                    {reason.description}
+                  </p>
+                </div>
               </div>
-              <div className="space-y-2">
-                <h3 className="text-lg font-bold text-gray-900 leading-snug">
-                  {reason.title}
-                </h3>
-                <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
-                  {reason.description}
-                </p>
-              </div>
-            </div>
+            </StaggerItem>
           ))}
-        </div>
+        </StaggerContainer>
       </div>
     </section>
   );

@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { PENDING_COOKIE, readPendingLink } from "@/lib/paypal-pending";
 import { deleteImage, uploadImage } from "@/lib/imagekit";
+import { notifyProfileSubmitted } from "@/entities/notification";
 import {
   createProviderProfileSchema,
   providerProfileRepo,
@@ -13,6 +14,7 @@ import {
 } from "@/entities/provider-profile";
 import { fromZodError, runAction, type ActionState } from "@/shared/lib/action-state";
 import {
+  ConflictError,
   ForbiddenError,
   NotFoundError,
   UnauthenticatedError,
@@ -90,7 +92,7 @@ export async function createProviderProfileAction(
       photoFileId = uploaded.fileId;
     }
 
-    await providerProfileRepo.create({
+    const created = await providerProfileRepo.create({
       ...parsed.data,
       userId: session.user.id,
       photoUrl,
@@ -100,6 +102,11 @@ export async function createProviderProfileAction(
       paypalLinkedAt: new Date(paypal.linkedAt),
     });
     cookieStore.delete(PENDING_COOKIE);
+    await notifyProfileSubmitted({
+      profileId: created.id,
+      businessName: created.businessName,
+      businessType: created.businessType,
+    });
   });
 
   if (result.status === "success") {
@@ -209,11 +216,157 @@ export async function updateProviderProfileAction(
       approvalStatus,
       rejectionReason,
     });
+    if (approvalStatus === "pending") {
+      await notifyProfileSubmitted({
+        profileId,
+        businessName: parsed.data.businessName,
+        businessType: existing.businessType,
+        isResubmit: true,
+      });
+    }
   });
 
   if (result.status === "success") {
     revalidatePath("/provider/profiles");
     redirect("/provider/profiles");
+  }
+  return result;
+}
+
+export async function deleteProviderProfileAction(
+  profileId: string
+): Promise<ActionState> {
+  const result = await runAction<undefined>(async () => {
+    const session = await auth();
+    if (!session?.user?.id) {
+      throw new UnauthenticatedError();
+    }
+    if (session.user.role !== "provider") {
+      throw new ForbiddenError(
+        "Chỉ tài khoản đối tác mới có thể xóa hồ sơ doanh nghiệp."
+      );
+    }
+
+    const existing = await providerProfileRepo.findById(
+      profileId,
+      session.user.id
+    );
+    if (!existing) {
+      throw new NotFoundError("Không tìm thấy hồ sơ.");
+    }
+
+    const deleted = await providerProfileRepo.removeIfUnused(
+      profileId,
+      session.user.id
+    );
+    if (deleted === 0) {
+      const blockers = await providerProfileRepo.findDeletionBlockers(
+        profileId,
+        session.user.id
+      );
+      if (!blockers) {
+        throw new NotFoundError("Không tìm thấy hồ sơ.");
+      }
+      if (blockers.services > 0) {
+        throw new ConflictError(
+          `Hồ sơ còn ${blockers.services} dịch vụ. Hãy xóa hết dịch vụ trước khi xóa hồ sơ.`
+        );
+      }
+      if (blockers.transactions > 0) {
+        throw new ConflictError(
+          "Hồ sơ đã có lịch sử đặt chỗ hoặc thanh toán nên không thể xóa."
+        );
+      }
+      throw new ConflictError("Không thể xóa hồ sơ. Vui lòng thử lại.");
+    }
+
+    if (existing.photoFileId) {
+      try {
+        await deleteImage(existing.photoFileId);
+      } catch {
+        // ignore: hồ sơ đã xóa, ảnh mồ côi không ảnh hưởng tới người dùng
+      }
+    }
+  });
+
+  if (result.status === "success") {
+    revalidatePath("/provider/profiles");
+    revalidatePath("/provider");
+  }
+  return result;
+}
+
+const MAX_SIGNATURE_SIZE = 2 * 1024 * 1024;
+const ALLOWED_SIGNATURE_TYPES = ["image/png", "image/jpeg", "image/webp"];
+
+async function requireOwnProfile(profileId: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new UnauthenticatedError();
+  }
+  if (session.user.role !== "provider") {
+    throw new ForbiddenError("Chỉ tài khoản đối tác mới có thể quản lý chữ ký.");
+  }
+  const existing = await providerProfileRepo.findById(profileId, session.user.id);
+  if (!existing) {
+    throw new NotFoundError("Không tìm thấy hồ sơ.");
+  }
+  return { userId: session.user.id, existing };
+}
+
+async function safeDeleteImage(fileId: string | null) {
+  if (!fileId) return;
+  try {
+    await deleteImage(fileId);
+  } catch {
+    // ignore: ảnh mồ côi không ảnh hưởng tới người dùng
+  }
+}
+
+/** Lưu chữ ký (ảnh vẽ tay hoặc tải lên) dùng để in trên hóa đơn. */
+export async function saveProviderSignatureAction(
+  profileId: string,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const result = await runAction<undefined>(async () => {
+    const { userId, existing } = await requireOwnProfile(profileId);
+
+    const file = formData.get("signature");
+    if (!(file instanceof File) || file.size === 0) {
+      throw new ValidationError({ signature: ["Vui lòng vẽ hoặc chọn ảnh chữ ký."] });
+    }
+    if (!ALLOWED_SIGNATURE_TYPES.includes(file.type) || file.size > MAX_SIGNATURE_SIZE) {
+      throw new ValidationError({
+        signature: ["Ảnh chữ ký phải là PNG/JPG/WebP và dưới 2MB."],
+      });
+    }
+
+    const uploaded = await uploadImage(file, `provider-profiles/${userId}/signature`);
+    await providerProfileRepo.updateSignature(profileId, userId, {
+      signatureUrl: uploaded.url,
+      signatureFileId: uploaded.fileId,
+    });
+    await safeDeleteImage(existing.signatureFileId);
+  });
+
+  if (result.status === "success") {
+    revalidatePath(`/provider/profiles/${profileId}`);
+  }
+  return result;
+}
+
+export async function removeProviderSignatureAction(
+  profileId: string
+): Promise<ActionState> {
+  const result = await runAction<undefined>(async () => {
+    const { userId, existing } = await requireOwnProfile(profileId);
+    await providerProfileRepo.updateSignature(profileId, userId, null);
+    await safeDeleteImage(existing.signatureFileId);
+  });
+
+  if (result.status === "success") {
+    revalidatePath(`/provider/profiles/${profileId}`);
   }
   return result;
 }

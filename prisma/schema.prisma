@@ -87,29 +87,37 @@ model User {
   hotelBookings      HotelBooking[]
   restaurantBookings RestaurantBooking[]
   reviews            Review[]
+  notifications      Notification[]
+  articles           Article[]
+  articleComments    ArticleComment[]
+  moderationLogs     ModerationLog[]
+  searchHistories    SearchHistory[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model ProviderProfile {
-  id              String         @id @default(cuid())
-  userId          String
-  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  businessName    String
-  businessType    BusinessType
-  taxCode         String?
-  licenseUrl      String?
-  website         String?
-  address         String?
-  description     String?
-  photoUrl        String?
-  photoFileId     String?
-  approvalStatus  ApprovalStatus @default(not_submitted)
-  rejectionReason String?
-  payoutEmail     String
-  paypalPayerId   String
-  paypalLinkedAt  DateTime
+  id                 String         @id @default(cuid())
+  userId             String
+  user               User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessName       String
+  businessType       BusinessType
+  taxCode            String?
+  licenseUrl         String?
+  website            String?
+  address            String?
+  description        String?
+  photoUrl           String?
+  photoFileId        String?
+  signatureUrl       String?
+  signatureFileId    String?
+  signatureUpdatedAt DateTime?
+  approvalStatus     ApprovalStatus @default(not_submitted)
+  rejectionReason    String?
+  payoutEmail        String
+  paypalPayerId      String
+  paypalLinkedAt     DateTime
 
   tours              Tour[]
   hotels             Hotel[]
@@ -134,6 +142,7 @@ model Tag {
   hotels       HotelTag[]
   restaurants  RestaurantTag[]
   destinations DestinationTag[]
+  articles     ArticleTag[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -151,6 +160,7 @@ model Province {
   hotels       Hotel[]
   restaurants  Restaurant[]
   destinations Destination[]
+  articles     Article[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -607,9 +617,17 @@ model Review {
   restaurantBookingId String?            @unique
   restaurantBooking   RestaurantBooking? @relation(fields: [restaurantBookingId], references: [id], onDelete: SetNull)
 
+  // Kiểm duyệt nội dung (lọc từ khóa → AI → admin). Chỉ review approved được hiển thị và tính điểm.
+  status               ModerationStatus  @default(approved)
+  moderationSource     ModerationSource?
+  moderationReason     String?
+  moderationCategories String[]          @default([])
+  moderatedAt          DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([status, createdAt])
   @@index([tourId, createdAt])
   @@index([hotelId, createdAt])
   @@index([restaurantId, createdAt])
@@ -649,4 +667,208 @@ model ExternalPlaceSearch {
   placeIds  String[]
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+// Cache xác định khu vực cho chat AI: địa danh người dùng nhập -> khung tọa độ hoặc danh sách tên trùng.
+model ExternalArea {
+  id        String   @id @default(cuid())
+  queryKey  String   @unique
+  // { label, viewport } | { ambiguous: string[] } | null (không tìm thấy)
+  result    Json?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+// Cấu hình hệ thống toàn sàn (singleton id = "default") do Admin quản lý.
+model SystemSetting {
+  id                          String  @id @default("default")
+  commissionRate              Decimal @default(0.1) @db.Decimal(5, 4)
+  usdRate                     Decimal @default(25000) @db.Decimal(18, 2)
+  bookingHoldMinutes          Int     @default(10)
+  customerCancelCutoffHours   Int     @default(24)
+  restaurantCancelCutoffHours Int     @default(2)
+  serviceDeleteGraceDays      Int     @default(30)
+
+  platformName        String @default("Roamly")
+  tagline             String @default("Người bạn đồng hành du lịch toàn diện cho khách sạn, nhà hàng, tour và những điểm đến khó quên.")
+  contactAddress      String @default("70/A Tầng Divo Tower, Hà Nội, Việt Nam")
+  contactPhone        String @default("(+84) 123 456 789")
+  contactEmail        String @default("hello@roamly.vn")
+  aboutVideoUrl       String @default("")
+  aboutVideoPosterUrl String @default("")
+
+  updatedAt DateTime @updatedAt
+}
+
+enum NotificationType {
+  booking_created
+  booking_paid
+  booking_confirmed
+  booking_cancelled
+  booking_completed
+  review_created
+  profile_submitted
+  profile_approved
+  profile_rejected
+  transfer_failed
+  article_comment_created
+  content_flagged
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  message   String
+  href      String?
+  readAt    DateTime?
+  metadata  Json             @default("{}")
+  createdAt DateTime         @default(now())
+
+  @@index([userId, readAt, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+enum ArticleStatus {
+  draft
+  published
+}
+
+enum ArticleCategory {
+  guide
+  destination
+  food
+  experience
+  news
+}
+
+model Article {
+  id          String          @id @default(cuid())
+  authorId    String
+  author      User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  provinceId  String?
+  province    Province?       @relation(fields: [provinceId], references: [id], onDelete: SetNull)
+  title       String
+  slug        String          @unique
+  excerpt     String
+  /// HTML đã được sanitize phía server
+  content     String
+  /// {url, fileId}
+  coverImage  Json
+  category    ArticleCategory
+  status      ArticleStatus   @default(draft)
+  readMinutes Int             @default(1)
+  viewCount   Int             @default(0)
+  publishedAt DateTime?
+
+  tags     ArticleTag[]
+  comments ArticleComment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, publishedAt])
+}
+
+model ArticleTag {
+  articleId String
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  tagId     String
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([articleId, tagId])
+}
+
+model ArticleComment {
+  id        String  @id @default(cuid())
+  articleId String
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+
+  // Kiểm duyệt nội dung; chỉ bình luận approved được hiển thị công khai.
+  status               ModerationStatus  @default(approved)
+  moderationSource     ModerationSource?
+  moderationReason     String?
+  moderationCategories String[]          @default([])
+  moderatedAt          DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([articleId, createdAt])
+  @@index([status, createdAt])
+}
+
+enum ModerationStatus {
+  approved
+  pending
+  rejected
+}
+
+// Bước đã đưa ra quyết định cuối cùng cho nội dung.
+enum ModerationSource {
+  keyword
+  ai
+  admin
+  fallback
+}
+
+enum ModerationTarget {
+  review
+  article_comment
+}
+
+enum ModerationStage {
+  keyword
+  ai
+  admin
+}
+
+enum ModerationVerdict {
+  block
+  approve
+  pending
+  reject
+}
+
+// Nhật ký mỗi lần kiểm duyệt (kể cả nội dung bị chặn ngay ở form, không được lưu) — phục vụ thống kê.
+model ModerationLog {
+  id         String            @id @default(cuid())
+  target     ModerationTarget
+  targetId   String?
+  userId     String?
+  user       User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  content    String
+  stage      ModerationStage
+  verdict    ModerationVerdict
+  categories String[]          @default([])
+  reason     String?
+  confidence Float?
+  latencyMs  Int?
+  createdAt  DateTime          @default(now())
+
+  @@index([createdAt])
+  @@index([target, verdict])
+}
+
+// 20 lượt tìm kiếm gần nhất của mỗi người dùng, kèm vector để gợi ý cá nhân hóa.
+model SearchHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // đã chuẩn hóa: trim, gộp khoảng trắng, chữ thường
+  query     String
+  // vector gemini-embedding-001, 768 chiều
+  embedding Float[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, query])
+  @@index([userId, updatedAt])
 }

@@ -1,4 +1,4 @@
-import { MainFooter, MainHeader } from "@/features/customer/components";
+import { ChatFab, MainFooter, MainHeader } from "@/features/customer/components";
 
 export default function CustomerLayout({ children }: LayoutProps<"/">) {
   return (
@@ -6,6 +6,7 @@ export default function CustomerLayout({ children }: LayoutProps<"/">) {
       <MainHeader />
       {children}
       <MainFooter />
+      <ChatFab />
     </div>
   );
 }

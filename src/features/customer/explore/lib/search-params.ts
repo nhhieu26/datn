@@ -35,6 +35,7 @@ function positiveNumber(value: string) {
 
 export function parseExploreQuery(raw: RawParams): ExploreQuery {
   const kind = KIND_FILTERS.find((k) => k.kind === first(raw.kind))?.kind;
+  const q = first(raw.q);
   const sort = SORT_OPTIONS.find((s) => s.value === first(raw.sort))?.value;
   const from = first(raw.from);
   const to = first(raw.to);
@@ -42,7 +43,7 @@ export function parseExploreQuery(raw: RawParams): ExploreQuery {
   const page = Math.floor(Number(first(raw.page)));
   return {
     kind: kind ?? "tour",
-    q: first(raw.q),
+    q,
     tag: first(raw.tag) || undefined,
     location: first(raw.location),
     from: DATE_RE.test(from) ? from : "",
@@ -50,17 +51,30 @@ export function parseExploreQuery(raw: RawParams): ExploreQuery {
     minPrice: positiveNumber(first(raw.minPrice)),
     maxPrice: positiveNumber(first(raw.maxPrice)),
     minRating: rating >= 1 && rating <= 5 ? rating : undefined,
-    sort: sort ?? "popular",
+    // "Phù hợp nhất" chỉ có nghĩa khi có từ khóa
+    sort: sort && (sort !== "relevance" || q) ? sort : defaultSort(q),
     page: page >= 1 ? page : 1,
   };
 }
 
-/** Dựng URL /explore, bỏ param rỗng/mặc định. `page` chỉ giữ khi được truyền trong patch. */
+/** Có từ khóa thì mặc định xếp theo độ phù hợp, không thì theo độ phổ biến. */
+export function defaultSort(q: string): ExploreSort {
+  return q ? "relevance" : "popular";
+}
+
+/**
+ * Dựng URL /explore, bỏ param rỗng/mặc định. `page` chỉ giữ khi được truyền trong patch.
+ * Đổi từ khóa mà không chỉ định sort thì sort về mặc định của từ khóa mới.
+ */
 export function buildExploreUrl(
   query: ExploreQuery,
   patch: Partial<ExploreQuery> = {},
 ) {
   const next = { ...query, page: 1, ...patch };
+  if (patch.q !== undefined && patch.q !== query.q && patch.sort === undefined) {
+    next.sort = defaultSort(next.q);
+  }
+  if (next.sort === "relevance" && !next.q) next.sort = "popular";
   const params = new URLSearchParams();
   params.set("kind", next.kind);
   if (next.q) params.set("q", next.q);
@@ -74,7 +88,7 @@ export function buildExploreUrl(
   if (next.minPrice !== undefined) params.set("minPrice", String(next.minPrice));
   if (next.maxPrice !== undefined) params.set("maxPrice", String(next.maxPrice));
   if (next.minRating !== undefined) params.set("minRating", String(next.minRating));
-  if (next.sort !== "popular") params.set("sort", next.sort);
+  if (next.sort !== defaultSort(next.q)) params.set("sort", next.sort);
   if (next.page > 1) params.set("page", String(next.page));
   return `/explore?${params.toString()}`;
 }

@@ -11,6 +11,7 @@ import {
   hasTourEnded,
 } from "@/lib/utils";
 import Link from "next/link";
+import { ExportBookingsButton } from "@/features/provider/components/export-bookings-button";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { updateTourBookingStatusAction } from "../actions";
@@ -386,6 +387,7 @@ export function TourBookingsTable({
               />
             </div>
           ) : null}
+          <ExportBookingsButton endpoint="/api/provider/bookings/tours/export" />
           <button
             aria-busy={isPending}
             className={`px-3 py-2 ${layerButtonClass}`}

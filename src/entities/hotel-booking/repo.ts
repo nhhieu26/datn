@@ -1,13 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { Prisma, type BookingStatus } from "@/generated/prisma/client";
+import { systemSettingRepo } from "@/entities/system-setting";
 import { prisma } from "@/lib/prisma";
 import {
   canCustomerCancelBefore,
-  CUSTOMER_CANCEL_CUTOFF_HOURS,
   formatEntityCode,
   hasCheckedOut,
 } from "@/lib/utils";
 import { ConflictError, NotFoundError } from "@/shared/lib/errors";
+import { invoiceScopeWhere, type InvoiceScope } from "@/shared/lib/invoice-scope";
 import type {
   CreateHotelBookingInput,
   HotelBookingDetail,
@@ -17,8 +18,6 @@ import type {
 
 type Tx = Prisma.TransactionClient;
 
-const HOLD_MINUTES = Number(process.env.BOOKING_HOLD_MINUTES ?? 10);
-const COMMISSION_RATE = Number(process.env.PLATFORM_COMMISSION_RATE ?? 0.1);
 const DAY = 86_400_000;
 
 const toUtcDate = (isoDate: string) => new Date(`${isoDate}T00:00:00Z`);
@@ -50,8 +49,14 @@ export function releaseExpired(db: Tx | typeof prisma = prisma) {
   return releaseWhere(db, Prisma.sql`h."expiresAt" < ${new Date()}`);
 }
 
-/** Giữ phòng: kiểm tra phòng trống theo khoảng ngày và tạo booking pending_payment hết hạn sau HOLD_MINUTES. */
-export function createHeld(customerId: string, input: CreateHotelBookingInput) {
+/** Giữ phòng: kiểm tra phòng trống theo khoảng ngày và tạo booking pending_payment hết hạn sau bookingHoldMinutes. */
+export async function createHeld(
+  customerId: string,
+  input: CreateHotelBookingInput
+) {
+  const { commissionRate, bookingHoldMinutes } =
+    await systemSettingRepo.getSettings();
+
   return prisma.$transaction(async (tx) => {
     await releaseExpired(tx);
     // Mỗi customer chỉ giữ một đơn chờ thanh toán cho cùng loại phòng
@@ -97,7 +102,7 @@ export function createHeld(customerId: string, input: CreateHotelBookingInput) {
     // Giá luôn tính lại ở server, không tin dữ liệu từ client
     const unitPrice = room.basePrice;
     const totalAmount = unitPrice.mul(nights).mul(input.rooms);
-    const platformFee = totalAmount.mul(COMMISSION_RATE).toDecimalPlaces(2);
+    const platformFee = totalAmount.mul(commissionRate).toDecimalPlaces(2);
 
     return tx.hotelBooking.create({
       data: {
@@ -118,10 +123,10 @@ export function createHeld(customerId: string, input: CreateHotelBookingInput) {
         note: input.note || null,
         unitPrice,
         totalAmount,
-        commissionRate: COMMISSION_RATE,
+        commissionRate,
         platformFee,
         providerAmount: totalAmount.sub(platformFee),
-        expiresAt: new Date(Date.now() + HOLD_MINUTES * 60_000),
+        expiresAt: new Date(Date.now() + bookingHoldMinutes * 60_000),
       },
     });
   });
@@ -138,6 +143,21 @@ export function findByCodeForCustomer(
         include: { hotel: { select: { slug: true, province: true } } },
       },
       payments: { orderBy: { createdAt: "desc" } },
+    },
+  });
+}
+
+/** Booking kèm dữ liệu in hóa đơn, lọc theo phạm vi quyền của người xem. */
+export function findInvoiceByCode(code: string, scope: InvoiceScope) {
+  return prisma.hotelBooking.findFirst({
+    where: { code, ...invoiceScopeWhere(scope) },
+    include: {
+      customer: { select: { fullname: true, email: true, phone: true } },
+      providerProfile: {
+        select: { businessName: true, address: true, taxCode: true, signatureUrl: true },
+      },
+      payments: { orderBy: { createdAt: "desc" } },
+      refunds: true,
     },
   });
 }
@@ -244,6 +264,27 @@ function providerWhere(
   };
 }
 
+/** Toàn bộ đơn khớp bộ lọc (không phân trang) để xuất file, tối đa EXPORT_LIMIT đơn. */
+export const EXPORT_LIMIT = 5000;
+
+export function findAllByProviderProfileId(
+  providerProfileId: string,
+  filter: HotelBookingFilter
+) {
+  return prisma.hotelBooking.findMany({
+    where: providerWhere(providerProfileId, filter),
+    take: EXPORT_LIMIT,
+    include: {
+      payments: { select: { status: true }, orderBy: { createdAt: "desc" } },
+      refunds: { select: { status: true } },
+      room: {
+        select: { images: true, hotel: { select: { images: true } } },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
 export async function findPageByProviderProfileId(
   providerProfileId: string,
   filter: HotelBookingFilter,
@@ -305,7 +346,7 @@ export async function findPageByCustomerId(
             hotel: { select: { images: true, slug: true } },
           },
         },
-        review: { select: { id: true } },
+        review: { select: { id: true, status: true } },
       },
       orderBy: { createdAt: "desc" },
     }),
@@ -435,7 +476,12 @@ export function cancelForProvider(
 }
 
 /** Customer tự hủy đơn paid/confirmed, chỉ khi còn trước ngày nhận phòng đủ hạn hủy. */
-export function cancelForCustomer(code: string, customerId: string, reason: string) {
+export async function cancelForCustomer(
+  code: string,
+  customerId: string,
+  reason: string
+) {
+  const { customerCancelCutoffHours } = await systemSettingRepo.getSettings();
   return prisma.$transaction(async (tx) => {
     const rows = await tx.$queryRaw<{ id: string; checkInDate: Date }[]>`
       SELECT "id", "checkInDate" FROM "HotelBooking"
@@ -444,9 +490,15 @@ export function cancelForCustomer(code: string, customerId: string, reason: stri
         AND "status" IN ('paid'::"BookingStatus", 'confirmed'::"BookingStatus")
       FOR UPDATE`;
     if (rows.length === 0) throw new ConflictError(STALE_STATUS_MESSAGE);
-    if (!canCustomerCancelBefore(rows[0].checkInDate)) {
+    if (
+      !canCustomerCancelBefore(
+        rows[0].checkInDate,
+        new Date(),
+        customerCancelCutoffHours
+      )
+    ) {
       throw new ConflictError(
-        `Chỉ có thể hủy đơn trước ngày nhận phòng ${CUSTOMER_CANCEL_CUTOFF_HOURS} giờ.`
+        `Chỉ có thể hủy đơn trước ngày nhận phòng ${customerCancelCutoffHours} giờ.`
       );
     }
     return cancelAndCreateRefund(tx, rows[0].id, reason);
@@ -454,7 +506,11 @@ export function cancelForCustomer(code: string, customerId: string, reason: stri
 }
 
 /** Hoàn thành đơn từ ngày trả phòng: tạo Payout (processing) cho provider. */
-export function completeForProvider(code: string, providerProfileId: string) {
+export async function completeForProvider(
+  code: string,
+  providerProfileId: string
+) {
+  const { usdRate } = await systemSettingRepo.getSettings();
   return prisma.$transaction(async (tx) => {
     const id = await lockForProvider(tx, code, providerProfileId, "confirmed");
     const booking = await tx.hotelBooking.findUniqueOrThrow({
@@ -472,8 +528,7 @@ export function completeForProvider(code: string, providerProfileId: string) {
     const receiver = booking.providerProfile.paypalPayerId;
 
     const exchangeRate =
-      booking.payments[0]?.exchangeRate ??
-      new Prisma.Decimal(process.env.PAYPAL_USD_RATE ?? 25_000);
+      booking.payments[0]?.exchangeRate ?? new Prisma.Decimal(usdRate);
 
     const updated = await tx.hotelBooking.update({
       where: { id },
@@ -514,6 +569,16 @@ type DateRange = { from?: Date; to?: Date };
 
 const createdIn = ({ from, to }: DateRange) =>
   from || to ? { createdAt: { gte: from, lt: to } } : {};
+
+/** Số đơn theo từng trạng thái, tạo trong khoảng thời gian (dùng cho trang báo cáo). */
+export async function countByStatus(providerProfileId: string, range: DateRange = {}) {
+  const rows = await prisma.hotelBooking.groupBy({
+    by: ["status"],
+    where: { providerProfileId, ...createdIn(range) },
+    _count: { _all: true },
+  });
+  return rows.map((row) => ({ status: row.status, count: row._count._all }));
+}
 
 export function countForDashboard(providerProfileId: string, range: DateRange = {}) {
   return prisma.hotelBooking.count({
@@ -563,13 +628,19 @@ export function findUpcomingForProvider(providerProfileId: string, from: Date, t
 }
 
 /** Đơn có thời gian lưu trú giao với [from, to), dùng cho lịch của provider. */
-export function findForCalendar(providerProfileId: string, from: Date, to: Date) {
+export function findForCalendar(
+  providerProfileId: string,
+  from: Date,
+  to: Date,
+  serviceId?: string,
+) {
   return prisma.hotelBooking.findMany({
     where: {
       providerProfileId,
       status: { notIn: UNCOUNTED_STATUSES },
       checkInDate: { lt: to },
       checkOutDate: { gt: from },
+      ...(serviceId && { room: { hotelId: serviceId } }),
     },
     select: {
       code: true,
@@ -618,4 +689,31 @@ export async function findRecentActivityForProvider(providerProfileId: string, t
     }),
   ]);
   return { created, cancelled, payments, refunds };
+}
+
+// ---- Báo cáo toàn sàn (admin) ----
+
+/** Đơn khách sạn tạo trong khoảng thời gian, kèm tỉnh/thành của khách sạn, cho trang báo cáo admin. */
+export async function findAdminReportRows(range: { from: Date; to: Date }) {
+  const rows = await prisma.hotelBooking.findMany({
+    where: createdIn(range),
+    select: {
+      createdAt: true,
+      status: true,
+      guests: true,
+      totalAmount: true,
+      platformFee: true,
+      providerProfileId: true,
+      room: { select: { hotel: { select: { provinceId: true } } } },
+    },
+  });
+  return rows.map((row) => ({
+    createdAt: row.createdAt,
+    status: row.status,
+    guests: row.guests,
+    totalAmount: Number(row.totalAmount),
+    platformFee: Number(row.platformFee),
+    providerProfileId: row.providerProfileId,
+    provinceId: row.room?.hotel.provinceId ?? null,
+  }));
 }

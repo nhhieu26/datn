@@ -2,6 +2,7 @@ import type { ServiceStatus } from "@/generated/prisma/enums";
 
 export type RestaurantListItem = {
   id: string;
+  slug: string;
   code: string;
   name: string;
   description: string;
@@ -21,5 +22,7 @@ export type RestaurantListItem = {
 export type RestaurantsSummary = {
   total: number;
   published: number;
-  inactive: number;
+  /** Tạm dừng thủ công, không tính dịch vụ đang chờ xóa. */
+  paused: number;
+  pendingDeletion: number;
 };

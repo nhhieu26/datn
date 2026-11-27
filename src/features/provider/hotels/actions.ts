@@ -3,11 +3,16 @@
 import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { Prisma } from "@/generated/prisma/client";
+import { Prisma, type ServiceStatus } from "@/generated/prisma/client";
 import { auth } from "@/lib/auth";
 import { deleteImage, uploadImage } from "@/lib/imagekit";
 import { embedText } from "@/lib/gemini";
-import { deleteHotelEmbedding, upsertHotelEmbedding } from "@/lib/pinecone";
+import { buildHotelEmbeddingText } from "@/shared/lib/embedding-text";
+import {
+  deleteHotelEmbedding,
+  setHotelEmbeddingStatus,
+  upsertHotelEmbedding,
+} from "@/lib/pinecone";
 import { slugify } from "@/lib/utils";
 import {
   createHotelSchema,
@@ -19,8 +24,14 @@ import {
 } from "@/entities/hotel";
 import { providerProfileRepo } from "@/entities/provider-profile";
 import { provinceRepo } from "@/entities/province";
+import { systemSettingRepo } from "@/entities/system-setting";
 import { tagRepo } from "@/entities/tag";
 import type { ActionState } from "@/shared/lib/action-state";
+import {
+  isServiceStatus,
+  parseBulkIds,
+  type BulkActionResult,
+} from "../bulk-actions";
 
 export type CreateHotelActionState = ActionState;
 
@@ -37,7 +48,6 @@ const ALLOWED_PHOTO_TYPES = ["image/png", "image/jpeg"];
 const MAX_PHOTOS = 5;
 const MAX_SLUG_ATTEMPTS = 5;
 const CLEANUP_ATTEMPTS = 3;
-const HOTEL_DELETE_GRACE_DAYS = 30;
 
 const STAGE_ERROR_MESSAGES: Record<CreationStage, string> = {
   authorization: "Không thể xác thực tài khoản. Vui lòng thử lại.",
@@ -47,27 +57,6 @@ const STAGE_ERROR_MESSAGES: Record<CreationStage, string> = {
   embedding:
     "Không thể tạo dữ liệu tìm kiếm cho khách sạn. Các tài nguyên đã tạo sẽ được xóa.",
 };
-
-function buildEmbeddingText(
-  data: Pick<CreateHotelInput, "name" | "description" | "address" | "amenities"> & {
-    rooms: { name: string; description?: string | null }[];
-  },
-  provinceName: string,
-  tags: { name: string }[],
-): string {
-  return [
-    data.name,
-    data.description,
-    provinceName,
-    data.address,
-    tags.map((tag) => tag.name).join(", "),
-    data.amenities.join(", "),
-    data.rooms.map((room) => room.name).join(", "),
-    data.rooms.map((room) => room.description).join(", "),
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
 
 function parseJsonField<T>(formData: FormData, key: string, fallback: T): T {
   const raw = formData.get(key);
@@ -414,7 +403,7 @@ export async function createHotelAction(
 
     stage = "embedding";
     const vector = await embedText(
-      buildEmbeddingText(parsed.data, province.fullName, tags),
+      buildHotelEmbeddingText(parsed.data, province.fullName, tags),
     );
     embeddingUpsertAttempted = true;
     await upsertHotelEmbedding(hotel.id, vector, {
@@ -537,7 +526,7 @@ export async function createHotelFromLinksAction(
 
     stage = "embedding";
     const vector = await embedText(
-      buildEmbeddingText(parsed.data, province.fullName, tags),
+      buildHotelEmbeddingText(parsed.data, province.fullName, tags),
     );
     embeddingUpsertAttempted = true;
     await upsertHotelEmbedding(hotel.id, vector, {
@@ -867,7 +856,7 @@ export async function updateHotelAction(
 
     try {
       const vector = await embedText(
-        buildEmbeddingText(parsed.data, province.fullName, tags),
+        buildHotelEmbeddingText(parsed.data, province.fullName, tags),
       );
       await upsertHotelEmbedding(updatedHotel.id, vector, {
         name: parsed.data.name,
@@ -932,10 +921,13 @@ type ProviderHotelResult =
   | { error: ActionState }
   | { hotel: HotelForProvider; providerProfileId: string };
 
-async function findProviderHotel(
-  hotelId: string,
+type ProviderHotelAuthResult =
+  | { error: ActionState }
+  | { providerProfileId: string };
+
+async function authorizeHotelProvider(
   verb: string,
-): Promise<ProviderHotelResult> {
+): Promise<ProviderHotelAuthResult> {
   const session = await auth();
   if (!session?.user?.id) {
     return { error: { status: "error", formError: "Vui lòng đăng nhập lại." } };
@@ -963,17 +955,27 @@ async function findProviderHotel(
       },
     };
   }
+  return { providerProfileId: providerProfile.id };
+}
+
+async function findProviderHotel(
+  hotelId: string,
+  verb: string,
+): Promise<ProviderHotelResult> {
+  const authorized = await authorizeHotelProvider(verb);
+  if ("error" in authorized) return authorized;
+  const { providerProfileId } = authorized;
 
   const hotel = await hotelRepo.findByIdForProvider(
     hotelId,
-    providerProfile.id,
+    providerProfileId,
   );
   if (!hotel) {
     return {
       error: { status: "error", formError: "Không tìm thấy khách sạn." },
     };
   }
-  return { hotel, providerProfileId: providerProfile.id };
+  return { hotel, providerProfileId };
 }
 
 function revalidateHotelPages(slug: string) {
@@ -983,40 +985,67 @@ function revalidateHotelPages(slug: string) {
   revalidatePath("/");
 }
 
-export async function deleteHotelAction(hotelId: string): Promise<ActionState> {
-  const found = await findProviderHotel(hotelId, "xóa");
-  if ("error" in found) return found.error;
-  const { hotel, providerProfileId } = found;
+function revalidateHotelPagesMany(slugs: string[]) {
+  revalidatePath("/provider/hotels");
+  revalidatePath("/explore");
+  revalidatePath("/");
+  for (const slug of slugs) revalidatePath(`/hotels/${slug}`);
+}
+
+function bulkError(formError: string): ActionState<BulkActionResult> {
+  return { status: "error", formError };
+}
+
+export async function deleteHotelsAction(
+  hotelIds: string[],
+): Promise<ActionState<BulkActionResult>> {
+  const ids = parseBulkIds(hotelIds);
+  if (!ids) return bulkError("Danh sách khách sạn không hợp lệ.");
+
+  const authorized = await authorizeHotelProvider("xóa");
+  if ("error" in authorized) return bulkError(authorized.error.formError ?? "");
 
   // Không xóa ngay: dừng bán, booking đang có vẫn xử lý bình thường; cron xóa mềm khi tới hạn
+  const { serviceDeleteGraceDays } = await systemSettingRepo.getSettings();
   const deleteAt = new Date(
-    Date.now() + HOTEL_DELETE_GRACE_DAYS * 24 * 60 * 60 * 1000,
+    Date.now() + serviceDeleteGraceDays * 24 * 60 * 60 * 1000,
   );
+  let changed: { id: string; slug: string }[];
   try {
-    const count = await hotelRepo.scheduleDeletion(
-      hotel.id,
-      providerProfileId,
+    changed = await hotelRepo.scheduleDeletionMany(
+      ids,
+      authorized.providerProfileId,
       deleteAt,
     );
-    if (count === 0) {
-      return { status: "error", formError: "Khách sạn đã được dừng trước đó." };
+  } catch (error) {
+    console.error("Xóa khách sạn thất bại", { ids, error });
+    return bulkError("Không thể xóa khách sạn. Vui lòng thử lại.");
+  }
+  if (changed.length === 0) {
+    return bulkError(
+      ids.length === 1
+        ? "Khách sạn đã được dừng trước đó."
+        : "Không có khách sạn nào được xóa: các khách sạn đã chọn đều đã dừng trước đó.",
+    );
+  }
+
+  const results = await Promise.allSettled(
+    changed.map(({ id }) => deleteHotelEmbedding(id)),
+  );
+  results.forEach((result, index) => {
+    if (result.status === "rejected") {
+      console.error("Xóa embedding khách sạn thất bại", {
+        hotelId: changed[index].id,
+        error: result.reason,
+      });
     }
-  } catch (error) {
-    console.error("Xóa khách sạn thất bại", { hotelId, error });
-    return {
-      status: "error",
-      formError: "Không thể xóa khách sạn. Vui lòng thử lại.",
-    };
-  }
+  });
 
-  try {
-    await deleteHotelEmbedding(hotel.id);
-  } catch (error) {
-    console.error("Xóa embedding khách sạn thất bại", { hotelId, error });
-  }
-
-  revalidateHotelPages(hotel.slug);
-  return { status: "success" };
+  revalidateHotelPagesMany(changed.map(({ slug }) => slug));
+  return {
+    status: "success",
+    data: { updated: changed.length, skipped: ids.length - changed.length },
+  };
 }
 
 export async function restoreHotelAction(
@@ -1045,7 +1074,7 @@ export async function restoreHotelAction(
   // Embedding đã bị xóa khi dừng khách sạn, tạo lại để khách sạn xuất hiện trong tìm kiếm
   try {
     const vector = await embedText(
-      buildEmbeddingText(
+      buildHotelEmbeddingText(
         { ...hotel, description: hotel.description ?? "" },
         hotel.province.fullName,
         hotel.tags.map((hotelTag) => hotelTag.tag),
@@ -1064,4 +1093,53 @@ export async function restoreHotelAction(
 
   revalidateHotelPages(hotel.slug);
   return { status: "success" };
+}
+
+export async function setHotelsStatusAction(
+  hotelIds: string[],
+  status: ServiceStatus,
+): Promise<ActionState<BulkActionResult>> {
+  const ids = parseBulkIds(hotelIds);
+  if (!ids || !isServiceStatus(status)) {
+    return bulkError("Danh sách khách sạn hoặc trạng thái không hợp lệ.");
+  }
+
+  const authorized = await authorizeHotelProvider("đổi trạng thái");
+  if ("error" in authorized) return bulkError(authorized.error.formError ?? "");
+
+  let changed: { id: string; slug: string }[];
+  try {
+    changed = await hotelRepo.setStatusMany(
+      ids,
+      authorized.providerProfileId,
+      status,
+    );
+  } catch (error) {
+    console.error("Đổi trạng thái khách sạn thất bại", { ids, error });
+    return bulkError("Không thể đổi trạng thái khách sạn. Vui lòng thử lại.");
+  }
+  if (changed.length === 0) {
+    return bulkError(
+      "Không có khách sạn nào được đổi trạng thái: khách sạn đã dừng hoặc đã ở sẵn trạng thái này.",
+    );
+  }
+
+  // Chỉ đổi metadata để tìm kiếm lọc theo trạng thái, không cần tạo lại vector
+  try {
+    const failed = await setHotelEmbeddingStatus(
+      changed.map(({ id }) => id),
+      status,
+    );
+    if (failed.length > 0) {
+      console.error("Cập nhật trạng thái embedding khách sạn thất bại", { failed });
+    }
+  } catch (error) {
+    console.error("Cập nhật trạng thái embedding khách sạn thất bại", { error });
+  }
+
+  revalidateHotelPagesMany(changed.map(({ slug }) => slug));
+  return {
+    status: "success",
+    data: { updated: changed.length, skipped: ids.length - changed.length },
+  };
 }

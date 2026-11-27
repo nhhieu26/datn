@@ -1,6 +1,11 @@
 export type ExploreKind = "destination" | "hotel" | "restaurant" | "tour";
 
-export type ExploreSort = "popular" | "price_asc" | "price_desc" | "newest";
+export type ExploreSort =
+  | "relevance"
+  | "popular"
+  | "price_asc"
+  | "price_desc"
+  | "newest";
 
 export type ExploreItem = {
   id: string;
@@ -19,6 +24,8 @@ export type ExploreItem = {
   rating?: { avg: number; count: number };
   /** số lượt đặt (booking paid/confirmed/completed), dùng sắp xếp "Phổ biến" */
   bookingCount?: number;
+  /** điểm phù hợp với câu tìm kiếm (sắp xếp "Phù hợp nhất") hoặc điểm gợi ý */
+  score?: number;
 };
 
 export const KIND_LABELS: Record<ExploreKind, string> = {
@@ -37,6 +44,7 @@ export const KIND_FILTERS: { label: string; kind: ExploreKind | "all" }[] = [
 ];
 
 export const SORT_OPTIONS: { label: string; value: ExploreSort }[] = [
+  { label: "Phù hợp nhất", value: "relevance" },
   { label: "Phổ biến nhất", value: "popular" },
   { label: "Giá thấp đến cao", value: "price_asc" },
   { label: "Giá cao đến thấp", value: "price_desc" },

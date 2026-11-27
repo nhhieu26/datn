@@ -4,19 +4,23 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { formatDate } from "@/lib/utils";
-import { deleteRestaurantAction } from "../actions";
+import { deleteRestaurantsAction } from "../actions";
 import type { RestaurantListItem } from "../types";
 import { RestaurantIcon } from "./restaurant-icon";
 
 const RESTAURANT_DELETE_GRACE_DAYS = 30;
 
 export function DeleteRestaurantDialog({
-  restaurant,
+  restaurants,
   onClose,
+  onDeleted,
 }: {
-  restaurant: RestaurantListItem;
+  restaurants: RestaurantListItem[];
   onClose: () => void;
+  /** Gọi sau khi xóa thành công, với id các nhà hàng đã gửi xóa. */
+  onDeleted?: (ids: string[]) => void;
 }) {
+  const isMany = restaurants.length > 1;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
@@ -37,11 +41,13 @@ export function DeleteRestaurantDialog({
     event.preventDefault();
     setError("");
     startTransition(async () => {
-      const result = await deleteRestaurantAction(restaurant.id);
+      const ids = restaurants.map((item) => item.id);
+      const result = await deleteRestaurantsAction(ids);
       if (result.status !== "success") {
         setError(result.formError ?? "Không thể xóa nhà hàng.");
         return;
       }
+      onDeleted?.(ids);
       router.refresh();
       onClose();
     });
@@ -71,11 +77,22 @@ export function DeleteRestaurantDialog({
           className="text-lg font-bold text-slate-900"
           id="delete-restaurant-heading"
         >
-          Dừng và xóa nhà hàng?
+          {isMany ? `Dừng và xóa ${restaurants.length} nhà hàng?` : "Dừng và xóa nhà hàng?"}
         </h2>
         <p className="mt-1 text-xs font-semibold text-brand-600">
-          {restaurant.code} · {restaurant.name}
+          {isMany
+            ? `${restaurants.length} nhà hàng đã chọn`
+            : `${restaurants[0].code} · ${restaurants[0].name}`}
         </p>
+        {isMany ? (
+          <ul className="mt-2 max-h-28 space-y-0.5 overflow-y-auto rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600">
+            {restaurants.map((item) => (
+              <li className="truncate" key={item.id}>
+                <span className="font-mono">{item.code}</span> · {item.name}
+              </li>
+            ))}
+          </ul>
+        ) : null}
 
         <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-sm text-amber-800">
           Nhà hàng sẽ <span className="font-semibold">dừng hoạt động ngay</span>{" "}

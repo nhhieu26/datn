@@ -164,6 +164,29 @@ export function findById(
   return prisma.providerProfile.findFirst({ where: { id, userId } });
 }
 
+/** Cập nhật / xóa (null) chữ ký in trên hóa đơn — không ảnh hưởng trạng thái duyệt. */
+export function updateSignature(
+  id: string,
+  userId: string,
+  signature: { signatureUrl: string; signatureFileId: string } | null
+) {
+  return prisma.providerProfile.updateMany({
+    where: { id, userId },
+    data: signature
+      ? { ...signature, signatureUpdatedAt: new Date() }
+      : { signatureUrl: null, signatureFileId: null, signatureUpdatedAt: null },
+  });
+}
+
+export function findDetailById(id: string, userId: string) {
+  return prisma.providerProfile.findFirst({
+    where: { id, userId },
+    include: {
+      _count: { select: { tours: true, hotels: true, restaurants: true } },
+    },
+  });
+}
+
 export function update(
   id: string,
   input: UpdateProviderProfileInput & {
@@ -184,6 +207,61 @@ export function update(
   });
 }
 
+/**
+ * Xóa hồ sơ nếu không còn dịch vụ (chưa xóa mềm), booking hay payout nào.
+ * Kiểm tra và xóa trong một câu lệnh. Trả về 0 nếu không tìm thấy hoặc còn ràng buộc.
+ */
+export async function removeIfUnused(
+  id: string,
+  userId: string
+): Promise<number> {
+  const { count } = await prisma.providerProfile.deleteMany({
+    where: {
+      id,
+      userId,
+      tours: { none: { deletedAt: null } },
+      hotels: { none: { deletedAt: null } },
+      restaurants: { none: { deletedAt: null } },
+      tourBookings: { none: {} },
+      hotelBookings: { none: {} },
+      restaurantBookings: { none: {} },
+      payouts: { none: {} },
+    },
+  });
+  return count;
+}
+
+/** Đếm những thứ đang chặn việc xóa hồ sơ, để báo lý do cho provider. */
+export async function findDeletionBlockers(id: string, userId: string) {
+  const profile = await prisma.providerProfile.findFirst({
+    where: { id, userId },
+    select: {
+      _count: {
+        select: {
+          tours: { where: { deletedAt: null } },
+          hotels: { where: { deletedAt: null } },
+          restaurants: { where: { deletedAt: null } },
+          tourBookings: true,
+          hotelBookings: true,
+          restaurantBookings: true,
+          payouts: true,
+        },
+      },
+    },
+  });
+  if (!profile) return null;
+
+  const count = profile._count;
+  return {
+    services: count.tours + count.hotels + count.restaurants,
+    transactions:
+      count.tourBookings +
+      count.hotelBookings +
+      count.restaurantBookings +
+      count.payouts,
+  };
+}
+
 export function linkPayPal(
   id: string,
   userId: string,
@@ -196,5 +274,44 @@ export function linkPayPal(
       paypalPayerId: input.payerId,
       paypalLinkedAt: new Date(),
     },
+  });
+}
+
+/** Số hồ sơ đối tác theo trạng thái duyệt (báo cáo admin). */
+export async function countByApprovalStatus() {
+  const rows = await prisma.providerProfile.groupBy({
+    by: ["approvalStatus"],
+    _count: { _all: true },
+  });
+  const counts: Record<ApprovalStatus, number> = {
+    not_submitted: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+  };
+  for (const row of rows) counts[row.approvalStatus] = row._count._all;
+  return counts;
+}
+
+export function findNamesByIds(ids: string[]) {
+  return prisma.providerProfile.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, businessName: true, businessType: true },
+  });
+}
+
+/** Hồ sơ đối tác đang chờ duyệt, gửi gần nhất trước (dashboard admin). */
+export function findRecentPending(take: number) {
+  return prisma.providerProfile.findMany({
+    where: { approvalStatus: "pending" },
+    select: {
+      id: true,
+      businessName: true,
+      businessType: true,
+      updatedAt: true,
+      user: { select: { fullname: true } },
+    },
+    orderBy: { updatedAt: "desc" },
+    take,
   });
 }

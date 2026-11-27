@@ -34,10 +34,13 @@ export async function ServiceReviews({
     auth(),
   ]);
   const user = session?.user;
-  const bookings =
+  const [bookings, ownUnpublished] =
     user?.role === "customer"
-      ? await reviewRepo.findReviewableBookings(user.id, kind, serviceId)
-      : [];
+      ? await Promise.all([
+          reviewRepo.findReviewableBookings(user.id, kind, serviceId),
+          reviewRepo.findOwnUnpublished(user.id, kind, serviceId),
+        ])
+      : [[], []];
 
   const moreHref =
     reviews.length < total
@@ -47,6 +50,32 @@ export async function ServiceReviews({
   return (
     <section className="scroll-mt-28" id="reviews">
       <ReviewList moreHref={moreHref} reviews={reviews} total={total} />
+      {ownUnpublished.length > 0 ? (
+        <ul className="mt-6 flex flex-col gap-3">
+          {ownUnpublished.map((r) => (
+            <li
+              className={`rounded-lg border px-5 py-4 text-sm ${
+                r.status === "pending"
+                  ? "border-amber-200 bg-amber-50 text-amber-800"
+                  : "border-rose-200 bg-rose-50 text-rose-800"
+              }`}
+              key={r.id}
+            >
+              <p className="font-semibold">
+                {r.status === "pending"
+                  ? "Đánh giá của bạn đang chờ kiểm duyệt"
+                  : "Đánh giá của bạn không được hiển thị do vi phạm tiêu chuẩn cộng đồng"}
+              </p>
+              {r.status === "rejected" && r.moderationReason ? (
+                <p className="mt-1">Lý do: {r.moderationReason}</p>
+              ) : null}
+              <p className="mt-2 line-clamp-2 italic opacity-80">
+                {r.rating}★ · “{r.content}”
+              </p>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {bookings.length > 0 ? (
         <ReviewForm
           bookings={bookings.map((b) => ({

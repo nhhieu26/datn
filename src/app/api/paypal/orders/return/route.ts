@@ -1,5 +1,6 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { hotelBookingRepo } from "@/entities/hotel-booking";
+import { notifyBookingPaid } from "@/entities/notification";
 import { tourBookingRepo } from "@/entities/tour-booking";
 import { auth } from "@/lib/auth";
 import { captureOrder } from "@/lib/paypal";
@@ -9,11 +10,21 @@ import { NextResponse, type NextRequest } from "next/server";
 async function findPayment(orderId: string) {
   const tourPayment = await tourBookingRepo.findPaymentByOrderId(orderId);
   if (tourPayment?.tourBooking) {
-    return { payment: tourPayment, booking: tourPayment.tourBooking, repo: tourBookingRepo };
+    return {
+      kind: "tour" as const,
+      payment: tourPayment,
+      booking: tourPayment.tourBooking,
+      repo: tourBookingRepo,
+    };
   }
   const hotelPayment = await hotelBookingRepo.findPaymentByOrderId(orderId);
   if (hotelPayment?.hotelBooking) {
-    return { payment: hotelPayment, booking: hotelPayment.hotelBooking, repo: hotelBookingRepo };
+    return {
+      kind: "hotel" as const,
+      payment: hotelPayment,
+      booking: hotelPayment.hotelBooking,
+      repo: hotelBookingRepo,
+    };
   }
   return null;
 }
@@ -30,7 +41,7 @@ export async function GET(request: NextRequest) {
   if (!found || found.booking.customerId !== session.user.id) {
     return NextResponse.redirect(new URL("/", request.url));
   }
-  const { payment, booking, repo } = found;
+  const { kind, payment, booking, repo } = found;
   const done = () =>
     NextResponse.redirect(new URL(`/bookings/${booking.code}`, request.url));
 
@@ -60,6 +71,7 @@ export async function GET(request: NextRequest) {
         captureId: result.captureId,
         raw: result.raw as Prisma.InputJsonValue,
       });
+      await notifyBookingPaid({ kind, bookingId: booking.id });
     } else {
       await repo.markPaymentFailed(
         payment.id,

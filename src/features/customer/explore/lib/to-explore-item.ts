@@ -6,7 +6,7 @@ import type { tourRepo } from "@/entities/tour";
 import { firstImage } from "@/features/customer/components/cards/card-parts";
 import type { ExploreItem } from "../data";
 
-type WithBookings = { bookingCount?: number };
+type WithBookings = { bookingCount?: number; score?: number };
 type TourRow = Awaited<ReturnType<typeof tourRepo.findPaged>>["items"][number] &
   WithBookings;
 type HotelRow = Awaited<ReturnType<typeof hotelRepo.findPaged>>["items"][number] &
@@ -17,7 +17,7 @@ type RestaurantRow = Awaited<
   WithBookings;
 type DestinationRow = Awaited<
   ReturnType<typeof destinationRepo.findPaged>
->["items"][number];
+>["items"][number] & { score?: number };
 
 function toRating(s: { ratingAvg: unknown; reviewCount: number }) {
   return { avg: Number(s.ratingAvg), count: s.reviewCount };
@@ -40,6 +40,7 @@ export function toTourItem(t: TourRow): ExploreItem {
     price: Number(t.basePrice),
     rating: toRating(t),
     bookingCount: t.bookingCount,
+    score: t.score,
     meta: [
       `${t.durationDays} ngày ${t.durationNights} đêm`,
       `${t._count.departures} lịch khởi hành`,
@@ -60,6 +61,7 @@ export function toHotelItem(h: HotelRow): ExploreItem {
     price: average(h.rooms.map((r) => Number(r.basePrice))),
     rating: toRating(h),
     bookingCount: h.bookingCount,
+    score: h.score,
     meta: [
       `${h.rooms.length} loại phòng`,
       capacity ? `Tối đa ${capacity} khách` : "—",
@@ -81,6 +83,7 @@ export function toRestaurantItem(r: RestaurantRow): ExploreItem {
     price: menuAveragePrice(r.menu),
     rating: toRating(r),
     bookingCount: r.bookingCount,
+    score: r.score,
     meta: [
       `Sức chứa ${r.capacity}`,
       starts.length ? `${starts[0]} - ${ends[ends.length - 1]}` : "—",
@@ -99,6 +102,7 @@ export function toDestinationItem(d: DestinationRow): ExploreItem {
     location: d.province.name,
     image: firstImage(d.images),
     price,
+    score: d.score,
     meta: [price ? `Vé ${formatMoney(price)}` : "Miễn phí", d.province.name],
   };
 }

@@ -7,10 +7,9 @@ export const PACKAGE_TABS: { kind: PackageKind; label: string }[] = [
   { kind: "destination", label: "Điểm đến" },
 ];
 
-export const PACKAGE_COPY: Record<
-  PackageKind,
-  { script: string; heading: string; cta: string }
-> = {
+export type PackageCopy = { script: string; heading: string; cta: string };
+
+export const PACKAGE_COPY: Record<PackageKind, PackageCopy> = {
   tour: {
     script: "Tour phổ biến",
     heading: "Tour được yêu thích nhất",
@@ -29,6 +28,29 @@ export const PACKAGE_COPY: Record<
   destination: {
     script: "Điểm đến phổ biến",
     heading: "Điểm đến được yêu thích nhất",
+    cta: "Xem tất cả điểm đến",
+  },
+};
+
+export const RECOMMENDED_COPY: Record<PackageKind, PackageCopy> = {
+  tour: {
+    script: "Dành cho bạn",
+    heading: "Tour hợp với sở thích của bạn",
+    cta: "Xem tất cả tour",
+  },
+  hotel: {
+    script: "Dành cho bạn",
+    heading: "Khách sạn hợp với sở thích của bạn",
+    cta: "Xem tất cả khách sạn",
+  },
+  restaurant: {
+    script: "Dành cho bạn",
+    heading: "Nhà hàng hợp với sở thích của bạn",
+    cta: "Xem tất cả nhà hàng",
+  },
+  destination: {
+    script: "Dành cho bạn",
+    heading: "Điểm đến hợp với sở thích của bạn",
     cta: "Xem tất cả điểm đến",
   },
 };

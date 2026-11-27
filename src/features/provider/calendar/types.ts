@@ -16,6 +16,11 @@ export type CalendarEvent = {
   end: string;
 };
 
+export type CalendarServiceOption = {
+  id: string;
+  name: string;
+};
+
 export type CalendarDay = {
   iso: string;
   day: number;

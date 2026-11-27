@@ -57,7 +57,17 @@ export function LoginForm() {
       return;
     }
 
-    router.push(accountType === "provider" ? "/provider" : "/");
+    // Chỉ nhận đường dẫn nội bộ để tránh open redirect
+    const callbackUrl = new URLSearchParams(window.location.search).get(
+      "callbackUrl",
+    );
+    const safeCallback =
+      callbackUrl?.startsWith("/") && !callbackUrl.startsWith("//")
+        ? callbackUrl
+        : null;
+    router.push(
+      accountType === "provider" ? "/provider" : (safeCallback ?? "/"),
+    );
   }
 
   return (

@@ -1,9 +1,9 @@
 "use client";
 
 import { formatDate, formatEntityCode, formatTime } from "@/lib/utils";
-import type { UserStatus } from "@/generated/prisma/client";
 import type { ActionState } from "@/shared/lib/action-state";
 import Link from "next/link";
+import { userStatusMeta } from "@/features/admin/users/components/users-shared";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type ReactNode } from "react";
 import {
@@ -22,16 +22,6 @@ import {
   primaryButtonClass,
   StatusBadge,
 } from "./approval-shared";
-
-const userStatusMeta: Record<UserStatus, { label: string; className: string }> =
-  {
-    active: { label: "Đang hoạt động", className: "bg-teal-100 text-teal-800" },
-    inactive: {
-      label: "Chưa kích hoạt",
-      className: "bg-surface text-surface-foreground",
-    },
-    banned: { label: "Đã bị cấm", className: "bg-red-100 text-red-800" },
-  };
 
 function Card({
   title,

@@ -4,7 +4,7 @@ import type { ExploreItem } from "@/features/customer/explore/data";
 
 export function DestinationCard({ item }: { item: ExploreItem }) {
   const card = (
-    <article className="group rounded-lg border border-new-chip overflow-hidden">
+    <article className="group h-full bg-white rounded-lg border border-new-chip overflow-hidden transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:border-new-teal/30">
       <div className="relative h-[200px] overflow-hidden">
         <Image
           alt={item.title}
@@ -15,7 +15,7 @@ export function DestinationCard({ item }: { item: ExploreItem }) {
         />
       </div>
       <div className="pt-5 pr-4 pb-4 pl-[15px]">
-        <h4 className="mb-0.5 text-lg font-bold leading-[1.2] text-new-title">
+        <h4 className="mb-0.5 text-lg font-bold leading-[1.2] text-new-title transition-colors group-hover:text-new-teal-cta">
           {item.title}
         </h4>
         <div className="mb-3 flex items-center gap-1 text-new-teal-cta">

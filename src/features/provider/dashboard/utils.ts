@@ -2,10 +2,10 @@ import type { DashboardRange } from "./search-params";
 
 // Việt Nam cố định UTC+7 (không có giờ mùa hè) nên dời mốc thời gian thủ công
 const VN_OFFSET = 7 * 3_600_000;
-const DAY = 86_400_000;
+export const DAY = 86_400_000;
 
-const toVn = (date: Date) => new Date(date.getTime() + VN_OFFSET);
-const fromVn = (year: number, month: number, day = 1) =>
+export const toVn = (date: Date) => new Date(date.getTime() + VN_OFFSET);
+export const fromVn = (year: number, month: number, day = 1) =>
   new Date(Date.UTC(year, month, day) - VN_OFFSET);
 
 /** 0h ngày đầu tháng (giờ VN), `offset` tháng so với tháng của `now`. */
@@ -21,7 +21,7 @@ export function startOfDayVn(now: Date) {
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
-const dayLabel = (start: Date) => {
+export const dayLabel = (start: Date) => {
   const vn = toVn(start);
   return `${pad(vn.getUTCDate())}/${pad(vn.getUTCMonth() + 1)}`;
 };

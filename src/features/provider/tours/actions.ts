@@ -3,11 +3,16 @@
 import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { Prisma } from "@/generated/prisma/client";
+import { Prisma, type ServiceStatus } from "@/generated/prisma/client";
 import { auth } from "@/lib/auth";
 import { deleteImage, uploadImage } from "@/lib/imagekit";
 import { embedText } from "@/lib/gemini";
-import { deleteTourEmbedding, upsertTourEmbedding } from "@/lib/pinecone";
+import { buildTourEmbeddingText } from "@/shared/lib/embedding-text";
+import {
+  deleteTourEmbedding,
+  setTourEmbeddingStatus,
+  upsertTourEmbedding,
+} from "@/lib/pinecone";
 import { slugify } from "@/lib/utils";
 import {
   createTourSchema,
@@ -19,8 +24,14 @@ import {
 } from "@/entities/tour";
 import { providerProfileRepo } from "@/entities/provider-profile";
 import { provinceRepo } from "@/entities/province";
+import { systemSettingRepo } from "@/entities/system-setting";
 import { tagRepo } from "@/entities/tag";
 import type { ActionState } from "@/shared/lib/action-state";
+import {
+  isServiceStatus,
+  parseBulkIds,
+  type BulkActionResult,
+} from "../bulk-actions";
 
 export type CreateTourActionState = ActionState;
 
@@ -37,7 +48,6 @@ const ALLOWED_PHOTO_TYPES = ["image/png", "image/jpeg"];
 const MAX_PHOTOS = 5;
 const MAX_SLUG_ATTEMPTS = 5;
 const CLEANUP_ATTEMPTS = 3;
-const TOUR_DELETE_GRACE_DAYS = 30;
 
 const STAGE_ERROR_MESSAGES: Record<CreationStage, string> = {
   authorization: "Không thể xác thực tài khoản. Vui lòng thử lại.",
@@ -85,26 +95,6 @@ function hasPastDeparture(
 }
 
 const PAST_DEPARTURE_ERROR = "Ngày khởi hành phải ở tương lai.";
-
-function buildEmbeddingText(
-  data: Pick<
-    CreateTourInput,
-    "title" | "description" | "itinerary" | "includeServices"
-  >,
-  provinceName: string,
-  tags: { name: string }[],
-): string {
-  return [
-    data.title,
-    data.description,
-    provinceName,
-    tags.map((tag) => tag.name).join(", "),
-    data.itinerary.map((day) => day.title).join(", "),
-    data.includeServices.join(", "),
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
 
 function isUniqueConstraintError(error: unknown): boolean {
   return (
@@ -344,7 +334,7 @@ export async function createTourAction(
 
     stage = "embedding";
     const vector = await embedText(
-      buildEmbeddingText(parsed.data, province.fullName, tags),
+      buildTourEmbeddingText(parsed.data, province.fullName, tags),
     );
     embeddingUpsertAttempted = true;
     await upsertTourEmbedding(tour.id, vector, {
@@ -435,7 +425,7 @@ export async function createTourFromLinksAction(
 
     stage = "embedding";
     const vector = await embedText(
-      buildEmbeddingText(parsed.data, province.fullName, tags),
+      buildTourEmbeddingText(parsed.data, province.fullName, tags),
     );
     embeddingUpsertAttempted = true;
     await upsertTourEmbedding(tour.id, vector, {
@@ -656,7 +646,7 @@ export async function updateTourAction(
 
     try {
       const vector = await embedText(
-        buildEmbeddingText(parsed.data, province.fullName, tags),
+        buildTourEmbeddingText(parsed.data, province.fullName, tags),
       );
       await upsertTourEmbedding(updatedTour.id, vector, {
         title: parsed.data.title,
@@ -717,10 +707,13 @@ type ProviderTourResult =
   | { error: ActionState }
   | { tour: TourWithRelations; providerProfileId: string };
 
-async function findProviderTour(
-  tourId: string,
+type ProviderTourAuthResult =
+  | { error: ActionState }
+  | { providerProfileId: string };
+
+async function authorizeTourProvider(
   verb: string,
-): Promise<ProviderTourResult> {
+): Promise<ProviderTourAuthResult> {
   const session = await auth();
   if (!session?.user?.id) {
     return { error: { status: "error", formError: "Vui lòng đăng nhập lại." } };
@@ -748,12 +741,22 @@ async function findProviderTour(
       },
     };
   }
+  return { providerProfileId: providerProfile.id };
+}
 
-  const tour = await tourRepo.findByIdForProvider(tourId, providerProfile.id);
+async function findProviderTour(
+  tourId: string,
+  verb: string,
+): Promise<ProviderTourResult> {
+  const authorized = await authorizeTourProvider(verb);
+  if ("error" in authorized) return authorized;
+  const { providerProfileId } = authorized;
+
+  const tour = await tourRepo.findByIdForProvider(tourId, providerProfileId);
   if (!tour) {
     return { error: { status: "error", formError: "Không tìm thấy tour." } };
   }
-  return { tour, providerProfileId: providerProfile.id };
+  return { tour, providerProfileId };
 }
 
 function revalidateTourPages(slug: string) {
@@ -763,40 +766,67 @@ function revalidateTourPages(slug: string) {
   revalidatePath("/");
 }
 
-export async function deleteTourAction(tourId: string): Promise<ActionState> {
-  const found = await findProviderTour(tourId, "xóa");
-  if ("error" in found) return found.error;
-  const { tour, providerProfileId } = found;
+function revalidateTourPagesMany(slugs: string[]) {
+  revalidatePath("/provider/tours");
+  revalidatePath("/explore");
+  revalidatePath("/");
+  for (const slug of slugs) revalidatePath(`/tours/${slug}`);
+}
+
+function bulkError(formError: string): ActionState<BulkActionResult> {
+  return { status: "error", formError };
+}
+
+export async function deleteToursAction(
+  tourIds: string[],
+): Promise<ActionState<BulkActionResult>> {
+  const ids = parseBulkIds(tourIds);
+  if (!ids) return bulkError("Danh sách tour không hợp lệ.");
+
+  const authorized = await authorizeTourProvider("xóa");
+  if ("error" in authorized) return bulkError(authorized.error.formError ?? "");
 
   // Không xóa ngay: dừng bán, booking đang có vẫn xử lý bình thường; cron xóa mềm khi tới hạn
+  const { serviceDeleteGraceDays } = await systemSettingRepo.getSettings();
   const deleteAt = new Date(
-    Date.now() + TOUR_DELETE_GRACE_DAYS * 24 * 60 * 60 * 1000,
+    Date.now() + serviceDeleteGraceDays * 24 * 60 * 60 * 1000,
   );
+  let changed: { id: string; slug: string }[];
   try {
-    const count = await tourRepo.scheduleDeletion(
-      tour.id,
-      providerProfileId,
+    changed = await tourRepo.scheduleDeletionMany(
+      ids,
+      authorized.providerProfileId,
       deleteAt,
     );
-    if (count === 0) {
-      return { status: "error", formError: "Tour đã được dừng trước đó." };
+  } catch (error) {
+    console.error("Xóa tour thất bại", { ids, error });
+    return bulkError("Không thể xóa tour. Vui lòng thử lại.");
+  }
+  if (changed.length === 0) {
+    return bulkError(
+      ids.length === 1
+        ? "Tour đã được dừng trước đó."
+        : "Không có tour nào được xóa: các tour đã chọn đều đã dừng trước đó.",
+    );
+  }
+
+  const results = await Promise.allSettled(
+    changed.map(({ id }) => deleteTourEmbedding(id)),
+  );
+  results.forEach((result, index) => {
+    if (result.status === "rejected") {
+      console.error("Xóa embedding tour thất bại", {
+        tourId: changed[index].id,
+        error: result.reason,
+      });
     }
-  } catch (error) {
-    console.error("Xóa tour thất bại", { tourId, error });
-    return {
-      status: "error",
-      formError: "Không thể xóa tour. Vui lòng thử lại.",
-    };
-  }
+  });
 
-  try {
-    await deleteTourEmbedding(tour.id);
-  } catch (error) {
-    console.error("Xóa embedding tour thất bại", { tourId, error });
-  }
-
-  revalidateTourPages(tour.slug);
-  return { status: "success" };
+  revalidateTourPagesMany(changed.map(({ slug }) => slug));
+  return {
+    status: "success",
+    data: { updated: changed.length, skipped: ids.length - changed.length },
+  };
 }
 
 export async function restoreTourAction(tourId: string): Promise<ActionState> {
@@ -821,7 +851,7 @@ export async function restoreTourAction(tourId: string): Promise<ActionState> {
   try {
     const tagIds = tour.tags.map((tourTag) => tourTag.tagId);
     const vector = await embedText(
-      buildEmbeddingText(
+      buildTourEmbeddingText(
         {
           title: tour.title,
           description: tour.description ?? "",
@@ -847,4 +877,53 @@ export async function restoreTourAction(tourId: string): Promise<ActionState> {
 
   revalidateTourPages(tour.slug);
   return { status: "success" };
+}
+
+export async function setToursStatusAction(
+  tourIds: string[],
+  status: ServiceStatus,
+): Promise<ActionState<BulkActionResult>> {
+  const ids = parseBulkIds(tourIds);
+  if (!ids || !isServiceStatus(status)) {
+    return bulkError("Danh sách tour hoặc trạng thái không hợp lệ.");
+  }
+
+  const authorized = await authorizeTourProvider("đổi trạng thái");
+  if ("error" in authorized) return bulkError(authorized.error.formError ?? "");
+
+  let changed: { id: string; slug: string }[];
+  try {
+    changed = await tourRepo.setStatusMany(
+      ids,
+      authorized.providerProfileId,
+      status,
+    );
+  } catch (error) {
+    console.error("Đổi trạng thái tour thất bại", { ids, error });
+    return bulkError("Không thể đổi trạng thái tour. Vui lòng thử lại.");
+  }
+  if (changed.length === 0) {
+    return bulkError(
+      "Không có tour nào được đổi trạng thái: tour đã dừng hoặc đã ở sẵn trạng thái này.",
+    );
+  }
+
+  // Chỉ đổi metadata để tìm kiếm lọc theo trạng thái, không cần tạo lại vector
+  try {
+    const failed = await setTourEmbeddingStatus(
+      changed.map(({ id }) => id),
+      status,
+    );
+    if (failed.length > 0) {
+      console.error("Cập nhật trạng thái embedding tour thất bại", { failed });
+    }
+  } catch (error) {
+    console.error("Cập nhật trạng thái embedding tour thất bại", { error });
+  }
+
+  revalidateTourPagesMany(changed.map(({ slug }) => slug));
+  return {
+    status: "success",
+    data: { updated: changed.length, skipped: ids.length - changed.length },
+  };
 }

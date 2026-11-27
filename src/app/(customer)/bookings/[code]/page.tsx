@@ -1,5 +1,6 @@
 import { hotelBookingRepo } from "@/entities/hotel-booking";
 import { restaurantBookingRepo } from "@/entities/restaurant-booking";
+import { systemSettingRepo } from "@/entities/system-setting";
 import { tourBookingRepo } from "@/entities/tour-booking";
 import {
   BookingStepper,
@@ -15,8 +16,8 @@ import {
   REBOOK_LABEL,
   stepLabels,
 } from "@/features/customer/booking/lib/booking-labels";
-import { USD_RATE } from "@/features/customer/booking/lib/exchange-rate";
 import { PageBanner } from "@/features/customer/components/page-banner";
+import { invoiceHref } from "@/features/invoice/links";
 import { auth } from "@/lib/auth";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -29,15 +30,29 @@ type Props = { params: Promise<{ code: string }> };
 const PAID_STATUSES = new Set(["paid", "confirmed", "completed"]);
 
 /** Tải booking theo tiền tố mã (HB- → khách sạn, còn lại → tour) và build summary. */
-async function loadBooking(code: string, customerId: string) {
+async function loadBooking(
+  code: string,
+  customerId: string,
+  cancelCutoffHours: number,
+) {
   if (code.startsWith(`${CODE_PREFIX.hotel}-`)) {
     await hotelBookingRepo.releaseExpired();
     const booking = await hotelBookingRepo.findByCodeForCustomer(code, customerId);
-    return booking && { booking, summary: hotelBookingSummary(booking) };
+    return (
+      booking && {
+        booking,
+        summary: hotelBookingSummary(booking, cancelCutoffHours),
+      }
+    );
   }
   await tourBookingRepo.releaseExpired();
   const booking = await tourBookingRepo.findByCodeForCustomer(code, customerId);
-  return booking && { booking, summary: tourBookingSummary(booking) };
+  return (
+    booking && {
+      booking,
+      summary: tourBookingSummary(booking, cancelCutoffHours),
+    }
+  );
 }
 
 function ResultLayout({
@@ -107,13 +122,15 @@ function InactiveBooking({
 async function RestaurantBookingResult({
   code,
   customerId,
+  cancelCutoffHours,
 }: {
   code: string;
   customerId: string;
+  cancelCutoffHours: number;
 }) {
   const booking = await restaurantBookingRepo.findByCodeForCustomer(code, customerId);
   if (!booking) notFound();
-  const summary = restaurantBookingSummary(booking);
+  const summary = restaurantBookingSummary(booking, cancelCutoffHours);
   const awaiting = booking.status === "pending_confirmation";
   const active =
     awaiting || booking.status === "confirmed" || booking.status === "completed";
@@ -151,12 +168,23 @@ export default async function BookingResultPage({ params }: Props) {
   const session = await auth();
   if (!session?.user) redirect("/sign-in");
 
+  const settings = await systemSettingRepo.getSettings();
   const decoded = decodeURIComponent(code);
   if (decoded.startsWith(`${CODE_PREFIX.restaurant}-`)) {
-    return <RestaurantBookingResult code={decoded} customerId={session.user.id} />;
+    return (
+      <RestaurantBookingResult
+        cancelCutoffHours={settings.restaurantCancelCutoffHours}
+        code={decoded}
+        customerId={session.user.id}
+      />
+    );
   }
 
-  const loaded = await loadBooking(decoded, session.user.id);
+  const loaded = await loadBooking(
+    decoded,
+    session.user.id,
+    settings.customerCancelCutoffHours,
+  );
   if (!loaded) notFound();
 
   const { booking, summary } = loaded;
@@ -166,16 +194,27 @@ export default async function BookingResultPage({ params }: Props) {
   let content: React.ReactNode;
   if (paid) {
     content = (
-      <CompleteStep
-        code={booking.code}
-        contact={{
-          contactName: booking.contactName,
-          contactEmail: booking.contactEmail,
-          contactPhone: booking.contactPhone,
-          note: booking.note ?? "",
-        }}
-        summary={summary}
-      />
+      <>
+        <CompleteStep
+          code={booking.code}
+          contact={{
+            contactName: booking.contactName,
+            contactEmail: booking.contactEmail,
+            contactPhone: booking.contactPhone,
+            note: booking.note ?? "",
+          }}
+          summary={summary}
+        />
+        <div className="mt-8 text-center">
+          <Link
+            className="inline-flex items-center gap-2 rounded border border-new-teal px-6 py-3 font-bold text-new-teal transition-colors hover:bg-new-teal hover:text-white"
+            href={invoiceHref.customer(booking.code)}
+          >
+            <span aria-hidden className="material-symbols-outlined">receipt_long</span>
+            Xem hóa đơn
+          </Link>
+        </div>
+      </>
     );
   } else if (
     booking.status === "pending_payment" &&
@@ -213,7 +252,7 @@ export default async function BookingResultPage({ params }: Props) {
             : undefined
         }
         summary={summary}
-        usdRate={USD_RATE}
+        usdRate={settings.usdRate}
       />
     );
   } else {

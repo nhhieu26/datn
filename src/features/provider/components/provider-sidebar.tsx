@@ -93,12 +93,13 @@ const SERVICE_SEGMENT = /^\/provider\/(?:(?:bookings|calendar|reviews)\/)?(tours
 
 const DASHBOARD_PATH = "/provider";
 const PROFILES_PATH = "/provider/profiles";
+const REPORTS_PATH = "/provider/reports";
 
 function isServiceKey(value: string | null): value is ServiceKey {
   return SERVICE_TYPES.some((s) => s.key === value);
 }
 
-// Trang tổng quan và hồ sơ không có segment loại dịch vụ trong đường dẫn nên dùng ?type=.
+// Trang tổng quan, hồ sơ và báo cáo không có segment loại dịch vụ trong đường dẫn nên dùng ?type=.
 function getServiceFromPath(
   pathname: string,
   typeParam: string | null,
@@ -106,6 +107,7 @@ function getServiceFromPath(
   if (
     pathname === DASHBOARD_PATH ||
     pathname === PROFILES_PATH ||
+    pathname === REPORTS_PATH ||
     pathname.startsWith(`${PROFILES_PATH}/`)
   ) {
     return isServiceKey(typeParam) ? typeParam : null;
@@ -119,6 +121,7 @@ function switchHref(pathname: string, service: (typeof SERVICE_TYPES)[number]) {
   const { slug } = service;
   if (pathname === DASHBOARD_PATH) return `${DASHBOARD_PATH}?type=${service.key}`;
   if (pathname === PROFILES_PATH) return `${PROFILES_PATH}?type=${service.key}`;
+  if (pathname === REPORTS_PATH) return `${REPORTS_PATH}?type=${service.key}`;
   const section = /^\/provider\/(bookings|calendar|reviews)\//.exec(pathname)?.[1];
   return section ? `/provider/${section}/${slug}` : `/provider/${slug}`;
 }
@@ -184,7 +187,7 @@ const profileItem: NavItem = {
 
 const reportItem: NavItem = {
   label: "Báo cáo & Thống kê",
-  href: "#",
+  href: REPORTS_PATH,
   icon: (
     <Icon>
       <path d="M3 3v16a2 2 0 0 0 2 2h16" />
@@ -252,7 +255,7 @@ function buildNavItems(service: (typeof SERVICE_TYPES)[number]): NavItem[] {
       ),
     },
     { ...profileItem, href: `${PROFILES_PATH}?type=${service.key}` },
-    reportItem,
+    { ...reportItem, href: `${REPORTS_PATH}?type=${service.key}` },
   ];
 }
 

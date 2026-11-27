@@ -8,31 +8,13 @@ import type {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { getServiceMeta, getStatusMeta } from "../../utils";
 import { formatDate, formatEntityCode, formatUpdatedLabel } from "@/lib/utils";
-import { ProfileIcon, type ProfileIconName } from "./profile-icon";
+import { DeleteProfileDialog } from "./delete-profile-dialog";
+import { ServiceBadge, StatusBadge } from "./profile-badges";
+import { ProfileIcon } from "./profile-icon";
 
 type HSWindow = Window & {
   HSDropdown?: { autoInit: () => void };
-};
-
-const serviceIcons: Record<BusinessType, ProfileIconName> = {
-  tour: "map",
-  hotel: "bed",
-  restaurant: "utensils",
-};
-
-const statusStyles: Record<
-  ApprovalStatus,
-  { icon: ProfileIconName; className: string }
-> = {
-  approved: { icon: "check", className: "bg-teal-100 text-teal-800" },
-  pending: { icon: "clock", className: "bg-yellow-100 text-yellow-800" },
-  rejected: { icon: "x", className: "bg-red-100 text-red-800" },
-  not_submitted: {
-    icon: "draft",
-    className: "bg-surface text-surface-foreground",
-  },
 };
 
 const inputClass =
@@ -46,30 +28,6 @@ const primaryButtonClass =
 
 const dropdownItemClass =
   "flex w-full items-center gap-x-3 rounded-lg px-3 py-2 text-start text-sm text-dropdown-item-foreground hover:bg-dropdown-item-hover focus:bg-dropdown-item-focus focus:outline-hidden";
-
-function ServiceBadge({ type }: { type: BusinessType }) {
-  return (
-    <span className="inline-flex items-center gap-x-1.5 rounded-md border border-line-2 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-foreground">
-      <ProfileIcon
-        name={serviceIcons[type]}
-        className="size-3 text-muted-foreground-1"
-      />
-      {getServiceMeta(type).label}
-    </span>
-  );
-}
-
-function StatusBadge({ status }: { status: ApprovalStatus }) {
-  const style = statusStyles[status];
-  return (
-    <span
-      className={`inline-flex items-center gap-x-1.5 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${style.className}`}
-    >
-      <ProfileIcon name={style.icon} className="size-3" />
-      {getStatusMeta(status).label}
-    </span>
-  );
-}
 
 function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
@@ -95,7 +53,12 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
-function RowActions({ profile }: { profile: ProviderProfile }) {
+type RowProps = {
+  profile: ProviderProfile;
+  onDelete: (profile: ProviderProfile) => void;
+};
+
+function RowActions({ profile, onDelete }: RowProps) {
   const dropdownId = `hs-profile-actions-${profile.id}`;
   const editHref = `/provider/profiles/${profile.id}/edit`;
   const isRejected = profile.approvalStatus === "rejected";
@@ -134,14 +97,18 @@ function RowActions({ profile }: { profile: ProviderProfile }) {
             <ProfileIcon name="edit" />
             Sửa hồ sơ
           </Link>
-          <button className={dropdownItemClass} type="button">
+          <Link
+            className={dropdownItemClass}
+            href={`/provider/profiles/${profile.id}`}
+          >
             <ProfileIcon name="eye" />
             Xem chi tiết
-          </button>
+          </Link>
         </div>
         <div className="space-y-0.5 border-t border-dropdown-divider p-1">
           <button
             className="flex w-full items-center gap-x-3 rounded-lg px-3 py-2 text-start text-sm text-red-600 hover:bg-red-50 focus:bg-red-50 focus:outline-hidden"
+            onClick={() => onDelete(profile)}
             type="button"
           >
             <ProfileIcon name="trash" />
@@ -153,7 +120,7 @@ function RowActions({ profile }: { profile: ProviderProfile }) {
   );
 }
 
-function ProfileRow({ profile }: { profile: ProviderProfile }) {
+function ProfileRow({ profile, onDelete }: RowProps) {
   const isRejected = profile.approvalStatus === "rejected";
   const cell = `px-6 py-4 ${isRejected ? "align-top" : "align-middle"}`;
 
@@ -180,9 +147,12 @@ function ProfileRow({ profile }: { profile: ProviderProfile }) {
             </span>
           )}
           <div className="grow">
-            <span className="block text-sm font-semibold whitespace-nowrap text-foreground">
+            <Link
+              className="block text-sm font-semibold whitespace-nowrap text-foreground hover:text-primary-600 focus:text-primary-600 focus:outline-hidden"
+              href={`/provider/profiles/${profile.id}`}
+            >
               {profile.businessName}
-            </span>
+            </Link>
             <div className="mt-1">
               <ServiceBadge type={profile.businessType} />
             </div>
@@ -218,7 +188,7 @@ function ProfileRow({ profile }: { profile: ProviderProfile }) {
       </td>
 
       <td className={`${cell} text-end whitespace-nowrap`}>
-        <RowActions profile={profile} />
+        <RowActions onDelete={onDelete} profile={profile} />
       </td>
     </tr>
   );
@@ -344,6 +314,8 @@ export function ProfilesTable({ profiles }: { profiles: ProviderProfile[] }) {
   const [statusFilter, setStatusFilter] = useState<ApprovalStatus | "all">(
     "all",
   );
+  const [deletingProfile, setDeletingProfile] =
+    useState<ProviderProfile | null>(null);
 
   const filteredProfiles = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -428,7 +400,11 @@ export function ProfilesTable({ profiles }: { profiles: ProviderProfile[] }) {
               </tr>
             ) : (
               filteredProfiles.map((profile) => (
-                <ProfileRow key={profile.id} profile={profile} />
+                <ProfileRow
+                  key={profile.id}
+                  onDelete={setDeletingProfile}
+                  profile={profile}
+                />
               ))
             )}
           </tbody>
@@ -443,6 +419,12 @@ export function ProfilesTable({ profiles }: { profiles: ProviderProfile[] }) {
           / {profiles.length} hồ sơ
         </p>
       </div>
+      {deletingProfile ? (
+        <DeleteProfileDialog
+          onClose={() => setDeletingProfile(null)}
+          profile={deletingProfile}
+        />
+      ) : null}
     </div>
   );
 }

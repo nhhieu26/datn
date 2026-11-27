@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 import type { BookingStatus, Prisma } from "@/generated/prisma/client";
+import { systemSettingRepo } from "@/entities/system-setting";
 import { prisma } from "@/lib/prisma";
 import {
   canCustomerCancelBefore,
   formatEntityCode,
   reservationInstant,
-  RESTAURANT_CANCEL_CUTOFF_HOURS,
   todayIsoDate,
 } from "@/lib/utils";
 import { ConflictError, NotFoundError } from "@/shared/lib/errors";
@@ -125,7 +125,7 @@ export async function findPageByCustomerId(
       include: {
         restaurant: { select: { images: true, slug: true } },
         restaurantTimeSlot: { select: { endTime: true } },
-        review: { select: { id: true } },
+        review: { select: { id: true, status: true } },
       },
       orderBy: { createdAt: "desc" },
     }),
@@ -154,7 +154,12 @@ export async function summarizeByCustomerId(customerId: string) {
 }
 
 /** Customer tự hủy đơn chờ xác nhận / đã xác nhận, chỉ khi còn trước giờ đặt bàn đủ hạn hủy. */
-export function cancelForCustomer(code: string, customerId: string, reason: string) {
+export async function cancelForCustomer(
+  code: string,
+  customerId: string,
+  reason: string
+) {
+  const { restaurantCancelCutoffHours } = await systemSettingRepo.getSettings();
   return prisma.$transaction(async (tx) => {
     const rows = await tx.$queryRaw<
       { id: string; reservationDate: Date; startTime: string }[]
@@ -170,11 +175,11 @@ export function cancelForCustomer(code: string, customerId: string, reason: stri
       !canCustomerCancelBefore(
         reservationInstant(reservationDate, startTime),
         new Date(),
-        RESTAURANT_CANCEL_CUTOFF_HOURS
+        restaurantCancelCutoffHours
       )
     ) {
       throw new ConflictError(
-        `Chỉ có thể hủy đơn trước giờ đặt bàn ${RESTAURANT_CANCEL_CUTOFF_HOURS} giờ.`
+        `Chỉ có thể hủy đơn trước giờ đặt bàn ${restaurantCancelCutoffHours} giờ.`
       );
     }
     return tx.restaurantBooking.update({
@@ -207,6 +212,24 @@ function providerWhere(
       ],
     }),
   };
+}
+
+/** Toàn bộ đơn khớp bộ lọc (không phân trang) để xuất file, tối đa EXPORT_LIMIT đơn. */
+export const EXPORT_LIMIT = 5000;
+
+export function findAllByProviderProfileId(
+  providerProfileId: string,
+  filter: RestaurantBookingFilter
+) {
+  return prisma.restaurantBooking.findMany({
+    where: providerWhere(providerProfileId, filter),
+    take: EXPORT_LIMIT,
+    include: {
+      restaurant: { select: { images: true } },
+      restaurantTimeSlot: { select: { endTime: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
 }
 
 export async function findPageByProviderProfileId(
@@ -368,6 +391,16 @@ type DateRange = { from?: Date; to?: Date };
 const createdIn = ({ from, to }: DateRange) =>
   from || to ? { createdAt: { gte: from, lt: to } } : {};
 
+/** Số đơn theo từng trạng thái, tạo trong khoảng thời gian (dùng cho trang báo cáo). */
+export async function countByStatus(providerProfileId: string, range: DateRange = {}) {
+  const rows = await prisma.restaurantBooking.groupBy({
+    by: ["status"],
+    where: { providerProfileId, ...createdIn(range) },
+    _count: { _all: true },
+  });
+  return rows.map((row) => ({ status: row.status, count: row._count._all }));
+}
+
 export function countForDashboard(providerProfileId: string, range: DateRange = {}) {
   return prisma.restaurantBooking.count({
     where: { providerProfileId, status: { not: "expired" }, ...createdIn(range) },
@@ -412,12 +445,18 @@ export function findUpcomingForProvider(providerProfileId: string, from: Date, t
 }
 
 /** Đơn có ngày đặt bàn trong [from, to), dùng cho lịch của provider. */
-export function findForCalendar(providerProfileId: string, from: Date, to: Date) {
+export function findForCalendar(
+  providerProfileId: string,
+  from: Date,
+  to: Date,
+  serviceId?: string,
+) {
   return prisma.restaurantBooking.findMany({
     where: {
       providerProfileId,
       status: { not: "expired" },
       reservationDate: { gte: from, lt: to },
+      ...(serviceId && { restaurantId: serviceId }),
     },
     select: {
       code: true,
@@ -450,4 +489,29 @@ export async function findRecentActivityForProvider(providerProfileId: string, t
     }),
   ]);
   return { created, cancelled };
+}
+
+// ---- Báo cáo toàn sàn (admin) ----
+
+/** Đơn đặt bàn tạo trong khoảng thời gian, kèm tỉnh/thành của nhà hàng; không có tiền. */
+export async function findAdminReportRows(range: { from: Date; to: Date }) {
+  const rows = await prisma.restaurantBooking.findMany({
+    where: createdIn(range),
+    select: {
+      createdAt: true,
+      status: true,
+      guests: true,
+      providerProfileId: true,
+      restaurant: { select: { provinceId: true } },
+    },
+  });
+  return rows.map((row) => ({
+    createdAt: row.createdAt,
+    status: row.status,
+    guests: row.guests,
+    totalAmount: 0,
+    platformFee: 0,
+    providerProfileId: row.providerProfileId,
+    provinceId: row.restaurant?.provinceId ?? null,
+  }));
 }

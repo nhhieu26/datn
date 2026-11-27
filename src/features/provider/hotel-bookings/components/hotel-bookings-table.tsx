@@ -22,6 +22,7 @@ import {
   formatRelativeTime,
   hasCheckedOut,
 } from "@/lib/utils";
+import { ExportBookingsButton } from "@/features/provider/components/export-bookings-button";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { updateHotelBookingStatusAction } from "../actions";
@@ -313,6 +314,7 @@ export function HotelBookingsTable({
               />
             </div>
           ) : null}
+          <ExportBookingsButton endpoint="/api/provider/bookings/hotels/export" />
           <button
             aria-busy={isPending}
             className={`px-3 py-2 ${layerButtonClass}`}

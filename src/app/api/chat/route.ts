@@ -6,35 +6,34 @@ import {
   toUIMessageStream,
   type UIMessage,
 } from "ai";
-import { chatTools } from "@/features/customer/chat/lib/ai-tools";
+import { after } from "next/server";
 import { CHAT_INSTRUCTIONS, CHAT_MODEL } from "@/features/customer/chat/lib/prompt";
+import { chatTools } from "@/features/customer/chat/lib/tools";
+import { auth } from "@/lib/auth";
+import { flushTelemetry, withTrace } from "@/lib/telemetry";
 import { vertex } from "@/lib/vertex";
 
-// locatePlaces gọi Google Places API (song song) trước khi tổng hợp câu trả lời
-export const maxDuration = 300;
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  const { messages }: { messages: UIMessage[] } = await req.json();
+  const { id, messages }: { id?: string; messages: UIMessage[] } = await req.json();
+  const session = await auth().catch(() => null);
+  const modelMessages = await convertToModelMessages(messages);
 
-  const result = streamText({
-    model: vertex(CHAT_MODEL),
-    instructions: CHAT_INSTRUCTIONS,
-    tools: chatTools,
-    // Cho phép gọi kết hợp nhiều tool (nội bộ, rồi OpenStreetMap nếu thiếu, + thời tiết) rồi tổng hợp câu trả lời
-    stopWhen: isStepCount(12),
-    messages: await convertToModelMessages(messages),
-    onStepFinish: ({ providerMetadata }) => {
-      // Google Search chạy phía server Google, không có tool-call trong stream: log để biết model có thật sự search
-      const grounding = providerMetadata?.vertex?.groundingMetadata as
-        | { webSearchQueries?: string[] | null }
-        | undefined;
-      if (grounding?.webSearchQueries?.length) {
-        console.info("[chat] google_search:", grounding.webSearchQueries);
-      }
-    },
-  });
+  const result = withTrace({ name: "chat", sessionId: id, userId: session?.user?.id, tags: ["chat"] }, () =>
+    streamText({
+      model: vertex(CHAT_MODEL),
+      instructions: CHAT_INSTRUCTIONS,
+      tools: chatTools,
+      // Gọi tool → (tên trùng → askUser) → trả lời, chừa 1 bước dự phòng
+      stopWhen: isStepCount(4),
+      messages: modelMessages,
+      telemetry: { functionId: "chat" },
+    }),
+  );
 
-  return createUIMessageStreamResponse({
-    stream: toUIMessageStream({ stream: result.stream }),
-  });
+  // Chạy sau khi stream kết thúc: gửi span lên Langfuse trước khi function tắt
+  after(flushTelemetry);
+
+  return createUIMessageStreamResponse({ stream: toUIMessageStream({ stream: result.stream }) });
 }

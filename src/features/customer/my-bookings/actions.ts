@@ -3,6 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { hotelBookingRepo } from "@/entities/hotel-booking";
+import {
+  notifyCustomerCancelledBooking,
+  notifyTransferFailed,
+} from "@/entities/notification";
 import { restaurantBookingRepo } from "@/entities/restaurant-booking";
 import { tourBookingRepo } from "@/entities/tour-booking";
 import { auth } from "@/lib/auth";
@@ -29,6 +33,7 @@ type CancelForCustomer =
 
 /** Customer hủy đơn paid/confirmed; sàn hoàn toàn bộ tiền qua PayPal. */
 function cancelMyBooking(
+  kind: "tour" | "hotel",
   input: unknown,
   cancelForCustomer: CancelForCustomer,
   revalidate: (code: string) => void,
@@ -60,6 +65,19 @@ function cancelMyBooking(
       (result) => tourBookingRepo.markRefundResult(refund.id, result),
     );
 
+    await notifyCustomerCancelledBooking({
+      kind,
+      code: booking.code,
+      reason,
+    });
+    if (moneyStatus === "failed") {
+      await notifyTransferFailed({
+        transferType: "refund",
+        kind,
+        bookingCode: booking.code,
+      });
+    }
+
     revalidatePath(`/bookings/${code}`);
     revalidate(code);
     return { moneyStatus };
@@ -67,7 +85,7 @@ function cancelMyBooking(
 }
 
 export async function cancelMyTourBookingAction(input: unknown) {
-  return cancelMyBooking(input, tourBookingRepo.cancelForCustomer, (code) => {
+  return cancelMyBooking("tour", input, tourBookingRepo.cancelForCustomer, (code) => {
     revalidatePath("/my-bookings");
     revalidatePath("/provider/bookings/tours");
     revalidatePath(`/provider/bookings/tours/${code}`);
@@ -86,6 +104,11 @@ export async function cancelMyRestaurantBookingAction(input: unknown) {
     const { code, reason } = parsed.data;
 
     await restaurantBookingRepo.cancelForCustomer(code, session.user.id, reason);
+    await notifyCustomerCancelledBooking({
+      kind: "restaurant",
+      code,
+      reason,
+    });
 
     revalidatePath(`/bookings/${code}`);
     revalidatePath("/my-restaurant-bookings");
@@ -96,7 +119,7 @@ export async function cancelMyRestaurantBookingAction(input: unknown) {
 }
 
 export async function cancelMyHotelBookingAction(input: unknown) {
-  return cancelMyBooking(input, hotelBookingRepo.cancelForCustomer, (code) => {
+  return cancelMyBooking("hotel", input, hotelBookingRepo.cancelForCustomer, (code) => {
     revalidatePath("/my-hotel-bookings");
     revalidatePath("/provider/bookings/hotels");
     revalidatePath(`/provider/bookings/hotels/${code}`);

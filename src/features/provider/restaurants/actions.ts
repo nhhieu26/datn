@@ -3,12 +3,14 @@
 import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { Prisma } from "@/generated/prisma/client";
+import { Prisma, type ServiceStatus } from "@/generated/prisma/client";
 import { auth } from "@/lib/auth";
 import { deleteImage, uploadImage } from "@/lib/imagekit";
 import { embedText } from "@/lib/gemini";
+import { buildRestaurantEmbeddingText, parseMenu } from "@/shared/lib/embedding-text";
 import {
   deleteRestaurantEmbedding,
+  setRestaurantEmbeddingStatus,
   upsertRestaurantEmbedding,
 } from "@/lib/pinecone";
 import { slugify } from "@/lib/utils";
@@ -21,8 +23,14 @@ import {
 } from "@/entities/restaurant";
 import { providerProfileRepo } from "@/entities/provider-profile";
 import { provinceRepo } from "@/entities/province";
+import { systemSettingRepo } from "@/entities/system-setting";
 import { tagRepo } from "@/entities/tag";
 import type { ActionState } from "@/shared/lib/action-state";
+import {
+  isServiceStatus,
+  parseBulkIds,
+  type BulkActionResult,
+} from "../bulk-actions";
 
 export type CreateRestaurantActionState = ActionState;
 
@@ -47,7 +55,6 @@ const ALLOWED_PHOTO_TYPES = ["image/png", "image/jpeg"];
 const MAX_PHOTOS = 5;
 const MAX_SLUG_ATTEMPTS = 5;
 const CLEANUP_ATTEMPTS = 3;
-const RESTAURANT_DELETE_GRACE_DAYS = 30;
 
 const STAGE_ERROR_MESSAGES: Record<CreationStage, string> = {
   authorization: "Không thể xác thực tài khoản. Vui lòng thử lại.",
@@ -330,16 +337,7 @@ export async function createRestaurantAction(
     createdRestaurantId = restaurant.id;
 
     stage = "embedding";
-    const embeddingText = [
-      parsed.data.name,
-      parsed.data.description,
-      province.fullName,
-      parsed.data.address,
-      parsed.data.menu.map((item) => item.name).join(", "),
-      parsed.data.menu.map((item) => item.description).join(", "),
-    ]
-      .filter(Boolean)
-      .join("\n");
+    const embeddingText = buildRestaurantEmbeddingText(parsed.data, province.fullName);
 
     const vector = await embedText(embeddingText);
     embeddingUpsertAttempted = true;
@@ -441,17 +439,11 @@ export async function createRestaurantFromLinksAction(
     createdRestaurantId = restaurant.id;
 
     stage = "embedding";
-    const embeddingText = [
-      parsed.data.name,
-      parsed.data.description,
+    const embeddingText = buildRestaurantEmbeddingText(
+      parsed.data,
       province.fullName,
-      parsed.data.address,
-      tags.map((tag) => tag.name).join(", "),
-      parsed.data.menu.map((item) => item.name).join(", "),
-      parsed.data.menu.map((item) => item.description).join(", "),
-    ]
-      .filter(Boolean)
-      .join("\n");
+      tags,
+    );
 
     const vector = await embedText(embeddingText);
     embeddingUpsertAttempted = true;
@@ -641,16 +633,7 @@ export async function updateRestaurantAction(
     });
 
     try {
-      const embeddingText = [
-        parsed.data.name,
-        parsed.data.description,
-        province.fullName,
-        parsed.data.address,
-        parsed.data.menu.map((item) => item.name).join(", "),
-        parsed.data.menu.map((item) => item.description).join(", "),
-      ]
-        .filter(Boolean)
-        .join("\n");
+      const embeddingText = buildRestaurantEmbeddingText(parsed.data, province.fullName);
       const vector = await embedText(embeddingText);
       await upsertRestaurantEmbedding(updated.id, vector, {
         name: parsed.data.name,
@@ -714,10 +697,13 @@ type ProviderRestaurantResult =
   | { error: ActionState }
   | { restaurant: RestaurantWithRelations; providerProfileId: string };
 
-async function findProviderRestaurant(
-  restaurantId: string,
-  verb: string
-): Promise<ProviderRestaurantResult> {
+type ProviderRestaurantAuthResult =
+  | { error: ActionState }
+  | { providerProfileId: string };
+
+async function authorizeRestaurantProvider(
+  verb: string,
+): Promise<ProviderRestaurantAuthResult> {
   const session = await auth();
   if (!session?.user?.id) {
     return { error: { status: "error", formError: "Vui lòng đăng nhập lại." } };
@@ -745,17 +731,27 @@ async function findProviderRestaurant(
       },
     };
   }
+  return { providerProfileId: providerProfile.id };
+}
+
+async function findProviderRestaurant(
+  restaurantId: string,
+  verb: string
+): Promise<ProviderRestaurantResult> {
+  const authorized = await authorizeRestaurantProvider(verb);
+  if ("error" in authorized) return authorized;
+  const { providerProfileId } = authorized;
 
   const restaurant = await restaurantRepo.findByIdForProvider(
     restaurantId,
-    providerProfile.id
+    providerProfileId
   );
   if (!restaurant) {
     return {
       error: { status: "error", formError: "Không tìm thấy nhà hàng." },
     };
   }
-  return { restaurant, providerProfileId: providerProfile.id };
+  return { restaurant, providerProfileId };
 }
 
 function revalidateRestaurantPages(slug: string) {
@@ -765,42 +761,67 @@ function revalidateRestaurantPages(slug: string) {
   revalidatePath("/");
 }
 
-export async function deleteRestaurantAction(
-  restaurantId: string
-): Promise<ActionState> {
-  const found = await findProviderRestaurant(restaurantId, "xóa");
-  if ("error" in found) return found.error;
-  const { restaurant, providerProfileId } = found;
+function revalidateRestaurantPagesMany(slugs: string[]) {
+  revalidatePath("/provider/restaurants");
+  revalidatePath("/explore");
+  revalidatePath("/");
+  for (const slug of slugs) revalidatePath(`/restaurants/${slug}`);
+}
 
-  // Không xóa ngay: dừng nhận đặt bàn, đơn đang có vẫn xử lý bình thường; cron xóa mềm khi tới hạn
+function bulkError(formError: string): ActionState<BulkActionResult> {
+  return { status: "error", formError };
+}
+
+export async function deleteRestaurantsAction(
+  restaurantIds: string[],
+): Promise<ActionState<BulkActionResult>> {
+  const ids = parseBulkIds(restaurantIds);
+  if (!ids) return bulkError("Danh sách nhà hàng không hợp lệ.");
+
+  const authorized = await authorizeRestaurantProvider("xóa");
+  if ("error" in authorized) return bulkError(authorized.error.formError ?? "");
+
+  // Không xóa ngay: dừng bán, booking đang có vẫn xử lý bình thường; cron xóa mềm khi tới hạn
+  const { serviceDeleteGraceDays } = await systemSettingRepo.getSettings();
   const deleteAt = new Date(
-    Date.now() + RESTAURANT_DELETE_GRACE_DAYS * 24 * 60 * 60 * 1000
+    Date.now() + serviceDeleteGraceDays * 24 * 60 * 60 * 1000,
   );
+  let changed: { id: string; slug: string }[];
   try {
-    const count = await restaurantRepo.scheduleDeletion(
-      restaurant.id,
-      providerProfileId,
-      deleteAt
+    changed = await restaurantRepo.scheduleDeletionMany(
+      ids,
+      authorized.providerProfileId,
+      deleteAt,
     );
-    if (count === 0) {
-      return { status: "error", formError: "Nhà hàng đã được dừng trước đó." };
+  } catch (error) {
+    console.error("Xóa nhà hàng thất bại", { ids, error });
+    return bulkError("Không thể xóa nhà hàng. Vui lòng thử lại.");
+  }
+  if (changed.length === 0) {
+    return bulkError(
+      ids.length === 1
+        ? "Nhà hàng đã được dừng trước đó."
+        : "Không có nhà hàng nào được xóa: các nhà hàng đã chọn đều đã dừng trước đó.",
+    );
+  }
+
+  const results = await Promise.allSettled(
+    changed.map(({ id }) => deleteRestaurantEmbedding(id)),
+  );
+  results.forEach((result, index) => {
+    if (result.status === "rejected") {
+      console.error("Xóa embedding nhà hàng thất bại", {
+        restaurantId: changed[index].id,
+        error: result.reason,
+      });
     }
-  } catch (error) {
-    console.error("Xóa nhà hàng thất bại", { restaurantId, error });
-    return {
-      status: "error",
-      formError: "Không thể xóa nhà hàng. Vui lòng thử lại.",
-    };
-  }
+  });
 
-  try {
-    await deleteRestaurantEmbedding(restaurant.id);
-  } catch (error) {
-    console.error("Xóa embedding nhà hàng thất bại", { restaurantId, error });
-  }
-
-  revalidateRestaurantPages(restaurant.slug);
-  return { status: "success" };
+  revalidateRestaurantPagesMany(changed.map(({ slug }) => slug));
+  return {
+    status: "success",
+    data: { updated: changed.length, skipped: ids.length - changed.length },
+  };
 }
 
 export async function restoreRestaurantAction(
@@ -831,19 +852,10 @@ export async function restoreRestaurantAction(
 
   // Embedding đã bị xóa khi dừng nhà hàng, tạo lại để nhà hàng xuất hiện trong tìm kiếm
   try {
-    const menu = Array.isArray(restaurant.menu)
-      ? (restaurant.menu as { name?: unknown; description?: unknown }[])
-      : [];
-    const embeddingText = [
-      restaurant.name,
-      restaurant.description,
+    const embeddingText = buildRestaurantEmbeddingText(
+      { ...restaurant, menu: parseMenu(restaurant.menu) },
       restaurant.province.fullName,
-      restaurant.address,
-      menu.map((item) => item.name).join(", "),
-      menu.map((item) => item.description).join(", "),
-    ]
-      .filter(Boolean)
-      .join("\n");
+    );
     const vector = await embedText(embeddingText);
     await upsertRestaurantEmbedding(restaurant.id, vector, {
       name: restaurant.name,
@@ -861,4 +873,53 @@ export async function restoreRestaurantAction(
 
   revalidateRestaurantPages(restaurant.slug);
   return { status: "success" };
+}
+
+export async function setRestaurantsStatusAction(
+  restaurantIds: string[],
+  status: ServiceStatus,
+): Promise<ActionState<BulkActionResult>> {
+  const ids = parseBulkIds(restaurantIds);
+  if (!ids || !isServiceStatus(status)) {
+    return bulkError("Danh sách nhà hàng hoặc trạng thái không hợp lệ.");
+  }
+
+  const authorized = await authorizeRestaurantProvider("đổi trạng thái");
+  if ("error" in authorized) return bulkError(authorized.error.formError ?? "");
+
+  let changed: { id: string; slug: string }[];
+  try {
+    changed = await restaurantRepo.setStatusMany(
+      ids,
+      authorized.providerProfileId,
+      status,
+    );
+  } catch (error) {
+    console.error("Đổi trạng thái nhà hàng thất bại", { ids, error });
+    return bulkError("Không thể đổi trạng thái nhà hàng. Vui lòng thử lại.");
+  }
+  if (changed.length === 0) {
+    return bulkError(
+      "Không có nhà hàng nào được đổi trạng thái: nhà hàng đã dừng hoặc đã ở sẵn trạng thái này.",
+    );
+  }
+
+  // Chỉ đổi metadata để tìm kiếm lọc theo trạng thái, không cần tạo lại vector
+  try {
+    const failed = await setRestaurantEmbeddingStatus(
+      changed.map(({ id }) => id),
+      status,
+    );
+    if (failed.length > 0) {
+      console.error("Cập nhật trạng thái embedding nhà hàng thất bại", { failed });
+    }
+  } catch (error) {
+    console.error("Cập nhật trạng thái embedding nhà hàng thất bại", { error });
+  }
+
+  revalidateRestaurantPagesMany(changed.map(({ slug }) => slug));
+  return {
+    status: "success",
+    data: { updated: changed.length, skipped: ids.length - changed.length },
+  };
 }

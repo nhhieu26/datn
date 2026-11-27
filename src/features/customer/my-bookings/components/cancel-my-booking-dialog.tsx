@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { getBookingStatusMeta } from "@/features/provider/tour-bookings";
@@ -95,20 +96,28 @@ export function CancelMyBookingDialog({
   }
 
   return (
-    <div
+    <motion.div
+      animate={{ opacity: 1 }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-[2px]"
+      exit={{ opacity: 0 }}
+      initial={{ opacity: 0 }}
       onClick={() => {
         if (!isPending) onClose();
       }}
       role="presentation"
+      transition={{ duration: 0.18 }}
     >
-      <form
+      <motion.form
+        animate={{ opacity: 1, scale: 1, y: 0 }}
         aria-labelledby="cancel-booking-heading"
         aria-modal="true"
         className="relative w-full max-w-[460px] rounded-md border border-new-input-border bg-white p-6 text-left whitespace-normal shadow-2xl"
+        exit={{ opacity: 0, scale: 0.96, y: 8 }}
+        initial={{ opacity: 0, scale: 0.95, y: 12 }}
         onClick={(event) => event.stopPropagation()}
         onSubmit={handleSubmit}
         role="dialog"
+        transition={{ type: "spring", stiffness: 380, damping: 28 }}
       >
         <div
           className={`mb-4 flex size-10 items-center justify-center rounded-full border ${meta.className}`}
@@ -199,7 +208,7 @@ export function CancelMyBookingDialog({
             </div>
           </>
         )}
-      </form>
-    </div>
+      </motion.form>
+    </motion.div>
   );
 }

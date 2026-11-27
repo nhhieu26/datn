@@ -1,4 +1,5 @@
 import type { Prisma } from "@/generated/prisma/client";
+import { notifyWebhookTransferFailed } from "@/entities/notification";
 import { tourBookingRepo } from "@/entities/tour-booking";
 import {
   mapPayoutItemStatus,
@@ -33,41 +34,70 @@ export async function POST(request: Request) {
     const item = (resource.payout_item ?? {}) as Record<string, unknown>;
     const errors = (resource.errors ?? {}) as Record<string, unknown>;
     const status = mapPayoutItemStatus(resource.transaction_status);
-    await tourBookingRepo.applyPayoutItemWebhook(
+    const failureReason =
+      status === "failed"
+        ? (str(errors.message) ??
+          `Payout item ${String(resource.transaction_status)}`)
+        : null;
+    const payoutId = str(item.sender_item_id);
+    const batchId = str(resource.payout_batch_id);
+    const updated = await tourBookingRepo.applyPayoutItemWebhook(
       {
-        payoutId: str(item.sender_item_id),
-        batchId: str(resource.payout_batch_id),
+        payoutId,
+        batchId,
         itemId: str(resource.payout_item_id),
       },
       {
         status,
-        failureReason:
-          status === "failed"
-            ? (str(errors.message) ??
-              `Payout item ${String(resource.transaction_status)}`)
-            : null,
+        failureReason,
         raw,
       },
     );
+    if (status === "failed" && updated.count > 0) {
+      await notifyWebhookTransferFailed({
+        transferType: "payout",
+        idOrGatewayId: { id: payoutId, batchId },
+        reason: failureReason,
+      });
+    }
   } else if (type === "PAYMENT.PAYOUTSBATCH.DENIED") {
     const header = (resource.batch_header ?? {}) as Record<string, unknown>;
     const batchId = str(header.payout_batch_id);
-    if (batchId) await tourBookingRepo.applyPayoutBatchDenied(batchId, raw);
+    if (batchId) {
+      const updated = await tourBookingRepo.applyPayoutBatchDenied(batchId, raw);
+      if (updated.count > 0) {
+        await notifyWebhookTransferFailed({
+          transferType: "payout",
+          idOrGatewayId: { batchId },
+          reason: "Payout batch DENIED",
+        });
+      }
+    }
   } else if (
     type === "PAYMENT.CAPTURE.REFUNDED" ||
     type === "PAYMENT.REFUND.PENDING" ||
     type === "PAYMENT.REFUND.FAILED"
   ) {
     const status = mapRefundStatus(resource.status);
-    await tourBookingRepo.applyRefundWebhook(
-      { refundId: str(resource.custom_id), gatewayRefundId: str(resource.id) },
+    const refundId = str(resource.custom_id);
+    const gatewayRefundId = str(resource.id);
+    const failureReason =
+      status === "failed" ? `Refund ${String(resource.status)}` : null;
+    const updated = await tourBookingRepo.applyRefundWebhook(
+      { refundId, gatewayRefundId },
       {
         status,
-        failureReason:
-          status === "failed" ? `Refund ${String(resource.status)}` : null,
+        failureReason,
         raw,
       },
     );
+    if (status === "failed" && updated.count > 0) {
+      await notifyWebhookTransferFailed({
+        transferType: "refund",
+        idOrGatewayId: { id: refundId, gatewayId: gatewayRefundId },
+        reason: failureReason,
+      });
+    }
   }
 
   return new Response(null, { status: 200 });

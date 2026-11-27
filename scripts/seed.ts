@@ -7,6 +7,10 @@ import { seedHotels } from "./seed-hotel";
 import { seedRestaurants } from "./seed-restaurant";
 import { seedDestinations } from "./seed-destination";
 import { seedTours } from "./seed-tour";
+import { seedBookings } from "./seed-booking";
+import { seedReviews } from "./seed-review";
+import { seedNotifications } from "./seed-notification";
+import { seedArticles } from "./seed-article";
 
 async function main() {
   console.log("Seeding provinces...");
@@ -29,6 +33,18 @@ async function main() {
 
   console.log("\nSeeding tours...");
   await seedTours();
+
+  console.log("\nSeeding bookings...");
+  await seedBookings();
+
+  console.log("\nSeeding reviews...");
+  await seedReviews();
+
+  console.log("\nSeeding notifications...");
+  await seedNotifications();
+
+  console.log("\nSeeding articles...");
+  await seedArticles();
 
   console.log("\nAll seeds completed.");
 }

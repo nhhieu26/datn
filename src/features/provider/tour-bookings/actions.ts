@@ -1,6 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import {
+  notifyProviderUpdatedBooking,
+  notifyTransferFailed,
+} from "@/entities/notification";
 import { providerProfileRepo } from "@/entities/provider-profile";
 import { tourBookingRepo } from "@/entities/tour-booking";
 import { auth } from "@/lib/auth";
@@ -39,6 +43,11 @@ export async function updateTourBookingStatusAction(input: unknown) {
     let moneyStatus: TransferStatus | undefined;
     if (data.status === "confirmed") {
       await tourBookingRepo.confirmForProvider(data.code, providerProfileId);
+      await notifyProviderUpdatedBooking({
+        kind: "tour",
+        code: data.code,
+        status: "confirmed",
+      });
     } else if (data.status === "cancelled") {
       const { booking, refund, captureId } =
         await tourBookingRepo.cancelForProvider(
@@ -57,6 +66,19 @@ export async function updateTourBookingStatusAction(input: unknown) {
           }),
         (result) => tourBookingRepo.markRefundResult(refund.id, result),
       );
+      await notifyProviderUpdatedBooking({
+        kind: "tour",
+        code: booking.code,
+        status: "cancelled",
+        reason: data.reason,
+      });
+      if (moneyStatus === "failed") {
+        await notifyTransferFailed({
+          transferType: "refund",
+          kind: "tour",
+          bookingCode: booking.code,
+        });
+      }
     } else {
       const { booking, payout, recipientType } =
         await tourBookingRepo.completeForProvider(data.code, providerProfileId);
@@ -72,6 +94,18 @@ export async function updateTourBookingStatusAction(input: unknown) {
           }),
         (result) => tourBookingRepo.markPayoutResult(payout.id, result),
       );
+      await notifyProviderUpdatedBooking({
+        kind: "tour",
+        code: booking.code,
+        status: "completed",
+      });
+      if (moneyStatus === "failed") {
+        await notifyTransferFailed({
+          transferType: "payout",
+          kind: "tour",
+          bookingCode: booking.code,
+        });
+      }
     }
 
     revalidatePath("/provider/bookings/tours");

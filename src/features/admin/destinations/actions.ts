@@ -7,6 +7,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { auth } from "@/lib/auth";
 import { deleteImage, uploadImage } from "@/lib/imagekit";
 import { embedText } from "@/lib/gemini";
+import { buildDestinationEmbeddingText } from "@/shared/lib/embedding-text";
 import {
   deleteDestinationEmbedding,
   upsertDestinationEmbedding,
@@ -305,15 +306,11 @@ export async function createDestinationAction(
     createdDestinationId = destination.id;
 
     stage = "embedding";
-    const embeddingText = [
-      parsed.data.name,
-      parsed.data.description,
+    const embeddingText = buildDestinationEmbeddingText(
+      parsed.data,
       province.fullName,
-      parsed.data.address,
-      tags.map((tag) => tag.name).join(", "),
-    ]
-      .filter(Boolean)
-      .join("\n");
+      tags,
+    );
 
     const vector = await embedText(embeddingText);
     embeddingUpsertAttempted = true;
@@ -410,15 +407,11 @@ export async function createDestinationFromLinksAction(
     createdDestinationId = destination.id;
 
     stage = "embedding";
-    const embeddingText = [
-      parsed.data.name,
-      parsed.data.description,
+    const embeddingText = buildDestinationEmbeddingText(
+      parsed.data,
       province.fullName,
-      parsed.data.address,
-      tags.map((tag) => tag.name).join(", "),
-    ]
-      .filter(Boolean)
-      .join("\n");
+      tags,
+    );
 
     const vector = await embedText(embeddingText);
     embeddingUpsertAttempted = true;
@@ -578,15 +571,11 @@ export async function updateDestinationAction(
     });
 
     try {
-      const embeddingText = [
-        parsed.data.name,
-        parsed.data.description,
+      const embeddingText = buildDestinationEmbeddingText(
+        parsed.data,
         province.fullName,
-        parsed.data.address,
-        tags.map((tag) => tag.name).join(", "),
-      ]
-        .filter(Boolean)
-        .join("\n");
+        tags,
+      );
       const vector = await embedText(embeddingText);
       await upsertDestinationEmbedding(destination.id, vector, {
         name: parsed.data.name,

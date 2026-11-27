@@ -1,0 +1,153 @@
+"use client";
+
+import { Check, EyeOff, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import { categoryLabel } from "@/lib/moderation/types";
+import { formatDateTime } from "@/lib/utils";
+import {
+  deleteArticleCommentAction,
+  setArticleCommentStatusAction,
+} from "../actions";
+import type { ArticleCommentAdminItem } from "../types";
+import { cardClass, layerButtonClass } from "./styles";
+
+const STATUS_BADGE: Record<ArticleCommentAdminItem["status"], { label: string; cls: string } | null> = {
+  approved: null,
+  pending: { label: "Chờ duyệt", cls: "bg-amber-100 text-amber-800" },
+  rejected: { label: "Đang ẩn", cls: "bg-rose-100 text-rose-700" },
+};
+
+const SOURCE_LABEL: Record<NonNullable<ArticleCommentAdminItem["moderationSource"]>, string> = {
+  keyword: "Bộ lọc từ khóa",
+  ai: "AI",
+  admin: "Quản trị viên",
+  fallback: "AI lỗi",
+};
+
+export function ArticleCommentsPanel({
+  comments,
+}: {
+  comments: ArticleCommentAdminItem[];
+}) {
+  const router = useRouter();
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
+
+  const run = (id: string, action: () => Promise<{ status: string; formError?: string }>) => {
+    setBusyId(id);
+    setError(null);
+    startTransition(async () => {
+      const result = await action();
+      if (result.status === "error") setError(result.formError ?? "Thao tác thất bại.");
+      setBusyId(null);
+      setConfirmId(null);
+      router.refresh();
+    });
+  };
+
+  return (
+    <div className="mx-auto w-full max-w-340 scroll-mt-6 px-4 pb-6 sm:px-6" id="comments">
+      <div className={cardClass}>
+        <div className="border-b border-card-divider px-4 py-3 md:px-5">
+          <h2 className="font-semibold text-foreground">
+            Bình luận ({comments.length})
+          </h2>
+          <p className="text-sm text-muted-foreground-1">
+            Bình luận được AI kiểm duyệt khi gửi; chỉ bình luận đã duyệt mới hiển thị với khách.
+          </p>
+        </div>
+        {error ? <p className="px-5 pt-3 text-sm text-red-600">{error}</p> : null}
+        {comments.length === 0 ? (
+          <p className="p-5 text-sm text-muted-foreground-1">Chưa có bình luận nào.</p>
+        ) : (
+          <ul className="divide-y divide-card-divider">
+            {comments.map((c) => (
+              <li
+                className={`flex flex-col gap-3 p-4 sm:flex-row sm:items-start md:px-5 ${
+                  c.status === "rejected" ? "opacity-60" : ""
+                }`}
+                key={c.id}
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-foreground">
+                    {c.authorName}
+                    <span className="ms-2 text-xs font-normal text-muted-foreground-1">
+                      {formatDateTime(c.createdAt)}
+                    </span>
+                    {STATUS_BADGE[c.status] ? (
+                      <span
+                        className={`ms-2 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[c.status]!.cls}`}
+                      >
+                        {STATUS_BADGE[c.status]!.label}
+                      </span>
+                    ) : null}
+                  </p>
+                  <p className="mt-1 text-sm whitespace-pre-line text-muted-foreground-2">
+                    {c.content}
+                  </p>
+                  {c.status !== "approved" && (c.moderationReason || c.moderationCategories.length > 0) ? (
+                    <p className="mt-1.5 text-xs text-muted-foreground-1">
+                      {c.moderationSource ? `${SOURCE_LABEL[c.moderationSource]}: ` : null}
+                      {c.moderationCategories.map(categoryLabel).join(", ")}
+                      {c.moderationReason ? ` — ${c.moderationReason}` : null}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  {c.status !== "approved" ? (
+                    <button
+                      className={`${layerButtonClass} text-emerald-700`}
+                      disabled={busyId === c.id}
+                      onClick={() =>
+                        run(c.id, () => setArticleCommentStatusAction(c.id, "approved"))
+                      }
+                      type="button"
+                    >
+                      <Check className="size-4" />
+                      Duyệt
+                    </button>
+                  ) : null}
+                  {c.status !== "rejected" ? (
+                    <button
+                      className={layerButtonClass}
+                      disabled={busyId === c.id}
+                      onClick={() =>
+                        run(c.id, () => setArticleCommentStatusAction(c.id, "rejected"))
+                      }
+                      type="button"
+                    >
+                      <EyeOff className="size-4" />
+                      Ẩn
+                    </button>
+                  ) : null}
+                  {confirmId === c.id ? (
+                    <button
+                      className="inline-flex items-center gap-x-2 rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                      disabled={busyId === c.id}
+                      onClick={() => run(c.id, () => deleteArticleCommentAction(c.id))}
+                      type="button"
+                    >
+                      Xác nhận xoá
+                    </button>
+                  ) : (
+                    <button
+                      className={`${layerButtonClass} text-red-600`}
+                      onClick={() => setConfirmId(c.id)}
+                      type="button"
+                    >
+                      <Trash2 className="size-4" />
+                      Xoá
+                    </button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}

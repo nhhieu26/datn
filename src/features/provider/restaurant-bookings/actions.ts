@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { notifyProviderUpdatedBooking } from "@/entities/notification";
 import { providerProfileRepo } from "@/entities/provider-profile";
 import { restaurantBookingRepo } from "@/entities/restaurant-booking";
 import { auth } from "@/lib/auth";
@@ -34,14 +35,30 @@ export async function updateRestaurantBookingStatusAction(input: unknown) {
 
     if (data.status === "confirmed") {
       await restaurantBookingRepo.confirmForProvider(data.code, providerProfileId);
+      await notifyProviderUpdatedBooking({
+        kind: "restaurant",
+        code: data.code,
+        status: "confirmed",
+      });
     } else if (data.status === "completed") {
       await restaurantBookingRepo.completeForProvider(data.code, providerProfileId);
+      await notifyProviderUpdatedBooking({
+        kind: "restaurant",
+        code: data.code,
+        status: "completed",
+      });
     } else {
       await restaurantBookingRepo.cancelForProvider(
         data.code,
         providerProfileId,
         data.reason,
       );
+      await notifyProviderUpdatedBooking({
+        kind: "restaurant",
+        code: data.code,
+        status: "cancelled",
+        reason: data.reason,
+      });
     }
 
     revalidatePath("/provider/bookings/restaurants");

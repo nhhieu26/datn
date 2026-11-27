@@ -1,11 +1,17 @@
-import type { BookingStatus, Prisma } from "@/generated/prisma/client";
+import type {
+  BookingStatus,
+  Prisma,
+  ServiceStatus,
+} from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { restaurantBookingCounts } from "../booking-counts";
 import {
   menuAveragePrice,
   needsScan,
   paginateByPrice,
+  paginateByRelevance,
   ratingWhere,
+  searchWhere,
   type ListFilter,
 } from "../list-filter";
 import type {
@@ -34,6 +40,15 @@ export function findPublishedDetailBySlug(slug: string) {
       tags: { include: { tag: true } },
       timeSlots: true,
     },
+  });
+}
+
+/** Danh sách gọn (id, tên) cho bộ chọn dịch vụ trên lịch của provider. */
+export function findOptionsByProviderProfileId(providerProfileId: string) {
+  return prisma.restaurant.findMany({
+    where: { providerProfileId, deletedAt: null },
+    select: { id: true, name: true },
+    orderBy: { createdAt: "desc" },
   });
 }
 
@@ -148,17 +163,48 @@ export function remove(id: string): Promise<Restaurant> {
   return prisma.restaurant.delete({ where: { id } });
 }
 
-/** Dừng bán nhà hàng và hẹn ngày xóa. Trả về số nhà hàng bị ảnh hưởng (0 nếu không tìm thấy hoặc đã dừng). */
-export async function scheduleDeletion(
-  id: string,
+/**
+ * Dừng bán nhiều restaurant và hẹn ngày xóa. Bỏ qua restaurant không thuộc provider hoặc đã dừng trước đó.
+ * Trả về các restaurant thực sự được hẹn xóa.
+ */
+export function scheduleDeletionMany(
+  ids: string[],
   providerProfileId: string,
   deleteAt: Date
-): Promise<number> {
-  const { count } = await prisma.restaurant.updateMany({
-    where: { id, providerProfileId, deletedAt: null, deleteScheduledAt: null },
+): Promise<{ id: string; slug: string }[]> {
+  return prisma.restaurant.updateManyAndReturn({
+    where: {
+      id: { in: ids },
+      providerProfileId,
+      deletedAt: null,
+      deleteScheduledAt: null,
+    },
     data: { status: "paused", deleteScheduledAt: deleteAt },
+    select: { id: true, slug: true },
   });
-  return count;
+}
+
+/**
+ * Đổi trạng thái mở bán / tạm dừng cho nhiều restaurant của một provider.
+ * Bỏ qua restaurant đã dừng (đang chờ xóa) hoặc đã ở sẵn trạng thái đích.
+ * Trả về các restaurant thực sự được đổi.
+ */
+export function setStatusMany(
+  ids: string[],
+  providerProfileId: string,
+  status: ServiceStatus
+): Promise<{ id: string; slug: string }[]> {
+  return prisma.restaurant.updateManyAndReturn({
+    where: {
+      id: { in: ids },
+      providerProfileId,
+      deletedAt: null,
+      deleteScheduledAt: null,
+      status: { not: status },
+    },
+    data: { status },
+    select: { id: true, slug: true },
+  });
 }
 
 /** Hủy lịch xóa, mở bán lại nhà hàng đã dừng. Trả về 0 nếu nhà hàng không ở trạng thái đã dừng. */
@@ -200,6 +246,14 @@ export function findRecent(take: number) {
   });
 }
 
+/** Nhà hàng đang bán theo danh sách id (cùng dữ liệu với findRecent), không giữ thứ tự. */
+export function findPublishedByIds(ids: string[]) {
+  return prisma.restaurant.findMany({
+    where: { id: { in: ids }, status: "published", deletedAt: null },
+    include: { province: true, timeSlots: true },
+  });
+}
+
 export async function findPaged(filter: ListFilter) {
   const where: Prisma.RestaurantWhereInput = {
     status: "published",
@@ -207,15 +261,23 @@ export async function findPaged(filter: ListFilter) {
     ...ratingWhere(filter),
     ...(filter.province && { province: { name: filter.province } }),
     ...(filter.tag && { tags: { some: { tag: { name: filter.tag } } } }),
-    ...(filter.q && {
-      OR: [
-        { name: { contains: filter.q, mode: "insensitive" } },
-        { address: { contains: filter.q, mode: "insensitive" } },
-      ],
-    }),
+    ...searchWhere<Prisma.RestaurantWhereInput>(filter, (q) => [
+      { name: { contains: q, mode: "insensitive" } },
+      { address: { contains: q, mode: "insensitive" } },
+    ]),
   };
   const include = { province: true, timeSlots: true } as const;
   const orderBy = { createdAt: "desc" } as const;
+
+  if (filter.sort === "relevance") {
+    const all = await prisma.restaurant.findMany({ where, include });
+    return paginateByRelevance(
+      all,
+      (r) => r.name,
+      (r) => menuAveragePrice(r.menu),
+      filter,
+    );
+  }
 
   // giá nhà hàng = giá món trung bình trong menu
   if (needsScan(filter)) {

@@ -5,6 +5,7 @@ import type { HotelBookingDetail } from "@/entities/hotel-booking";
 import type { RestaurantBookingDetail } from "@/entities/restaurant-booking";
 import type { TourBookingDetail } from "@/entities/tour-booking";
 import {
+  CUSTOMER_CANCEL_CUTOFF_HOURS,
   formatDate,
   RESTAURANT_CANCEL_CUTOFF_HOURS,
   todayIsoDate,
@@ -31,6 +32,7 @@ function int(q: BookingQuery, key: string, min: number, fallback: number) {
 export function tourSummary(
   tour: TourDetail,
   q: BookingQuery,
+  cancelCutoffHours = CUSTOMER_CANCEL_CUTOFF_HOURS,
 ): BookingSummary | null {
   const departure = tour.departures.find((d) => d.id === str(q, "departureId"));
   if (!departure) return null;
@@ -47,13 +49,16 @@ export function tourSummary(
       { label: "Đơn giá / khách", value: formatVnd(departure.price) },
     ],
     totalAmount: departure.price * guests,
-    cancellation: "Trước giờ khởi hành 24 giờ",
+    cancellation: `Trước giờ khởi hành ${cancelCutoffHours} giờ`,
     tour: { departureId: departure.id, guests },
   };
 }
 
 /** Tóm tắt từ booking đã lưu (snapshot), dùng cho trang /bookings/[code] */
-export function tourBookingSummary(b: TourBookingDetail): BookingSummary {
+export function tourBookingSummary(
+  b: TourBookingDetail,
+  cancelCutoffHours = CUSTOMER_CANCEL_CUTOFF_HOURS,
+): BookingSummary {
   const slug = b.tourDeparture?.tour.slug;
   return {
     kind: "tour",
@@ -66,13 +71,14 @@ export function tourBookingSummary(b: TourBookingDetail): BookingSummary {
       { label: "Đơn giá / khách", value: formatVnd(Number(b.unitPrice)) },
     ],
     totalAmount: Number(b.totalAmount),
-    cancellation: "Trước giờ khởi hành 24 giờ",
+    cancellation: `Trước giờ khởi hành ${cancelCutoffHours} giờ`,
   };
 }
 
 export function hotelSummary(
   hotel: HotelDetail,
   q: BookingQuery,
+  cancelCutoffHours = CUSTOMER_CANCEL_CUTOFF_HOURS,
 ): BookingSummary | null {
   const room = hotel.rooms.find((r) => r.id === str(q, "roomId"));
   const checkIn = str(q, "checkIn");
@@ -102,13 +108,16 @@ export function hotelSummary(
       { label: "Đơn giá / đêm", value: formatVnd(room.basePrice) },
     ],
     totalAmount: room.basePrice * nights * rooms,
-    cancellation: "Trước ngày nhận phòng 24 giờ",
+    cancellation: `Trước ngày nhận phòng ${cancelCutoffHours} giờ`,
     hotel: { roomId: room.id, checkIn, checkOut, rooms, guests },
   };
 }
 
 /** Tóm tắt từ booking khách sạn đã lưu (snapshot), dùng cho trang /bookings/[code] */
-export function hotelBookingSummary(b: HotelBookingDetail): BookingSummary {
+export function hotelBookingSummary(
+  b: HotelBookingDetail,
+  cancelCutoffHours = CUSTOMER_CANCEL_CUTOFF_HOURS,
+): BookingSummary {
   const slug = b.room?.hotel.slug;
   return {
     kind: "hotel",
@@ -125,13 +134,14 @@ export function hotelBookingSummary(b: HotelBookingDetail): BookingSummary {
       { label: "Đơn giá / đêm", value: formatVnd(Number(b.unitPrice)) },
     ],
     totalAmount: Number(b.totalAmount),
-    cancellation: "Trước ngày nhận phòng 24 giờ",
+    cancellation: `Trước ngày nhận phòng ${cancelCutoffHours} giờ`,
   };
 }
 
 export function restaurantSummary(
   restaurant: RestaurantDetail,
   q: BookingQuery,
+  cancelCutoffHours = RESTAURANT_CANCEL_CUTOFF_HOURS,
 ): BookingSummary | null {
   const date = str(q, "date");
   const slot = restaurant.timeSlots.find((s) => s.startTime === str(q, "slot"));
@@ -152,7 +162,7 @@ export function restaurantSummary(
       { label: "Địa chỉ", value: restaurant.address },
     ],
     totalAmount: null,
-    cancellation: `Trước giờ đặt bàn ${RESTAURANT_CANCEL_CUTOFF_HOURS} giờ`,
+    cancellation: `Trước giờ đặt bàn ${cancelCutoffHours} giờ`,
     restaurant: {
       restaurantSlug: restaurant.slug,
       date,
@@ -165,6 +175,7 @@ export function restaurantSummary(
 /** Tóm tắt từ booking nhà hàng đã lưu (snapshot), dùng cho trang /bookings/[code] */
 export function restaurantBookingSummary(
   b: RestaurantBookingDetail,
+  cancelCutoffHours = RESTAURANT_CANCEL_CUTOFF_HOURS,
 ): BookingSummary {
   const slug = b.restaurant?.slug;
   const endTime = b.restaurantTimeSlot?.endTime;
@@ -180,6 +191,6 @@ export function restaurantBookingSummary(
       ...(b.restaurant ? [{ label: "Địa chỉ", value: b.restaurant.address }] : []),
     ],
     totalAmount: null,
-    cancellation: `Trước giờ đặt bàn ${RESTAURANT_CANCEL_CUTOFF_HOURS} giờ`,
+    cancellation: `Trước giờ đặt bàn ${cancelCutoffHours} giờ`,
   };
 }

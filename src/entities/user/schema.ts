@@ -2,6 +2,8 @@ import { z } from "zod";
 
 export const roleSchema = z.enum(["customer", "provider", "admin"]);
 
+export const userStatusSchema = z.enum(["active", "inactive", "banned"]);
+
 // Roles a user can select during public self-registration. Deliberately
 // excludes "admin" — admin accounts are never created via public sign-up.
 export const publicRegisterableRoleSchema = z.enum(["customer", "provider"]);

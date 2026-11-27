@@ -7,11 +7,13 @@ import { formatDayMonth } from "../utils";
 
 export function CalendarDayPanel({
   slug,
+  serviceId,
   date,
   today,
   events,
 }: {
   slug: string;
+  serviceId?: string;
   date: string;
   today: string;
   events: CalendarEvent[];
@@ -32,7 +34,7 @@ export function CalendarDayPanel({
         {date !== today && (
           <Link
             className="text-sm font-medium text-primary hover:underline focus:underline focus:outline-hidden"
-            href={buildCalendarUrl(slug)}
+            href={buildCalendarUrl(slug, { service: serviceId })}
             scroll={false}
           >
             Hôm nay

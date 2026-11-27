@@ -1,6 +1,7 @@
 "use client";
 
 import type { Tag } from "@/entities/tag";
+import { motion } from "motion/react";
 import { useState, useTransition, type FormEvent } from "react";
 import { saveInterestsAction } from "../actions";
 
@@ -37,19 +38,27 @@ export function InterestsModal({
   }
 
   return (
-    <div
+    <motion.div
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      initial={{ opacity: 0 }}
       role="presentation"
       onClick={() => {
         if (!isPending) onClose();
       }}
+      transition={{ duration: 0.18 }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-[2px]"
     >
-      <form
+      <motion.form
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 8 }}
+        initial={{ opacity: 0, scale: 0.95, y: 12 }}
         onSubmit={handleSubmit}
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="interests-heading"
+        transition={{ type: "spring", stiffness: 380, damping: 28 }}
         className="relative max-h-[90vh] w-full max-w-[510px] overflow-y-auto rounded-2xl border border-new-checkbox-border bg-white p-8 shadow-2xl"
       >
         <button
@@ -144,7 +153,7 @@ export function InterestsModal({
             <span>{isPending ? "Đang lưu..." : "Lưu sở thích"}</span>
           </button>
         </div>
-      </form>
-    </div>
+      </motion.form>
+    </motion.div>
   );
 }

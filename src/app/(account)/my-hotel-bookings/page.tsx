@@ -1,4 +1,5 @@
 import { hotelBookingRepo } from "@/entities/hotel-booking";
+import { systemSettingRepo } from "@/entities/system-setting";
 import {
   buildMyBookingsUrl,
   getMyBookingsSummary,
@@ -29,7 +30,7 @@ export default async function MyHotelBookingsPage({
   const query = parseMyBookingsQuery(await searchParams);
 
   await hotelBookingRepo.releaseExpired();
-  const [{ items: bookings, total }, statusRows] = await Promise.all([
+  const [{ items: bookings, total }, statusRows, settings] = await Promise.all([
     hotelBookingRepo.findPageByCustomerId(
       session.user.id,
       getTabStatuses(query.tab),
@@ -39,6 +40,7 @@ export default async function MyHotelBookingsPage({
       },
     ),
     hotelBookingRepo.summarizeByCustomerId(session.user.id),
+    systemSettingRepo.getSettings(),
   ]);
 
   const totalPages = Math.max(1, Math.ceil(total / MY_BOOKINGS_PAGE_SIZE));
@@ -55,7 +57,9 @@ export default async function MyHotelBookingsPage({
       <div className="rounded-md bg-white p-6">
         <MyBookingsTabs query={query} />
         <MyHotelBookingsList
-          items={bookings.map(mapToMyHotelBookingItem)}
+          items={bookings.map((b) =>
+            mapToMyHotelBookingItem(b, settings.customerCancelCutoffHours),
+          )}
           total={total}
           query={query}
           hasAnyBooking={summary.total > 0}

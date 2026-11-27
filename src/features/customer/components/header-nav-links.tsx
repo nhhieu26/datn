@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "motion/react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
@@ -9,12 +10,14 @@ const NAV_ITEMS = [
   { label: "Khách sạn", href: "/explore?kind=hotel", kind: "hotel" },
   { label: "Điểm đến", href: "/explore?kind=destination", kind: "destination" },
   { label: "Nhà hàng", href: "/explore?kind=restaurant", kind: "restaurant" },
+  { label: "Lộ trình", href: "/trip-planner", kind: "trip" },
+  { label: "Bài viết", href: "/articles", kind: "articles" },
 ];
 
 const itemClass =
-  "px-3.5 py-2 font-medium text-gray-800 hover:text-new-coral inline-flex items-center text-sm transition";
+  "relative z-10 px-3.5 py-2 font-medium text-gray-800 hover:text-new-coral inline-flex items-center text-sm transition-colors duration-200";
 const itemActiveClass =
-  "home-bookmark px-6 py-6 font-semibold text-new-teal inline-flex items-center text-sm transition";
+  "relative z-10 px-6 py-6 font-semibold text-new-teal inline-flex items-center text-sm transition-colors duration-200";
 
 export function HeaderNavLinks() {
   const pathname = usePathname();
@@ -29,9 +32,24 @@ export function HeaderNavLinks() {
         const active =
           item.kind === null
             ? pathname === "/"
-            : pathname === "/explore" && kind === item.kind;
+            : item.kind === "trip"
+              ? pathname.startsWith("/trip-planner")
+              : item.kind === "articles"
+                ? pathname.startsWith("/articles")
+                : pathname === "/explore" && kind === item.kind;
         return (
-          <div key={item.href} className={active ? "pt-0 -mt-2" : undefined}>
+          <div
+            key={item.href}
+            className={`relative ${active ? "pt-0 -mt-2" : ""}`}
+          >
+            {active && (
+              <motion.span
+                aria-hidden
+                className="home-bookmark absolute inset-0 z-0 pointer-events-none"
+                layoutId="customer-header-bookmark"
+                transition={{ type: "spring", stiffness: 380, damping: 32 }}
+              />
+            )}
             <Link
               className={active ? itemActiveClass : itemClass}
               href={item.href}

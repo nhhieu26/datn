@@ -60,7 +60,10 @@ export type MyRestaurantBookingItem = {
 
 export type BookingKind = "tour" | "hotel" | "restaurant";
 
-/** Đơn completed: URL tới form đánh giá, "reviewed" nếu đã đánh giá; null với đơn khác. */
+/**
+ * null: chưa được đánh giá; "reviewed" | "review_pending" | "review_rejected": đã gửi đánh giá
+ * (đã hiển thị / chờ kiểm duyệt / bị ẩn); chuỗi khác: URL tới form đánh giá.
+ */
 export type ReviewState = string | null;
 
 /** Dữ liệu tối thiểu để menu/dialog hủy dùng chung cho đơn tour và khách sạn. */

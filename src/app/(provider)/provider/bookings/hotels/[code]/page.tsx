@@ -15,6 +15,7 @@ import {
   PrelinePaymentBadge,
   PrelineStatusBadge,
 } from "@/features/provider/tour-bookings/components/tour-booking-status";
+import { invoiceHref } from "@/features/invoice/links";
 import { auth } from "@/lib/auth";
 import { formatDateTime } from "@/lib/utils";
 import type { Metadata } from "next";
@@ -87,13 +88,25 @@ export default async function ProviderHotelBookingDetailPage({
                 Tạo lúc {formatDateTime(booking.createdAt)}
               </p>
             </div>
-            <Link
-              className="inline-flex w-fit items-center gap-x-2 rounded-lg border border-layer-line bg-layer px-3 py-2 text-sm font-medium text-layer-foreground shadow-2xs hover:bg-layer-hover focus:bg-layer-focus focus:outline-hidden"
-              href="/provider/bookings/hotels"
-            >
-              <BookingIcon name="arrowLeft" />
-              Quay lại danh sách
-            </Link>
+            <div className="flex flex-wrap gap-2">
+              {(booking.paymentState === "paid" ||
+                booking.paymentState === "refunded") && (
+                <Link
+                  className="inline-flex w-fit items-center gap-x-2 rounded-lg border border-layer-line bg-layer px-3 py-2 text-sm font-medium text-layer-foreground shadow-2xs hover:bg-layer-hover focus:bg-layer-focus focus:outline-hidden"
+                  href={invoiceHref.provider(booking.code)}
+                >
+                  <BookingIcon name="receipt" />
+                  Xem hóa đơn
+                </Link>
+              )}
+              <Link
+                className="inline-flex w-fit items-center gap-x-2 rounded-lg border border-layer-line bg-layer px-3 py-2 text-sm font-medium text-layer-foreground shadow-2xs hover:bg-layer-hover focus:bg-layer-focus focus:outline-hidden"
+                href="/provider/bookings/hotels"
+              >
+                <BookingIcon name="arrowLeft" />
+                Quay lại danh sách
+              </Link>
+            </div>
           </div>
         </div>
 

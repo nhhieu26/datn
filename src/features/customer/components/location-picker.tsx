@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 type LocationPickerProps = {
@@ -55,46 +56,54 @@ export function LocationPicker({
       >
         {renderTrigger({ open, value })}
       </button>
-      {open && (
-        <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden text-left">
-          <div className="p-2 border-b border-gray-100">
-            <input
-              autoFocus
-              className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:border-new-teal focus:ring-0"
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Tìm địa điểm..."
-              type="text"
-              value={query}
-            />
-          </div>
-          <div className="max-h-56 overflow-y-auto">
-            {!query.trim() && (
-              <button
-                className={optionClass(value === null)}
-                onClick={() => select(null)}
-                type="button"
-              >
-                Tất cả địa điểm
-              </button>
-            )}
-            {filtered.map((name) => (
-              <button
-                key={name}
-                className={optionClass(name === value)}
-                onClick={() => select(name)}
-                type="button"
-              >
-                {name}
-              </button>
-            ))}
-            {filtered.length === 0 && (
-              <p className="px-4 py-3 text-sm text-gray-500">
-                Không tìm thấy địa điểm
-              </p>
-            )}
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            className="absolute left-0 right-0 top-full mt-2 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden text-left origin-top"
+            exit={{ opacity: 0, y: -6, scale: 0.98 }}
+            initial={{ opacity: 0, y: -6, scale: 0.98 }}
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="p-2 border-b border-gray-100">
+              <input
+                autoFocus
+                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:border-new-teal focus:ring-0"
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Tìm địa điểm..."
+                type="text"
+                value={query}
+              />
+            </div>
+            <div className="max-h-56 overflow-y-auto">
+              {!query.trim() && (
+                <button
+                  className={optionClass(value === null)}
+                  onClick={() => select(null)}
+                  type="button"
+                >
+                  Tất cả địa điểm
+                </button>
+              )}
+              {filtered.map((name) => (
+                <button
+                  key={name}
+                  className={optionClass(name === value)}
+                  onClick={() => select(name)}
+                  type="button"
+                >
+                  {name}
+                </button>
+              ))}
+              {filtered.length === 0 && (
+                <p className="px-4 py-3 text-sm text-gray-500">
+                  Không tìm thấy địa điểm
+                </p>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

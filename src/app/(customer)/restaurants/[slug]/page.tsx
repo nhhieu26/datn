@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { restaurantRepo } from "@/entities/restaurant";
+import { FadeIn } from "@/features/customer/components/motion";
 import { PageBanner } from "@/features/customer/components/page-banner";
 import {
   RestaurantBookingCard,
@@ -49,16 +50,20 @@ export default async function RestaurantDetailPage({
       />
       <section className="py-12">
         <div className="page-x">
-          <RestaurantDetailHeading restaurant={restaurant} />
+          <FadeIn duration={0.48} inView={false} y={14}>
+            <RestaurantDetailHeading restaurant={restaurant} />
+          </FadeIn>
         </div>
-        <div className="mt-8">
+        <FadeIn className="mt-8" delay={0.08} duration={0.52} inView={false} y={14}>
           <TourGallerySlider images={restaurant.images} title={restaurant.name} />
-        </div>
+        </FadeIn>
         <div className="page-x">
           <div className="mt-8 grid gap-8 lg:grid-cols-3 xl:grid-cols-[2fr_1fr]">
             <div className="lg:col-span-2 xl:col-span-1">
-              <RestaurantContent restaurant={restaurant} />
-              <div className="mt-8">
+              <FadeIn delay={0.12} y={16}>
+                <RestaurantContent restaurant={restaurant} />
+              </FadeIn>
+              <FadeIn className="mt-8" y={18}>
                 <ServiceReviews
                   kind="restaurant"
                   serviceId={restaurant.id}
@@ -66,11 +71,13 @@ export default async function RestaurantDetailPage({
                   take={reviewsTake}
                   total={restaurant.rating.count}
                 />
-              </div>
+              </FadeIn>
             </div>
-            <aside>
-              <RestaurantBookingCard restaurant={restaurant} />
-            </aside>
+            <FadeIn delay={0.16} duration={0.55} inView={false} x={18} y={12}>
+              <aside>
+                <RestaurantBookingCard restaurant={restaurant} />
+              </aside>
+            </FadeIn>
           </div>
         </div>
       </section>

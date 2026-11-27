@@ -9,10 +9,12 @@ import {
   createRestaurantBookingSchema,
   restaurantBookingRepo,
 } from "@/entities/restaurant-booking";
+import { notifyRestaurantBookingCreated } from "@/entities/notification";
 import {
   createTourBookingSchema,
   tourBookingRepo,
 } from "@/entities/tour-booking";
+import { systemSettingRepo } from "@/entities/system-setting";
 import { auth } from "@/lib/auth";
 import { createOrder } from "@/lib/paypal";
 import { fromZodError, runAction } from "@/shared/lib/action-state";
@@ -22,7 +24,6 @@ import {
   UnauthenticatedError,
   ValidationError,
 } from "@/shared/lib/errors";
-import { USD_RATE } from "./lib/exchange-rate";
 
 async function requireCustomerId() {
   const session = await auth();
@@ -71,8 +72,11 @@ export async function startTourPaymentAction(code: string) {
       throw new ConflictError("Thanh toán trước đó đang được xác nhận, vui lòng đợi.");
     }
 
-    const origin = await appOrigin();
-    const amountUsd = booking.totalAmount.div(USD_RATE).toFixed(2);
+    const [origin, { usdRate }] = await Promise.all([
+      appOrigin(),
+      systemSettingRepo.getSettings(),
+    ]);
+    const amountUsd = booking.totalAmount.div(usdRate).toFixed(2);
     const order = await createOrder({
       amountUsd,
       referenceId: booking.id,
@@ -84,7 +88,7 @@ export async function startTourPaymentAction(code: string) {
       tourBookingId: booking.id,
       amount: booking.totalAmount,
       chargedAmount: amountUsd,
-      exchangeRate: USD_RATE,
+      exchangeRate: usdRate,
       gatewayOrderId: order.id,
     });
     return { approveUrl: order.approveUrl };
@@ -109,6 +113,7 @@ export async function createRestaurantBookingAction(input: unknown) {
     const parsed = createRestaurantBookingSchema.safeParse(input);
     if (!parsed.success) throw new ValidationError(fromZodError(parsed.error));
     const booking = await restaurantBookingRepo.createConfirmed(customerId, parsed.data);
+    await notifyRestaurantBookingCreated(booking.id);
     return { code: booking.code };
   });
 }
@@ -133,8 +138,11 @@ export async function startHotelPaymentAction(code: string) {
       throw new ConflictError("Thanh toán trước đó đang được xác nhận, vui lòng đợi.");
     }
 
-    const origin = await appOrigin();
-    const amountUsd = booking.totalAmount.div(USD_RATE).toFixed(2);
+    const [origin, { usdRate }] = await Promise.all([
+      appOrigin(),
+      systemSettingRepo.getSettings(),
+    ]);
+    const amountUsd = booking.totalAmount.div(usdRate).toFixed(2);
     const order = await createOrder({
       amountUsd,
       referenceId: booking.id,
@@ -146,7 +154,7 @@ export async function startHotelPaymentAction(code: string) {
       hotelBookingId: booking.id,
       amount: booking.totalAmount,
       chargedAmount: amountUsd,
-      exchangeRate: USD_RATE,
+      exchangeRate: usdRate,
       gatewayOrderId: order.id,
     });
     return { approveUrl: order.approveUrl };
