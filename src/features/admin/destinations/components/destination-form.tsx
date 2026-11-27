@@ -18,6 +18,11 @@ import {
   LocationPicker,
   type LatLng,
 } from "@/shared/components/location-picker";
+import { GooglePlaceAutofill } from "@/shared/components/google-place-autofill";
+import {
+  matchProvinceId,
+  type PlaceAutofill,
+} from "@/shared/lib/google-place-autofill";
 import { createDestinationAction, updateDestinationAction } from "../actions";
 import { DestinationDetailPreview } from "./destination-detail-preview";
 import { DestinationIcon } from "./destination-icon";
@@ -161,6 +166,44 @@ export function DestinationForm({
     );
   };
 
+  // Tự điền từ Google Maps; mô tả chỉ điền khi đang trống để không ghi đè nội dung đã nhập
+  const applyGooglePlace = (place: PlaceAutofill) => {
+    const provinceId = matchProvinceId(
+      place.provinceName,
+      place.address,
+      provinces
+    );
+    setForm((prev) => ({
+      ...prev,
+      name: place.name,
+      address: place.address || prev.address,
+      location: place.location,
+      provinceId: provinceId ?? prev.provinceId,
+      ...(place.openTime && place.closeTime
+        ? { openTime: place.openTime, closeTime: place.closeTime }
+        : {}),
+      description:
+        prev.description.trim() || !place.description
+          ? prev.description
+          : place.description.slice(0, MAX_DESCRIPTION_LENGTH),
+    }));
+    if (!provinceId)
+      return "Không xác định được tỉnh/thành, vui lòng chọn lại bên dưới.";
+  };
+
+  const addGooglePhotos = (files: File[]) =>
+    setForm((prev) => ({
+      ...prev,
+      photos: [
+        ...prev.photos,
+        ...files.slice(0, MAX_PHOTOS - prev.photos.length).map((file) => ({
+          kind: "new" as const,
+          file,
+          previewUrl: URL.createObjectURL(file),
+        })),
+      ],
+    }));
+
   const handlePhotoSelect = (files: FileList | null) => {
     if (!files) return;
     const remaining = MAX_PHOTOS - form.photos.length;
@@ -285,6 +328,13 @@ export function DestinationForm({
       <div className="space-y-4 sm:space-y-6">
         {currentStep === 1 ? (
           <Card title="Thông tin cơ bản & Địa điểm">
+            <GooglePlaceAutofill
+              kind="destination"
+              maxPhotos={MAX_PHOTOS - form.photos.length}
+              onPhotos={addGooglePhotos}
+              onPick={applyGooglePlace}
+            />
+
             <div>
               <label className={labelClass} htmlFor="name">
                 Tên địa điểm {requiredMark}

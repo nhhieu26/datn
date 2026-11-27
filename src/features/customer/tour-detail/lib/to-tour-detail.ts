@@ -1,4 +1,4 @@
-import type { tourRepo } from "@/entities/tour";
+import type { TourStop, tourRepo } from "@/entities/tour";
 
 type TourRow = NonNullable<
   Awaited<ReturnType<typeof tourRepo.findPublishedDetailBySlug>>
@@ -17,7 +17,12 @@ export type TourDetail = {
   maxGuests: number;
   includeServices: string[];
   excludeServices: string[];
-  itinerary: { title: string; description: string }[];
+  itinerary: {
+    title: string;
+    description: string;
+    stops?: TourStop[];
+    location?: string;
+  }[];
   tags: string[];
   rating: { avg: number; count: number };
   bookingCount: number;
@@ -54,7 +59,7 @@ export function toTourDetail(t: TourRow, bookingCount: number): TourDetail {
     maxGuests: Math.max(0, ...departures.map((d) => d.slotsLeft)),
     includeServices: t.includeServices,
     excludeServices: t.excludeServices,
-    itinerary: (t.itinerary as { title: string; description: string }[]) ?? [],
+    itinerary: (t.itinerary as TourDetail["itinerary"] | null) ?? [],
     tags: t.tags.map((x) => x.tag.name),
     departures,
   };

@@ -4,6 +4,8 @@ import { FadeIn, SmoothCollapse } from "@/features/customer/components/motion";
 import Link from "next/link";
 import { useState } from "react";
 import type { TourDetail } from "../lib/to-tour-detail";
+import { dayStopLabels } from "../lib/google-maps";
+import { TourRouteMap } from "./tour-route-map";
 
 // ponytail: chưa có trường chính sách trong DB nên dùng nội dung chung cho mọi tour
 const POLICIES = [
@@ -77,6 +79,14 @@ function ItineraryDayItem({
         </span>
       </button>
       <SmoothCollapse open={open}>
+        {dayStopLabels(day).length > 0 && (
+          <p className="flex items-start gap-1 px-5 pb-2 text-sm text-new-teal">
+            <span aria-hidden className="material-symbols-outlined text-base">
+              location_on
+            </span>
+            {dayStopLabels(day).join(" - ")}
+          </p>
+        )}
         <p className="px-5 pb-5 leading-7 whitespace-pre-line text-new-paragraph">
           {day.description}
         </p>
@@ -130,6 +140,8 @@ export function TourContent({ tour }: { tour: TourDetail }) {
           </div>
         </section>
       </FadeIn>
+
+      <TourRouteMap itinerary={tour.itinerary} location={tour.location} />
 
       <FadeIn delay={0.1} y={16}>
         <section>

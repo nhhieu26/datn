@@ -1,8 +1,28 @@
 import { z } from "zod";
 
+// Điểm tham quan provider chọn từ kết quả tìm kiếm Google Maps
+export const tourStopSchema = z.object({
+  placeId: z.string().trim().min(1).max(300),
+  name: z.string().trim().min(1).max(200),
+  address: z.string().trim().max(300).nullable(),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+});
+
+export type TourStop = z.infer<typeof tourStopSchema>;
+
+export const MAX_STOPS_PER_DAY = 10;
+
 export const itineraryDaySchema = z.object({
   title: z.string().trim().min(1, "Vui lòng nhập tên chặng"),
   description: z.string().trim().min(1, "Vui lòng nhập mô tả chặng"),
+  // Các điểm tham quan trong ngày, dùng để vẽ lộ trình Google Maps (không bắt buộc)
+  stops: z
+    .array(tourStopSchema)
+    .max(MAX_STOPS_PER_DAY, `Tối đa ${MAX_STOPS_PER_DAY} điểm mỗi ngày`)
+    .default([]),
+  // Dữ liệu cũ dạng chữ ("Tràng An - Hang Múa"), chỉ giữ để tương thích
+  location: z.string().trim().max(200, "Địa điểm tối đa 200 ký tự").default(""),
 });
 
 export const tourDepartureSchema = z.object({

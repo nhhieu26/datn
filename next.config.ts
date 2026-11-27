@@ -32,6 +32,15 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "picsum.photos",
       },
+      // Ảnh thumbnail địa điểm từ Google Maps (qua SerpApi)
+      {
+        protocol: "https",
+        hostname: "serpapi.com",
+      },
+      {
+        protocol: "https",
+        hostname: "*.googleusercontent.com",
+      },
       ...(imageKitRemotePattern ? [imageKitRemotePattern] : []),
     ],
   },
